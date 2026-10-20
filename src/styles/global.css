@@ -106,6 +106,7 @@ h3 {
 /* ───────────── Botones y campos ───────────── */
 
 .btn {
+  max-width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -517,9 +518,10 @@ select.input {
   color: var(--warm);
 }
 
+/* Dos columnas si caben; en pantallas estrechas (o con letra grande) se apilan. */
 .invite-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr));
   gap: 10px;
   width: 100%;
 }
@@ -527,7 +529,8 @@ select.input {
 .invite-actions .btn {
   padding: 10px 12px;
   font-size: 0.92rem;
-  white-space: nowrap;
+  min-width: 0;
+  text-align: center;
 }
 
 .invite-share {
@@ -601,7 +604,7 @@ select.input {
 
 .reward-row {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr auto;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 8px;
   align-items: end;
 }
@@ -866,10 +869,12 @@ select.input {
   z-index: 5;
 }
 
+/* Si no cabe todo en una línea (móvil estrecho o letra grande), pasa a dos. */
 .game-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
   min-height: 52px;
 }
 
@@ -912,8 +917,8 @@ select.input {
 }
 
 .opponent {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px 8px;
   padding: 7px 10px;
@@ -928,7 +933,7 @@ select.input {
 }
 
 .opponent-name {
-  grid-column: 1 / -1;
+  flex-basis: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1767,4 +1772,52 @@ select.input {
   padding: 6px 14px;
   border-radius: 999px;
   background: rgb(245 185 113 / 0.12);
+}
+
+/* ───────────── Pantallas estrechas y letra grande ─────────────
+   Android/iOS con el tamaño de letra aumentado equivalen a una pantalla más estrecha. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.card-back:last-child {
+  margin-right: 0;
+}
+
+.lobby-player-name,
+.opponent-count,
+.page-title,
+.overlay-title {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .page,
+  .game {
+    padding-left: calc(var(--safe-left) + 10px);
+    padding-right: calc(var(--safe-right) + 10px);
+  }
+  .panel {
+    padding: 14px 12px;
+  }
+  .game-resources {
+    gap: 10px;
+    padding: 6px 10px;
+  }
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+  }
+  .invite-code {
+    gap: 5px;
+  }
+  .opponents {
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  }
+  .vote-actions,
+  .field-row {
+    grid-template-columns: 1fr;
+  }
 }
