@@ -6,6 +6,7 @@ import { useCallback, useState } from 'react';
 import type { ExitReason } from './game/controller';
 import type { RoomConfig, RoomSnapshot } from './game/types';
 import { t } from './i18n';
+import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
@@ -40,14 +41,26 @@ function setUrlCode(code: string | null) {
   window.history.replaceState(null, '', url.toString());
 }
 
+/**
+ * Dónde empieza la app:
+ * - Misma pestaña/app todavía abierta (recarga, volver de otra app) → directamente a la sala.
+ * - Abriendo un enlace de invitación de la sala en la que ya estabas → a la sala.
+ * - App cerrada del todo y vuelta a abrir → inicio (con el botón «Volver a tu sala»).
+ * Mientras estás en una sala la dirección queda limpia (sin ?sala=): así, si el sistema
+ * restaura la pestaña al reabrir, no te mete otra vez en la sala sin querer.
+ */
 function initialScreen(): Screen {
   const urlCode = codeFromUrl();
+  if (!onlineAvailable) return { name: 'home' };
+  const active = storedRoom.active();
+  if (active && (!urlCode || urlCode === active.code)) return { name: 'room', roomId: active.id, initial: null };
   const stored = storedRoom.get();
-  if (onlineAvailable && stored && (!urlCode || urlCode === stored.code)) {
-    setUrlCode(stored.code); // al reanudar, la barra de direcciones vuelve a mostrar el enlace de la sala
+  if (urlCode && stored?.code === urlCode) {
+    setUrlCode(null);
+    storedRoom.set(stored);
     return { name: 'room', roomId: stored.id, initial: null };
   }
-  if (urlCode) return onlineAvailable ? { name: 'join', code: urlCode } : { name: 'home' };
+  if (urlCode) return { name: 'join', code: urlCode };
   return { name: 'home' };
 }
 
@@ -56,8 +69,11 @@ export function App() {
   const home = useCallback((message?: string) => setScreen({ name: 'home', message }), []);
 
   const enterRoom = useCallback((snap: RoomSnapshot) => {
+    // Si entras en otra sala distinta, se abandona la anterior para no quedar como jugador fantasma.
+    const previous = storedRoom.get();
+    if (previous && previous.id !== snap.room.id) void api.leaveRoom(previous.id).catch(() => {});
     storedRoom.set({ id: snap.room.id, code: snap.room.code });
-    setUrlCode(snap.room.code);
+    setUrlCode(null);
     setScreen({ name: 'room', roomId: snap.room.id, initial: snap });
   }, []);
 
@@ -80,7 +96,9 @@ export function App() {
           onJoin={() => setScreen({ name: 'join' })}
           onResume={() => {
             const s = storedRoom.get();
-            if (s) setScreen({ name: 'room', roomId: s.id, initial: null });
+            if (!s) return;
+            storedRoom.set(s); // vuelve a ser la sala activa de esta sesión
+            setScreen({ name: 'room', roomId: s.id, initial: null });
           }}
           onPractice={() => setScreen({ name: 'practiceSetup' })}
           onRules={() => setScreen({ name: 'rules' })}
