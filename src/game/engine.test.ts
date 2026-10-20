@@ -328,6 +328,24 @@ describe('progresión de niveles', () => {
     expect(s.gameNo).toBe(2);
   });
 
+  it('un error que cierra el nivel deja ambos eventos en la foto (máximo 8)', () => {
+    let { s } = room(2);
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    s.hands = { p0: [30], p1: [50] };
+    s = ok(E.playCard(s, 'p1', 50, NOW));
+    expect(E.toSnapshot(s, 'p0', NOW).recentEvents!.map((e) => e.kind).slice(-2)).toEqual(['mistake', 'level_complete']);
+
+    // Muchas propuestas rechazadas: la lista no crece por encima del límite.
+    s = ok(E.readyNextLevel(s, 'p0', 1, true, seededRng(6), NOW));
+    for (let i = 0; i < 6; i++) {
+      s = ok(E.proposeShuriken(s, 'p0', NOW));
+      s = ok(E.voteShuriken(s, 'p1', false, NOW));
+    }
+    const recent = E.toSnapshot(s, 'p0', NOW).recentEvents!;
+    expect(recent).toHaveLength(E.RECENT_EVENTS);
+    expect(recent.at(-1)?.seq).toBe(s.eventSeq);
+  });
+
   it('cada acción incrementa la versión y nunca la reduce', () => {
     let { s } = room(2);
     const v0 = s.version;

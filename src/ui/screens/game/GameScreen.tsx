@@ -7,6 +7,7 @@ import { Toast } from '../../components/Layout';
 import { ConnectionDot, Lives, Shurikens } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
 import { Countdown, EndScreen, LevelComplete, VoteBanner } from './Overlays';
+import { useAfterPause } from './useAfterPause';
 import { useEventFeed } from './useEventFeed';
 
 export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () => void }) {
@@ -62,6 +63,13 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   };
 
   const canPropose = playing && !vote && room.shurikens > 0 && myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0) > 0;
+
+  // Tras la última carta, unos segundos para verla antes de «nivel superado» / fin de partida.
+  const ended = room.status === 'won' || room.status === 'lost' || room.status === 'abandoned';
+  const resultAt =
+    snap.lastEvent && ['level_complete', 'won', 'lost'].includes(snap.lastEvent.kind) ? snap.lastEvent.at : undefined;
+  const showLevelComplete = useAfterPause(room.status === 'level_complete', resultAt, ctl.clockOffset);
+  const showEnd = useAfterPause(ended, room.status === 'abandoned' ? undefined : resultAt, ctl.clockOffset);
 
   return (
     <div className={`game ${feed.shake ? 'game-shake' : ''}`}>
@@ -185,8 +193,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       {playing && room.config.countdown && feed.countdownSeq !== null && (
         <Countdown level={room.level} onDone={feed.clearCountdown} />
       )}
-      {room.status === 'level_complete' && <LevelComplete ctl={ctl} snap={snap} />}
-      {(room.status === 'won' || room.status === 'lost' || room.status === 'abandoned') && (
+      {room.status === 'level_complete' && showLevelComplete && <LevelComplete ctl={ctl} snap={snap} />}
+      {ended && showEnd && (
         <EndScreen ctl={ctl} snap={snap} onExit={onExit} />
       )}
     </div>

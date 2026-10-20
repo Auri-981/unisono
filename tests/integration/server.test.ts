@@ -273,6 +273,19 @@ describe('salas', () => {
 });
 
 describe('anti-duplicados y concurrencia', () => {
+  it('un error que cierra el nivel envía ambos eventos (para mostrar el error y luego el nivel)', async () => {
+    const { ids, room } = await started(2);
+    await setHands(room, ids, [[30], [50]]);
+    const snap: RoomSnapshot = await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 50 });
+    expect(snap.room.status).toBe('level_complete');
+    const kinds = snap.recentEvents!.map((e) => e.kind);
+    expect(kinds.slice(-2)).toEqual(['mistake', 'level_complete']);
+    expect(snap.recentEvents!.length).toBeLessThanOrEqual(8);
+    const seqs = snap.recentEvents!.map((e) => e.seq);
+    expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
+    expect(snap.lastEvent?.seq).toBe(seqs.at(-1));
+  });
+
   it('un reintento con el mismo action_id no juega otra carta', async () => {
     const { ids, room } = await started(2);
     await setHands(room, ids, [[10, 20], [30, 40]]);

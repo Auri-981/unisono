@@ -59,6 +59,8 @@ export interface EngineState {
   revealed: RevealedCard[];
   vote: ShurikenVote | null;
   lastEvent: GameEvent | null;
+  /** Últimos eventos (máximo RECENT_EVENTS), igual que el servidor. */
+  recentEvents: GameEvent[];
   lastReward: LevelReward | null;
   eventSeq: number;
   version: number;
@@ -72,6 +74,9 @@ export type EngineResult =
 
 const iso = (now: number) => new Date(now).toISOString();
 
+/** Cuántos eventos recientes se envían en cada foto (también en el SQL). */
+export const RECENT_EVENTS = 8;
+
 class Draft {
   readonly s: EngineState;
   readonly events: GameEvent[] = [];
@@ -82,6 +87,7 @@ class Draft {
     this.s.eventSeq += 1;
     const ev: GameEvent = { seq: this.s.eventSeq, kind, actor, payload, at: iso(this.now) };
     this.s.lastEvent = ev;
+    this.s.recentEvents = [...this.s.recentEvents, ev].slice(-RECENT_EVENTS);
     this.events.push(ev);
   }
   commit(): EngineResult {
@@ -222,6 +228,7 @@ export function createRoom(params: {
     revealed: [],
     vote: null,
     lastEvent: null,
+    recentEvents: [],
     lastReward: null,
     eventSeq: 0,
     version: 1,
@@ -480,6 +487,7 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
     revealed: structuredClone(state.revealed),
     vote: structuredClone(state.vote),
     lastEvent: structuredClone(state.lastEvent),
+    recentEvents: structuredClone(state.recentEvents),
     lastReward: structuredClone(state.lastReward),
     myHand: [...(state.hands[viewer] ?? [])],
   };

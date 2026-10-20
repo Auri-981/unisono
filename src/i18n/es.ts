@@ -135,10 +135,12 @@ export const es = {
 
   'event.play': '{name} jugó el {card}',
   'event.mistake': '¡Error! {name} jugó el {card}',
+  'event.mistakeMine': '¡Error! Jugaste el {card}',
   'event.mistakeDetail': 'Se descartan: {cards} · −1 vida',
   'event.shurikenUsed': 'Shuriken: cada uno descarta su carta más baja',
   'event.shurikenRevealed': 'Shuriken: se descartan {cards}',
   'event.shurikenRejected': '{name} rechazó el shuriken',
+  'event.shurikenRejectedMine': 'Rechazaste el shuriken',
   'event.shurikenExpired': 'Shuriken cancelado: se acabó el tiempo',
   'event.shurikenPlayerLeft': 'Shuriken cancelado: un jugador salió',
   'event.joined': '{name} se ha unido',

@@ -396,6 +396,12 @@ as $$
     'revealed', r.revealed,
     'vote', r.vote,
     'lastEvent', r.last_event,
+    -- Últimos 8 eventos (una acción puede generar varios, p. ej. «error» + «nivel superado»).
+    'recentEvents', (
+      select coalesce(jsonb_agg(jsonb_build_object(
+               'seq', e.seq, 'kind', e.kind, 'actor', e.actor, 'payload', e.payload, 'at', e.created_at
+             ) order by e.seq), '[]'::jsonb)
+      from (select * from public.room_events ev where ev.room_id = r.id order by ev.seq desc limit 8) e),
     'lastReward', r.last_reward,
     'myHand', (
       select coalesce(jsonb_agg(h.card order by h.card), '[]'::jsonb)

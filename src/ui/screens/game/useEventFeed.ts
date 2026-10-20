@@ -1,6 +1,9 @@
 /**
- * Convierte el último evento de la partida en un mensaje visible + sonido/vibración.
+ * Convierte los eventos de la partida en mensajes visibles + sonido/vibración.
  * Solo reacciona a eventos NUEVOS (no repite los antiguos al entrar o reconectar).
+ *
+ * Una sola acción puede producir varios eventos (p. ej. un error que además cierra el nivel):
+ * se procesan todos en orden y se muestra el mensaje más importante (error > éxito > info).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GameEvent, MistakePayload, RoomSnapshot, ShurikenUsedPayload } from '../../../game/types';
@@ -16,6 +19,13 @@ export interface FeedItem {
 
 /** Un inicio de nivel ocurrido hace menos de esto todavía muestra la cuenta atrás al entrar. */
 const FRESH_START_MS = 2500;
+const RANK: Record<FeedItem['tone'], number> = { info: 1, success: 2, danger: 3 };
+
+/** Eventos recientes de la foto (servidores antiguos solo envían el último). */
+function eventsOf(snap: RoomSnapshot): GameEvent[] {
+  if (snap.recentEvents?.length) return snap.recentEvents;
+  return snap.lastEvent ? [snap.lastEvent] : [];
+}
 
 export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
   const [item, setItem] = useState<FeedItem | null>(null);
@@ -26,87 +36,104 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
     const fresh = ev && Date.now() + clockOffset - Date.parse(ev.at) < FRESH_START_MS;
     return fresh && (ev.kind === 'game_start' || ev.kind === 'level_start') ? ev.seq : null;
   });
-  const lastSeq = useRef<number>(snap.lastEvent?.seq ?? 0);
-  const names = new Map(snap.players.map((p) => [p.id, p.name]));
-  const namesRef = useRef(names);
-  namesRef.current = names;
+  const events = eventsOf(snap);
+  const newestSeq = Math.max(snap.lastEvent?.seq ?? 0, events.at(-1)?.seq ?? 0);
+  const lastSeq = useRef<number>(newestSeq);
+  const latest = useRef({ events, players: snap.players, me: snap.me });
+  latest.current = { events, players: snap.players, me: snap.me };
 
-  const ev = snap.lastEvent;
   useEffect(() => {
-    if (!ev || ev.seq <= lastSeq.current) return;
-    lastSeq.current = ev.seq;
-    const name = (id: string | null) => (id && namesRef.current.get(id)) || '—';
-    const show = (tone: FeedItem['tone'], title: string, detail?: string) => setItem({ id: ev.seq, tone, title, detail });
-    const p = ev.payload as Record<string, unknown>;
+    const { events: all, players, me } = latest.current;
+    const fresh = all.filter((e) => e.seq > lastSeq.current).sort((a, b) => a.seq - b.seq);
+    if (fresh.length === 0) return;
+    lastSeq.current = fresh.at(-1)!.seq;
+    const names = new Map(players.map((p) => [p.id, p.name]));
+    const name = (id: string | null) => (id && names.get(id)) || '—';
 
-    switch (ev.kind as GameEvent['kind']) {
-      case 'play':
-        sfx.play();
-        break;
-      case 'mistake': {
-        const m = p as unknown as MistakePayload;
-        sfx.mistake();
-        vibrate([80, 60, 120]);
-        setShake(true);
-        window.setTimeout(() => setShake(false), 550);
-        show(
-          'danger',
-          t('event.mistake', { name: name(ev.actor), card: m.card }),
-          t('event.mistakeDetail', { cards: m.discarded.map((d) => d.c).join(', ') }),
-        );
-        break;
+    let best: FeedItem | null = null;
+    for (const ev of fresh) {
+      const p = ev.payload as Record<string, unknown>;
+      let next: FeedItem | null = null;
+      const show = (tone: FeedItem['tone'], title: string, detail?: string) => {
+        next = { id: ev.seq, tone, title, detail };
+      };
+
+      switch (ev.kind) {
+        case 'play':
+          sfx.play();
+          break;
+        case 'mistake': {
+          const m = p as unknown as MistakePayload;
+          sfx.mistake();
+          vibrate([80, 60, 120]);
+          setShake(true);
+          window.setTimeout(() => setShake(false), 550);
+          show(
+            'danger',
+            ev.actor === me ? t('event.mistakeMine', { card: m.card }) : t('event.mistake', { name: name(ev.actor), card: m.card }),
+            t('event.mistakeDetail', { cards: m.discarded.map((d) => d.c).join(', ') }),
+          );
+          break;
+        }
+        case 'shuriken_used': {
+          const s = p as unknown as ShurikenUsedPayload;
+          sfx.shuriken();
+          const cards = s.discarded.filter((d) => d.c !== undefined).map((d) => d.c);
+          show('info', cards.length ? t('event.shurikenRevealed', { cards: cards.join(', ') }) : t('event.shurikenUsed'));
+          break;
+        }
+        case 'shuriken_cancelled':
+          show(
+            'info',
+            p.reason === 'rejected'
+              ? ev.actor === me
+                ? t('event.shurikenRejectedMine')
+                : t('event.shurikenRejected', { name: name(ev.actor) })
+              : p.reason === 'expired'
+                ? t('event.shurikenExpired')
+                : t('event.shurikenPlayerLeft'),
+          );
+          break;
+        case 'shuriken_proposed':
+          sfx.shuriken();
+          vibrate(40);
+          break;
+        case 'level_complete':
+          sfx.levelComplete();
+          show('success', t('level.complete', { level: Number(p.level ?? 0) }));
+          break;
+        case 'won':
+          sfx.won();
+          show('success', t('end.won'));
+          break;
+        case 'lost':
+          sfx.lost();
+          vibrate([120, 80, 200]);
+          break;
+        case 'game_start':
+        case 'level_start':
+          setCountdownSeq(ev.seq);
+          break;
+        case 'player_joined':
+          show('info', t('event.joined', { name: String(p.name ?? '') }));
+          break;
+        case 'player_left':
+          show('info', t('event.left', { name: String(p.name ?? '') }));
+          break;
+        case 'player_kicked':
+          show('info', t('event.kicked', { name: String(p.name ?? '') }));
+          break;
+        case 'host_changed':
+          show('info', t('event.hostChanged', { name: name(ev.actor) }));
+          break;
+        default:
+          break;
       }
-      case 'shuriken_used': {
-        const s = p as unknown as ShurikenUsedPayload;
-        sfx.shuriken();
-        const cards = s.discarded.filter((d) => d.c !== undefined).map((d) => d.c);
-        show('info', cards.length ? t('event.shurikenRevealed', { cards: cards.join(', ') }) : t('event.shurikenUsed'));
-        break;
-      }
-      case 'shuriken_cancelled':
-        show(
-          'info',
-          p.reason === 'rejected'
-            ? t('event.shurikenRejected', { name: name(ev.actor) })
-            : p.reason === 'expired'
-              ? t('event.shurikenExpired')
-              : t('event.shurikenPlayerLeft'),
-        );
-        break;
-      case 'shuriken_proposed':
-        sfx.shuriken();
-        vibrate(40);
-        break;
-      case 'level_complete':
-        sfx.levelComplete();
-        break;
-      case 'won':
-        sfx.won();
-        break;
-      case 'lost':
-        sfx.lost();
-        vibrate([120, 80, 200]);
-        break;
-      case 'game_start':
-      case 'level_start':
-        setCountdownSeq(ev.seq);
-        break;
-      case 'player_joined':
-        show('info', t('event.joined', { name: String(p.name ?? '') }));
-        break;
-      case 'player_left':
-        show('info', t('event.left', { name: String(p.name ?? '') }));
-        break;
-      case 'player_kicked':
-        show('info', t('event.kicked', { name: String(p.name ?? '') }));
-        break;
-      case 'host_changed':
-        show('info', t('event.hostChanged', { name: name(ev.actor) }));
-        break;
-      default:
-        break;
+      const candidate = next as FeedItem | null;
+      if (candidate && (!best || RANK[candidate.tone] >= RANK[best.tone])) best = candidate;
     }
-  }, [ev]);
+    if (best) setItem(best);
+  }, [newestSeq]);
 
   // Los mensajes desaparecen solos.
   useEffect(() => {

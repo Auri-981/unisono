@@ -129,6 +129,12 @@ export interface RoomSnapshot {
   revealed: RevealedCard[];
   vote: ShurikenVote | null;
   lastEvent: GameEvent | null;
+  /**
+   * Últimos eventos de la sala (hasta 8, en orden). Una acción puede generar varios
+   * (p. ej. «error» + «nivel superado») y la interfaz necesita verlos todos.
+   * Opcional: servidores con la migración anterior no lo envían.
+   */
+  recentEvents?: GameEvent[];
   lastReward: LevelReward | null;
   /** Solo las cartas de `me`, ordenadas de menor a mayor. */
   myHand: number[];
