@@ -13,6 +13,10 @@ function setup(sc: Scenario) {
     if (!r.ok) throw new Error(r.error);
     s = r.state;
   }
+  for (const id of ids) {
+    const ready = E.setLobbyReady(s, id, true, NOW);
+    if (ready.ok) s = ready.state;
+  }
   const r = E.startGame(s, ids[0]!, seededRng(1), NOW);
   if (!r.ok) throw new Error(r.error);
   s = structuredClone(r.state);

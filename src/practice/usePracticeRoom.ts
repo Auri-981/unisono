@@ -23,6 +23,7 @@ function newGame(bots: number, config: RoomConfig, myName: string): E.EngineStat
     const r = E.addPlayer(s, `bot${i + 1}`, BOT_NAMES[i] ?? `Bot ${i + 1}`, now);
     if (r.ok) s = r.state;
   }
+  for (const p of s.players) p.ready = true; // en la práctica todos están listos desde el principio
   const started = E.startGame(s, PRACTICE_ME, cryptoRng, now);
   return started.ok ? started.state : s;
 }

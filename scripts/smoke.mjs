@@ -92,6 +92,7 @@ async function main() {
   ok(missing?.error === 'ROOM_NOT_FOUND', 'código inexistente → ROOM_NOT_FOUND');
   const joined = await c.rpc('join_room', { p_code: created.room.code, p_name: 'Carla' });
 
+  for (const p of [a, b, c]) await p.rpc('set_lobby_ready', { p_room: room, p_ready: true });
   const started = await a.rpc('start_game', { p_room: room });
   for (let i = 0; i < 20 && !signals.includes(started.room.version); i++) await sleep(250);
   await sleep(1000); // margen por si llegara alguna señal duplicada

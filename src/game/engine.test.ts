@@ -23,7 +23,14 @@ function room(players: number, config?: unknown) {
   const ids = Array.from({ length: players }, (_, i) => `p${i}`);
   let s = E.createRoom({ id: 'r', code: 'ABCDE', hostId: ids[0]!, hostName: 'Ana', config, now: NOW });
   for (const id of ids.slice(1)) s = ok(E.addPlayer(s, id, `Jugador ${id}`, NOW));
+  s = readyAll(s);
   return { s, ids };
+}
+
+/** Todos marcan «Listo» (requisito para empezar). */
+function readyAll(s: E.EngineState): E.EngineState {
+  for (const p of s.players) s = ok(E.setLobbyReady(s, p.id, true, NOW));
+  return s;
 }
 
 /** Juega todas las cartas en el orden global correcto. */
@@ -150,6 +157,18 @@ describe('sala', () => {
     ({ s } = room(2));
     s = ok(E.startGame(s, 'p0', seededRng(1), NOW));
     expect(E.addPlayer(s, 'x', 'Intruso', NOW)).toEqual({ ok: false, error: 'GAME_IN_PROGRESS' });
+  });
+
+  it('no se puede empezar hasta que todos (anfitrión incluido) estén listos', () => {
+    let s = E.createRoom({ id: 'r', code: 'ABCDE', hostId: 'p0', hostName: 'Ana', now: NOW });
+    s = ok(E.addPlayer(s, 'p1', 'Luis', NOW));
+    s = ok(E.setLobbyReady(s, 'p1', true, NOW));
+    expect(E.startGame(s, 'p0', seededRng(1), NOW)).toEqual({ ok: false, error: 'NOT_ALL_READY' });
+    s = ok(E.setLobbyReady(s, 'p0', true, NOW));
+    s = ok(E.setLobbyReady(s, 'p1', false, NOW));
+    expect(E.startGame(s, 'p0', seededRng(1), NOW)).toEqual({ ok: false, error: 'NOT_ALL_READY' });
+    s = ok(E.setLobbyReady(s, 'p1', true, NOW));
+    expect(E.startGame(s, 'p0', seededRng(1), NOW).ok).toBe(true);
   });
 
   it('solo el anfitrión inicia, con al menos 2 jugadores', () => {
@@ -332,6 +351,8 @@ describe('progresión de niveles', () => {
     expect(s.status).toBe('lobby');
     expect(s.level).toBe(0);
     s = ok(E.addPlayer(s, 'p9', 'Nuevo', NOW));
+    expect(E.startGame(s, 'p0', seededRng(5), NOW)).toEqual({ ok: false, error: 'NOT_ALL_READY' });
+    s = readyAll(s);
     s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
     expect(s.gameNo).toBe(2);
   });

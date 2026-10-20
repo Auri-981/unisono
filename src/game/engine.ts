@@ -272,6 +272,7 @@ export function startGame(state: EngineState, actor: PlayerId, rng: Rng, now: nu
   if (actor !== state.hostId) return fail('NOT_HOST');
   if (state.status !== 'lobby') return fail('NOT_IN_LOBBY');
   if (state.players.length < MIN_PLAYERS) return fail('NOT_ENOUGH_PLAYERS');
+  if (state.players.some((p) => !p.ready)) return fail('NOT_ALL_READY');
   const d = new Draft(state, now);
   const res = startingResources(d.s.config, d.s.players.length);
   d.s.gameNo += 1;

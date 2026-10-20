@@ -20,6 +20,7 @@ async function setup(sc: Scenario) {
   for (let i = 1; i < sc.players; i++) {
     await t.rpc(ids[i]!, 'join_room', { p_code: created.room.code, p_name: `P${i}` });
   }
+  for (const id of ids) await t.rpc(id, 'set_lobby_ready', { p_room: room, p_ready: true });
   await t.rpc(ids[0]!, 'start_game', { p_room: room });
   await t.admin(
     `update public.rooms set level = $2, lives = coalesce($3, lives), shurikens = coalesce($4, shurikens) where id = $1`,

@@ -20,8 +20,14 @@ async function lobby(n: number, config: object = {}) {
   return { ids, room: snap.room.id, code: snap.room.code };
 }
 
+/** Todos marcan «Listo» (requisito para empezar). */
+async function readyAll(room: string, ids: string[]) {
+  for (const id of ids) await t.rpc(id, 'set_lobby_ready', { p_room: room, p_ready: true });
+}
+
 async function started(n: number, config: object = {}) {
   const l = await lobby(n, config);
+  await readyAll(l.room, l.ids);
   await t.rpc(l.ids[0]!, 'start_game', { p_room: l.room });
   return l;
 }
@@ -211,6 +217,19 @@ describe('salas', () => {
     const u = await t.newUser();
     for (let i = 0; i < 5; i++) await t.rpc(u, 'create_room', { p_name: 'Spam', p_config: {} });
     expect(await errorOf(t.rpc(u, 'create_room', { p_name: 'Spam', p_config: {} }))).toBe('TOO_MANY_ROOMS');
+  });
+
+  it('no se puede empezar hasta que todos estén listos, anfitrión incluido', async () => {
+    const { ids, room } = await lobby(3);
+    await t.rpc(ids[1]!, 'set_lobby_ready', { p_room: room, p_ready: true });
+    await t.rpc(ids[2]!, 'set_lobby_ready', { p_room: room, p_ready: true });
+    expect(await errorOf(t.rpc(ids[0]!, 'start_game', { p_room: room }))).toBe('NOT_ALL_READY');
+    await t.rpc(ids[0]!, 'set_lobby_ready', { p_room: room, p_ready: true });
+    await t.rpc(ids[2]!, 'set_lobby_ready', { p_room: room, p_ready: false });
+    expect(await errorOf(t.rpc(ids[0]!, 'start_game', { p_room: room }))).toBe('NOT_ALL_READY');
+    await t.rpc(ids[2]!, 'set_lobby_ready', { p_room: room, p_ready: true });
+    const snap: RoomSnapshot = await t.rpc(ids[0]!, 'start_game', { p_room: room });
+    expect(snap.room.status).toBe('playing');
   });
 
   it('se necesitan al menos 2 jugadores para empezar', async () => {
@@ -409,6 +428,8 @@ describe('partidas completas a través de la API', () => {
     const again: RoomSnapshot = await t.rpc(ids[0]!, 'rematch', { p_room: room });
     expect(again.room.status).toBe('lobby');
     expect(again.players).toHaveLength(n);
+    expect(again.players.every((p) => !p.ready)).toBe(true); // la revancha exige volver a marcar «Listo»
+    await readyAll(room, ids);
     const second: RoomSnapshot = await t.rpc(ids[0]!, 'start_game', { p_room: room });
     expect(second.room.gameNo).toBe(2);
     expect(second.myHand).toHaveLength(1);

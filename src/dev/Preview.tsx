@@ -22,6 +22,7 @@ function build(kind: string): E.EngineState {
     s.players[1]!.ready = true;
     return s;
   }
+  for (const p of s.players) p.ready = true;
   const started = E.startGame(s, 'me', seededRng(3), NOW - 10000);
   if (started.ok) s = started.state;
   s.level = 4;

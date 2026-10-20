@@ -40,6 +40,9 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
   const isHost = room.hostId === me;
   const meP = players.find((p) => p.id === me);
   const host = players.find((p) => p.id === room.hostId);
+  // La partida solo empieza cuando TODOS (anfitrión incluido) están listos; el servidor también lo exige.
+  const readyCount = players.filter((p) => p.ready).length;
+  const allReady = players.length > 0 && readyCount === players.length;
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [draft, setDraft] = useState<RoomConfig>(room.config);
   const [noticeVisible, setNoticeVisible] = useState(false);
@@ -163,13 +166,23 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
           <button
             type="button"
             className="btn btn-primary btn-large btn-block"
-            disabled={players.length < 2 || ctl.busy}
+            disabled={players.length < 2 || !allReady || ctl.busy}
             onClick={() => void ctl.actions.startGame()}
           >
-            {players.length < 2 ? t('lobby.needPlayers') : t('lobby.start')}
+            {players.length < 2
+              ? t('lobby.needPlayers')
+              : !allReady
+                ? t('lobby.waitingReady', { ready: readyCount, total: players.length })
+                : t('lobby.start')}
           </button>
         ) : (
-          <p className="muted center">{t('lobby.waitingHost', { name: host?.name ?? '' })}</p>
+          <p className="muted center">
+            {!meP?.ready
+              ? t('lobby.markReady')
+              : allReady
+                ? t('lobby.waitingHost', { name: host?.name ?? '' })
+                : t('lobby.waitingReady', { ready: readyCount, total: players.length })}
+          </p>
         )}
         <button type="button" className="btn btn-ghost btn-block" onClick={() => void ctl.actions.leave()}>
           {t('lobby.leave')}

@@ -768,6 +768,10 @@ begin
   if r.status <> 'lobby' then raise exception 'NOT_IN_LOBBY'; end if;
   select count(*) into v_count from public.room_players where room_id = p_room;
   if v_count < 2 then raise exception 'NOT_ENOUGH_PLAYERS'; end if;
+  -- Todos (anfitrión incluido) deben haber marcado «Listo».
+  if exists (select 1 from public.room_players where room_id = p_room and not ready) then
+    raise exception 'NOT_ALL_READY';
+  end if;
   v_res := game_private.starting_resources(r.config, v_count);
   update public.rooms
      set game_no = game_no + 1, level = 1, status = 'playing',
