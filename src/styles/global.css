@@ -1724,3 +1724,47 @@ select.input {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ───────────── Premio anunciado del nivel ───────────── */
+
+.level-reward {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px dashed rgb(245 185 113 / 0.55);
+  background: rgb(245 185 113 / 0.08);
+}
+
+.level-reward .game-level-label {
+  color: var(--warm);
+}
+
+.level-reward-value {
+  display: flex;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.level-reward .resource {
+  gap: 2px;
+}
+
+.level-reward .is-full {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.countdown-reward,
+.next-reward {
+  color: var(--warm);
+  font-weight: 600;
+}
+
+.countdown-reward {
+  margin-top: 4px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgb(245 185 113 / 0.12);
+}

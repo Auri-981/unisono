@@ -3,9 +3,10 @@ import type { RoomController } from '../../../game/controller';
 import type { RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
 import { CheckIcon, CrownIcon, LifeIcon, ShurikenIcon } from '../../components/Icons';
+import { rewardText, upcomingReward } from '../../rewards';
 
 /** Cuenta atrás visual al empezar un nivel. No bloquea: se puede cerrar tocando. */
-export function Countdown({ level, onDone }: { level: number; onDone: () => void }) {
+export function Countdown({ level, reward, onDone }: { level: number; reward: string | null; onDone: () => void }) {
   const [n, setN] = useState(3);
   useEffect(() => {
     if (n <= 0) {
@@ -22,6 +23,7 @@ export function Countdown({ level, onDone }: { level: number; onDone: () => void
         {n > 0 ? n : ''}
       </span>
       <span className="countdown-hint">{t('game.concentrate')}</span>
+      {reward && <span className="countdown-reward">{reward}</span>}
       <span className="muted small">{t('game.countdownSkip')}</span>
     </button>
   );
@@ -89,6 +91,7 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
   const readyCount = players.filter((p) => p.ready).length;
   const reward = lastReward;
   const isHost = room.hostId === me;
+  const nextReward = upcomingReward(room, players.length, room.level + 1);
   return (
     <div className="overlay overlay-level" role="dialog" aria-modal="true" aria-labelledby="lvl-title">
       <div className="overlay-card">
@@ -116,6 +119,9 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
           )}
         </div>
         <p className="muted">{t('level.next', { level: room.level + 1 })}</p>
+        {nextReward && (
+          <p className="next-reward">{t('reward.next', { level: room.level + 1, reward: rewardText(nextReward) })}</p>
+        )}
         <ul className="ready-list">
           {players.map((p) => (
             <li key={p.id} className={p.ready ? 'is-ready' : ''}>

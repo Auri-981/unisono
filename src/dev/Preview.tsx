@@ -46,6 +46,19 @@ function build(kind: string): E.EngineState {
     s.revealed = [3, 5, 9, 12, 13].map((c) => ({ c, p: 'a', r: 'mistake' as const }));
     if (kind === 'bigvote') step(E.proposeShuriken(s, 'a', NOW));
   }
+  if (kind === 'reward') {
+    s.level = 3; // nivel con premio (+1 vida) en la tabla clásica
+    s.hands = { me: [18, 52, 77], a: [25, 61, 70], b: [40, 44, 99], c: [66, 81, 90] };
+    s.recentEvents = [];
+    s.lastEvent = null;
+  }
+  if (kind === 'levelup') {
+    s.level = 1;
+    s.hands = { me: [], a: [], b: [], c: [] };
+    s.status = 'level_complete';
+    s.lastReward = { level: 1, lives: 0, shurikens: 0 };
+    s.lastEvent = null;
+  }
   if (kind === 'won') {
     s.status = 'won';
     s.level = s.maxLevel;

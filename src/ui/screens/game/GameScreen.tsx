@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import type { RoomController } from '../../../game/controller';
 import { errorMessage, t } from '../../../i18n';
 import { Card, CardBacks } from '../../components/Card';
-import { ChatIcon, CrownIcon, ExitIcon, ShurikenIcon } from '../../components/Icons';
+import { ChatIcon, CrownIcon, ExitIcon, LifeIcon, ShurikenIcon } from '../../components/Icons';
+import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
 import { ConnectionDot, Lives, Shurikens } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
@@ -64,6 +65,9 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
 
   const canPropose = playing && !vote && room.shurikens > 0 && myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0) > 0;
 
+  // Premio que se obtendrá al superar el nivel actual (se anuncia durante la ronda).
+  const reward = upcomingReward(room, players.length);
+
   // Tras la última carta, unos segundos para verla antes de «nivel superado» / fin de partida.
   const ended = room.status === 'won' || room.status === 'lost' || room.status === 'abandoned';
   const resultAt =
@@ -84,6 +88,23 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             <span className="muted">/{room.maxLevel}</span>
           </span>
         </div>
+        {playing && reward && (
+          <div className="level-reward" role="note" aria-label={t('reward.aria', { reward: rewardText(reward) })}>
+            <span className="game-level-label">{t('reward.label')}</span>
+            <span className="level-reward-value">
+              {reward.lives > 0 && (
+                <span className={`resource resource-life ${reward.livesFull ? 'is-full' : ''}`}>
+                  <LifeIcon size={15} />+{reward.lives}
+                </span>
+              )}
+              {reward.shurikens > 0 && (
+                <span className={`resource resource-shuriken ${reward.shurikensFull ? 'is-full' : ''}`}>
+                  <ShurikenIcon size={15} />+{reward.shurikens}
+                </span>
+              )}
+            </span>
+          </div>
+        )}
         <div className="game-resources">
           <Lives count={room.lives} />
           <Shurikens count={room.shurikens} />
@@ -191,7 +212,11 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
 
       {chatEnabled && chatOpen && <ChatSheet ctl={ctl} onClose={() => setChatOpen(false)} />}
       {playing && room.config.countdown && feed.countdownSeq !== null && (
-        <Countdown level={room.level} onDone={feed.clearCountdown} />
+        <Countdown
+          level={room.level}
+          reward={reward ? t('reward.ifPass', { reward: rewardText(reward) }) : null}
+          onDone={feed.clearCountdown}
+        />
       )}
       {room.status === 'level_complete' && showLevelComplete && <LevelComplete ctl={ctl} snap={snap} />}
       {ended && showEnd && (

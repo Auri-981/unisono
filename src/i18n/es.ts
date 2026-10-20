@@ -112,6 +112,17 @@ export const es = {
   'vote.waiting': 'Esperando al resto ({count}/{total})',
   'vote.seconds': '{s} s',
 
+  'reward.label': 'Premio',
+  'reward.aria': 'Premio si superáis este nivel: {reward}',
+  'reward.ifPass': 'Si lo superáis: {reward}',
+  'reward.next': 'Premio del nivel {level}: {reward}',
+  'reward.life': '+{n} vida',
+  'reward.lives': '+{n} vidas',
+  'reward.shuriken': '+{n} shuriken',
+  'reward.shurikens': '+{n} shurikens',
+  'reward.and': 'y',
+  'reward.full': '(ya tenéis el máximo)',
+
   'level.complete': '¡Nivel {level} superado!',
   'level.reward': 'Recompensa',
   'level.rewardLife': '+{n} vida',
