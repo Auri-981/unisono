@@ -256,6 +256,43 @@ describe('votación de shuriken', () => {
     expect(s.pile.map((x) => x.c)).toEqual([lowest]);
   });
 
+  it('si la votación caduca, quien la propuso queda bloqueado hasta la siguiente carta', () => {
+    let { s } = room(2);
+    s = ok(E.startGame(s, 'p0', seededRng(3), NOW));
+    s.level = 2;
+    s.hands = { p0: [10, 60], p1: [20, 70] };
+    s = ok(E.proposeShuriken(s, 'p0', NOW));
+    const later = NOW + SHURIKEN_VOTE_SECONDS * 1000 + 1;
+    s = ok(E.expireVote(s, later));
+    expect(s.shurikenBlocked).toEqual(['p0']);
+    expect(E.proposeShuriken(s, 'p0', later)).toEqual({ ok: false, error: 'SHURIKEN_BLOCKED' });
+    expect(E.toSnapshot(s, 'p1', later).room.shurikenBlocked).toEqual(['p0']);
+    s = ok(E.playCard(s, 'p0', 10, later));
+    expect(s.shurikenBlocked).toEqual([]);
+    expect(E.proposeShuriken(s, 'p0', later).ok).toBe(true);
+  });
+
+  it('el bloqueo se borra al usar un shuriken y al empezar un nivel', () => {
+    let { s } = room(3);
+    s = ok(E.startGame(s, 'p0', seededRng(3), NOW));
+    s.level = 2;
+    s.shurikens = 2;
+    s.hands = { p0: [10, 60], p1: [20, 70], p2: [30, 80] };
+    s = ok(E.proposeShuriken(s, 'p0', NOW));
+    s = ok(E.voteShuriken(s, 'p1', false, NOW));
+    s = ok(E.proposeShuriken(s, 'p1', NOW));
+    s = ok(E.voteShuriken(s, 'p0', true, NOW));
+    s = ok(E.voteShuriken(s, 'p2', true, NOW));
+    expect(s.shurikens).toBe(1);
+    expect(s.shurikenBlocked).toEqual([]);
+    s.shurikenBlocked = ['p2'];
+    for (const c of [60, 70, 80]) s = ok(E.playCard(s, ['p0', 'p1', 'p2'][(c - 60) / 10]!, c, NOW));
+    s.shurikenBlocked = ['p2'];
+    s = ok(E.readyNextLevel(s, 'p0', 2, true, seededRng(4), NOW));
+    expect(s.level).toBe(3);
+    expect(s.shurikenBlocked).toEqual([]);
+  });
+
   it('votar dos veces no cuenta doble ni consume dos shurikens', () => {
     let { s } = room(3);
     s = ok(E.startGame(s, 'p0', seededRng(3), NOW));
@@ -369,6 +406,7 @@ describe('progresión de niveles', () => {
     for (let i = 0; i < 6; i++) {
       s = ok(E.proposeShuriken(s, 'p0', NOW));
       s = ok(E.voteShuriken(s, 'p1', false, NOW));
+      s.shurikenBlocked = []; // aquí solo se comprueba el límite de eventos
     }
     const recent = E.toSnapshot(s, 'p0', NOW).recentEvents!;
     expect(recent).toHaveLength(E.RECENT_EVENTS);

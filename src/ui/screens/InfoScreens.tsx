@@ -34,7 +34,8 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
         <h2>Shurikens</h2>
         <p>
           Cualquiera puede proponer usar un shuriken. Si todos aceptan en 15 segundos, cada jugador descarta su carta más
-          baja. Es una forma de salir de un atasco y de obtener información.
+          baja. Es una forma de salir de un atasco y de obtener información. Si te lo rechazan, no puedes volver a
+          pedirlo hasta que se juegue alguna carta.
         </p>
         <h2>Niveles y recompensas</h2>
         <ul>

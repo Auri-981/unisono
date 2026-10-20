@@ -382,6 +382,30 @@ describe('anti-duplicados y concurrencia', () => {
     expect(await errorOf(t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 }))).toBe('OK');
   });
 
+  it('una votación caducada bloquea a quien la propuso hasta que se juegue una carta', async () => {
+    const { ids, room } = await started(2);
+    await setHands(room, ids, [[10, 60], [20, 70]]);
+    await t.rpc(ids[0]!, 'propose_shuriken', { p_room: room });
+    await t.admin(`update public.rooms set vote = jsonb_set(vote, '{expiresAt}', to_jsonb(now() - interval '1 second')) where id = $1`, [room]);
+    let snap: RoomSnapshot = await t.rpc(ids[1]!, 'expire_shuriken_vote', { p_room: room });
+    expect(snap.room.shurikenBlocked).toEqual([ids[0]]);
+    expect(await errorOf(t.rpc(ids[0]!, 'propose_shuriken', { p_room: room }))).toBe('SHURIKEN_BLOCKED');
+    snap = await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 });
+    expect(snap.room.shurikenBlocked).toEqual([]);
+    expect(await errorOf(t.rpc(ids[0]!, 'propose_shuriken', { p_room: room }))).toBe('OK');
+  });
+
+  it('salir de la sala cancela la votación sin bloquear a nadie', async () => {
+    const { ids, room } = await started(3);
+    await t.rpc(ids[0]!, 'propose_shuriken', { p_room: room });
+    const before = await t.admin<any>(`select shuriken_blocked from public.rooms where id = $1`, [room]);
+    await t.rpc(ids[2]!, 'leave_room', { p_room: room });
+    const [r] = await t.admin<any>(`select vote, shuriken_blocked from public.rooms where id = $1`, [room]);
+    expect(before[0].shuriken_blocked).toEqual([]);
+    expect(r.vote).toBeNull();
+    expect(r.shuriken_blocked).toEqual([]);
+  });
+
   it('«listo» repetido o tardío no salta niveles', async () => {
     const { ids, room } = await started(2);
     await setHands(room, ids, [[10], [20]]);

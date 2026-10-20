@@ -63,7 +63,10 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
     void ctl.actions.leave();
   };
 
-  const canPropose = playing && !vote && room.shurikens > 0 && myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0) > 0;
+  // Si te rechazaron (o caducó) tu shuriken, no puedes repetirlo hasta que se juegue una carta.
+  const shurikenBlocked = room.shurikenBlocked?.includes(me) ?? false;
+  const canPropose =
+    playing && !vote && !shurikenBlocked && room.shurikens > 0 && myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0) > 0;
 
   // Premio que se obtendrá al superar el nivel actual (se anuncia durante la ronda).
   const reward = upcomingReward(room, players.length);
@@ -200,7 +203,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           disabled={!canPropose || ctl.busy}
           onClick={() => void ctl.actions.proposeShuriken()}
         >
-          <ShurikenIcon size={18} /> {t('game.useShuriken')}
+          <ShurikenIcon size={18} /> {playing && shurikenBlocked && !vote ? t('game.shurikenBlocked') : t('game.useShuriken')}
         </button>
         {chatEnabled && (
           <button type="button" className="btn btn-secondary chat-btn" onClick={() => setChatOpen(true)} aria-label={t('game.chat')}>

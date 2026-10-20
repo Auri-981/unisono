@@ -60,6 +60,11 @@ function build(kind: string): E.EngineState {
     s.lastReward = { level: 1, lives: 0, shurikens: 0 };
     s.lastEvent = null;
   }
+  if (kind === 'blocked') {
+    // A «me» le han rechazado el shuriken: no puede repetirlo hasta que se juegue una carta.
+    step(E.proposeShuriken(s, 'me', NOW));
+    step(E.voteShuriken(s, 'a', false, NOW));
+  }
   if (kind === 'won') {
     s.status = 'won';
     s.level = s.maxLevel;

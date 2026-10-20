@@ -119,6 +119,8 @@ export interface PublicRoom {
   lives: number;
   shurikens: number;
   version: number;
+  /** Quién no puede proponer shuriken hasta que se juegue una carta (opcional: servidores antiguos). */
+  shurikenBlocked?: PlayerId[];
 }
 
 /** Lo que un jugador concreto puede saber de la partida. */
@@ -160,6 +162,7 @@ export const GAME_ERROR_CODES = [
   'VOTE_IN_PROGRESS',
   'NO_VOTE',
   'NO_SHURIKENS',
+  'SHURIKEN_BLOCKED',
   'INVALID_NAME',
   'INVALID_MESSAGE',
   'CHAT_DISABLED',

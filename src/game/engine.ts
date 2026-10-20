@@ -58,6 +58,11 @@ export interface EngineState {
   pile: PlayedCard[];
   revealed: RevealedCard[];
   vote: ShurikenVote | null;
+  /**
+   * Jugadores a los que se les rechazó (o caducó) un shuriken: no pueden volver a
+   * proponerlo hasta que se juegue una carta (evita insistir en bucle).
+   */
+  shurikenBlocked: PlayerId[];
   lastEvent: GameEvent | null;
   /** Últimos eventos (máximo RECENT_EVENTS), igual que el servidor. */
   recentEvents: GameEvent[];
@@ -121,6 +126,7 @@ function dealLevel(d: Draft, rng: Rng) {
   d.s.pile = [];
   d.s.revealed = [];
   d.s.vote = null;
+  d.s.shurikenBlocked = [];
   d.s.lastReward = null;
   for (const p of d.s.players) p.ready = false;
 }
@@ -169,9 +175,15 @@ function maybeAdvance(d: Draft, rng: Rng) {
   }
 }
 
+/** Quien propuso un shuriken rechazado o caducado no puede repetirlo hasta que se juegue una carta. */
+function blockProposer(d: Draft, proposer: PlayerId) {
+  if (!d.s.shurikenBlocked.includes(proposer)) d.s.shurikenBlocked.push(proposer);
+}
+
 /** Cancela una votación caducada. Devuelve true si la ha cancelado. */
 function expireIfDue(d: Draft): boolean {
   if (d.s.vote && d.now >= Date.parse(d.s.vote.expiresAt)) {
+    blockProposer(d, d.s.vote.proposer);
     d.s.vote = null;
     d.emit('shuriken_cancelled', null, { reason: 'expired' });
     return true;
@@ -195,6 +207,7 @@ function executeShuriken(d: Draft) {
   }
   d.s.shurikens -= 1;
   d.s.vote = null;
+  d.s.shurikenBlocked = []; // la mesa ha cambiado
   d.emit('shuriken_used', null, { discarded });
   checkLevelEnd(d);
 }
@@ -227,6 +240,7 @@ export function createRoom(params: {
     pile: [],
     revealed: [],
     vote: null,
+    shurikenBlocked: [],
     lastEvent: null,
     recentEvents: [],
     lastReward: null,
@@ -305,6 +319,7 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
 
   hand.shift();
   d.s.pile.push({ c: card, p: actor });
+  d.s.shurikenBlocked = []; // se ha jugado una carta: todos pueden volver a proponer
 
   const lower: PlayedCard[] = [];
   for (const p of playersBySeat(d.s)) {
@@ -335,6 +350,7 @@ export function proposeShuriken(state: EngineState, actor: PlayerId, now: number
   expireIfDue(d);
   if (d.s.vote) return fail('VOTE_IN_PROGRESS');
   if (d.s.shurikens <= 0) return fail('NO_SHURIKENS');
+  if (d.s.shurikenBlocked.includes(actor)) return fail('SHURIKEN_BLOCKED');
   d.s.vote = {
     proposer: actor,
     votes: [actor],
@@ -352,6 +368,7 @@ export function voteShuriken(state: EngineState, actor: PlayerId, accept: boolea
   if (expireIfDue(d)) return d.commit();
   if (!d.s.vote) return fail('NO_VOTE');
   if (!accept) {
+    blockProposer(d, d.s.vote.proposer);
     d.s.vote = null;
     d.emit('shuriken_cancelled', actor, { reason: 'rejected' });
     return d.commit();
@@ -451,6 +468,7 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
     pile: [],
     revealed: [],
     vote: null,
+    shurikenBlocked: [],
     lastReward: null,
   } satisfies Partial<EngineState>);
   for (const p of d.s.players) p.ready = false;
@@ -475,6 +493,7 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
       lives: state.lives,
       shurikens: state.shurikens,
       version: state.version,
+      shurikenBlocked: [...state.shurikenBlocked],
     },
     players: playersBySeat(state).map((p) => ({
       id: p.id,

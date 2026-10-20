@@ -159,6 +159,25 @@ export const SCENARIOS: Scenario[] = [
     expect: { status: 'playing', shurikens: 1, hands: [[50], [8, 51]], pile: [5] },
   },
   {
+    name: 'tras un rechazo no puedes repetir el shuriken hasta que se juegue una carta (los demás sí)',
+    players: 2,
+    level: 2,
+    hands: [[5, 50], [8, 51]],
+    steps: [
+      { propose: 0 },
+      { vote: [1, false] },
+      { propose: 0, error: 'SHURIKEN_BLOCKED' },
+      { propose: 1 },
+      { vote: [0, false] },
+      { propose: 1, error: 'SHURIKEN_BLOCKED' },
+      { play: [0, 5] },
+      { propose: 0 },
+      { vote: [1, true] },
+    ],
+    // El shuriken final hace que cada uno descarte su carta más baja: 50 y 8.
+    expect: { status: 'playing', shurikens: 0, hands: [[], [51]], pile: [5] },
+  },
+  {
     name: 'no se puede usar un shuriken si no queda ninguno',
     players: 2,
     level: 1,

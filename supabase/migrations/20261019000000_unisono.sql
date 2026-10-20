@@ -47,6 +47,8 @@ create table if not exists public.rooms (
 );
 create index if not exists rooms_created_by_idx on public.rooms (created_by, created_at);
 create index if not exists rooms_updated_at_idx on public.rooms (updated_at);
+-- Añadida después: quién no puede volver a proponer shuriken hasta que se juegue una carta.
+alter table public.rooms add column if not exists shuriken_blocked jsonb not null default '[]'::jsonb;
 
 create table if not exists public.room_players (
   room_id      uuid not null references public.rooms (id) on delete cascade,
@@ -388,7 +390,7 @@ as $$
     'room', jsonb_build_object(
       'id', r.id, 'code', r.code, 'status', r.status, 'hostId', r.host_id, 'config', r.config,
       'gameNo', r.game_no, 'level', r.level, 'maxLevel', r.max_level, 'lives', r.lives,
-      'shurikens', r.shurikens, 'version', r.version),
+      'shurikens', r.shurikens, 'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
     'players', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
@@ -433,7 +435,8 @@ begin
     from public.room_players where room_id = p_room
   ) s on d.i % s.n = s.idx
   where d.i < s.n * v_level;
-  update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null where id = p_room;
+  update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null,
+                          shuriken_blocked = '[]'::jsonb where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
 end;
 $$;
@@ -507,13 +510,28 @@ begin
 end;
 $$;
 
+-- Cancela la votación y apunta a quien la propuso: no podrá repetirla hasta que se juegue una carta.
+create or replace function game_private.cancel_vote_blocking(p_room uuid)
+returns void language plpgsql set search_path = ''
+as $$
+begin
+  update public.rooms
+     set shuriken_blocked = case
+           when shuriken_blocked ? (vote ->> 'proposer') then shuriken_blocked
+           else shuriken_blocked || jsonb_build_array(vote ->> 'proposer')
+         end,
+         vote = null
+   where id = p_room and vote is not null;
+end;
+$$;
+
 create or replace function game_private.expire_if_due(p_room uuid)
 returns boolean language plpgsql set search_path = ''
 as $$
 begin
   if exists (select 1 from public.rooms
              where id = p_room and vote is not null and (vote ->> 'expiresAt')::timestamptz <= now()) then
-    update public.rooms set vote = null where id = p_room;
+    perform game_private.cancel_vote_blocking(p_room);
     perform game_private.emit(p_room, 'shuriken_cancelled', null, '{"reason":"expired"}'::jsonb);
     return true;
   end if;
@@ -566,7 +584,7 @@ begin
          from jsonb_array_elements(v_discarded) with ordinality as t (e, ord))
      where id = p_room;
   end if;
-  update public.rooms set shurikens = shurikens - 1, vote = null where id = p_room;
+  update public.rooms set shurikens = shurikens - 1, vote = null, shuriken_blocked = '[]'::jsonb where id = p_room;
   perform game_private.emit(p_room, 'shuriken_used', null, jsonb_build_object('discarded', v_discarded));
   perform game_private.check_level_end(p_room);
 end;
@@ -823,7 +841,9 @@ begin
   end if;
 
   delete from public.hands where room_id = p_room and card = p_card;
-  update public.rooms set pile = pile || jsonb_build_array(jsonb_build_object('c', p_card, 'p', v_uid))
+  -- Se ha jugado una carta: todos pueden volver a proponer shuriken.
+  update public.rooms set pile = pile || jsonb_build_array(jsonb_build_object('c', p_card, 'p', v_uid)),
+                          shuriken_blocked = '[]'::jsonb
    where id = p_room;
 
   -- ¿Alguien tenía cartas menores? Error: se descartan TODAS y se pierde UNA vida.
@@ -875,6 +895,9 @@ begin
     raise exception 'VOTE_IN_PROGRESS';
   end if;
   if r.shurikens <= 0 then raise exception 'NO_SHURIKENS'; end if;
+  if (select shuriken_blocked from public.rooms where id = p_room) ? v_uid::text then
+    raise exception 'SHURIKEN_BLOCKED';
+  end if;
 
   update public.rooms
      set vote = jsonb_build_object('proposer', v_uid, 'votes', jsonb_build_array(v_uid),
@@ -902,7 +925,7 @@ begin
   if r.vote is null then raise exception 'NO_VOTE'; end if;
 
   if not coalesce(p_accept, false) then
-    update public.rooms set vote = null where id = p_room;
+    perform game_private.cancel_vote_blocking(p_room);
     perform game_private.emit(p_room, 'shuriken_cancelled', v_uid, '{"reason":"rejected"}'::jsonb);
     perform game_private.touch(p_room);
     return game_private.snapshot(p_room, v_uid);
@@ -997,7 +1020,7 @@ begin
   delete from public.hands where room_id = p_room;
   update public.rooms
      set status = 'lobby', level = 0, max_level = 0, lives = 0, shurikens = 0, lives_cap = 0, shurikens_cap = 0,
-         pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null
+         pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null, shuriken_blocked = '[]'::jsonb
    where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
   perform game_private.emit(p_room, 'rematch', v_uid, '{}'::jsonb);
