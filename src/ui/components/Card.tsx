@@ -11,7 +11,7 @@ export function cardHue(value: number): number {
 
 interface CardProps {
   value: number;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   muted?: boolean;
   label?: string;

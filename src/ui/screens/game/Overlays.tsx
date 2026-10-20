@@ -57,16 +57,18 @@ export function VoteBanner({ ctl, snap }: { ctl: RoomController; snap: RoomSnaps
         <strong>{vote.proposer === snap.me ? t('vote.proposedByMe') : t('vote.proposed', { name: proposer })}</strong>
         <span className="vote-timer">{t('vote.seconds', { s: remaining })}</span>
       </div>
-      <p className="small">{t(snap.room.config.shurikenVariant === 'reveal' ? 'vote.explainReveal' : 'vote.explainClassic')}</p>
-      <div className="vote-voters">
-        {snap.players.map((p) => (
-          <span key={p.id} className={`chip ${vote.votes.includes(p.id) ? 'chip-on' : ''}`}>
-            {vote.votes.includes(p.id) && <CheckIcon size={14} />} {p.name}
-          </span>
-        ))}
-      </div>
+      <p className="small muted">
+        {t(snap.room.config.shurikenVariant === 'reveal' ? 'vote.explainReveal' : 'vote.explainClassic')}
+      </p>
       {voted ? (
-        <p className="muted small">{t('vote.waiting', { count: vote.votes.length, total: snap.players.length })}</p>
+        <div className="vote-voters">
+          {snap.players.map((p) => (
+            <span key={p.id} className={`chip ${vote.votes.includes(p.id) ? 'chip-on' : ''}`}>
+              {vote.votes.includes(p.id) && <CheckIcon size={14} />} {p.name}
+            </span>
+          ))}
+          <span className="muted small">{t('vote.waiting', { count: vote.votes.length, total: snap.players.length })}</span>
+        </div>
       ) : (
         <div className="vote-actions">
           <button type="button" className="btn btn-secondary" disabled={ctl.busy} onClick={() => void ctl.actions.voteShuriken(false)}>

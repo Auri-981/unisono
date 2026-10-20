@@ -105,8 +105,8 @@ export const es = {
 
   'vote.proposed': '{name} propone usar un shuriken',
   'vote.proposedByMe': 'Has propuesto usar un shuriken',
-  'vote.explainClassic': 'Cada jugador descartará su carta más baja sin mostrarla.',
-  'vote.explainReveal': 'Cada jugador descartará y mostrará su carta más baja.',
+  'vote.explainClassic': 'Cada uno descarta su carta más baja, sin mostrarla.',
+  'vote.explainReveal': 'Cada uno descarta y muestra su carta más baja.',
   'vote.accept': 'Aceptar',
   'vote.reject': 'Rechazar',
   'vote.waiting': 'Esperando al resto ({count}/{total})',

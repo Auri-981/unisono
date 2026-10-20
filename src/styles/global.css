@@ -769,14 +769,34 @@ select.input {
   font-size: 2.6rem;
 }
 
+/* La carta grande se ajusta a la ALTURA de la pantalla para que todo quepa sin solaparse
+   (en un iPhone con las barras de Safari visibles queda muy poco alto útil). */
 .card-xl {
-  width: clamp(112px, 34vw, 150px);
-  height: clamp(156px, 47vw, 210px);
-  border-radius: 18px;
+  height: clamp(118px, 21dvh, 210px);
+  width: auto;
+  aspect-ratio: 5 / 7;
+  border-radius: 16px;
 }
 
 .card-xl .card-value {
-  font-size: clamp(3.2rem, 15vw, 4.4rem);
+  font-size: clamp(2.6rem, 7dvh, 4.4rem);
+}
+
+.card-xs {
+  width: 34px;
+  height: 46px;
+  border-radius: 7px;
+  border-width: 1.5px;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 0.35);
+}
+
+.card-xs::after,
+.card-xs .card-corner {
+  display: none;
+}
+
+.card-xs .card-value {
+  font-size: 1rem;
 }
 
 .card-xl .card-corner {
@@ -813,8 +833,9 @@ select.input {
 
 /* ───────────── Pantalla de juego ───────────── */
 
+/* Ningún bloque de la partida puede encogerse: si algo no cabe, la página se desplaza
+   en lugar de montar unos elementos encima de otros. */
 .game {
-  height: 100%;
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -822,8 +843,13 @@ select.input {
   margin: 0 auto;
   padding: calc(var(--safe-top) + 6px) calc(var(--safe-right) + 12px) calc(var(--safe-bottom) + 10px)
     calc(var(--safe-left) + 12px);
-  gap: 10px;
+  gap: 8px;
   position: relative;
+}
+
+.game > *,
+.table > * {
+  flex-shrink: 0;
 }
 
 .game-shake .table {
@@ -886,10 +912,11 @@ select.input {
 }
 
 .opponent {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 7px 10px;
   border-radius: var(--radius-sm);
   background: var(--surface);
   border: 1px solid var(--line);
@@ -901,6 +928,7 @@ select.input {
 }
 
 .opponent-name {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -912,32 +940,47 @@ select.input {
 .opponent-count {
   font-size: 0.72rem;
   color: var(--muted);
+  min-width: 0;
 }
 
 .table {
-  flex: 1;
-  min-height: 210px;
+  flex: 1 0 auto;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 8px;
   border-radius: 24px;
   background: radial-gradient(70% 60% at 50% 45%, rgb(126 166 255 / 0.09), transparent 70%);
+}
+
+/* Línea fija para avisos y la pista: los mensajes nunca tapan cartas. */
+.status-line {
+  width: 100%;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-line .toast {
+  width: 100%;
+  padding: 7px 12px;
+  box-shadow: none;
 }
 
 .pile {
   position: relative;
   display: grid;
   place-items: center;
-  min-height: 170px;
 }
 
 .pile-previous {
   position: absolute;
-  transform: translate(-38%, 6%) rotate(-9deg);
-  opacity: 0.55;
+  top: 0;
+  transform: translateX(-28%) rotate(-8deg);
+  opacity: 0.5;
 }
 
 .pile-top {
@@ -954,10 +997,14 @@ select.input {
   color: var(--muted);
 }
 
+.pile-owner {
+  min-height: 1.2em;
+}
+
 .pile-empty {
-  width: clamp(112px, 34vw, 150px);
-  height: clamp(156px, 47vw, 210px);
-  border-radius: 18px;
+  height: clamp(118px, 21dvh, 210px);
+  aspect-ratio: 5 / 7;
+  border-radius: 16px;
   border: 2px dashed var(--line);
   display: grid;
   place-items: center;
@@ -967,19 +1014,25 @@ select.input {
   font-size: 0.85rem;
 }
 
+/* Descartadas: una sola fila compacta; si hay muchas, se desliza en horizontal. */
 .revealed {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   max-width: 100%;
+  padding: 4px 2px;
+}
+
+.revealed .field-label {
+  flex: none;
 }
 
 .revealed-cards {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
   gap: 6px;
+  overflow-x: auto;
+  padding: 4px;
+  scrollbar-width: none;
 }
 
 .revealed-mistake {
@@ -998,9 +1051,8 @@ select.input {
 .hand {
   display: flex;
   align-items: flex-end;
-  gap: 14px;
-  min-height: 160px;
-  padding: 10px 4px 0;
+  gap: 12px;
+  padding: 4px 4px 0;
 }
 
 .play-card {
@@ -1024,7 +1076,7 @@ select.input {
 }
 
 .play-card.is-pending {
-  transform: translateY(-40px) scale(0.9);
+  transform: scale(0.92);
   opacity: 0.6;
 }
 
@@ -1042,6 +1094,7 @@ select.input {
   gap: 6px;
   align-content: flex-end;
   min-width: 0;
+  flex: 1;
 }
 
 .hand-empty {
@@ -1085,14 +1138,19 @@ select.input {
 /* ───────────── Votación ───────────── */
 
 .vote-banner {
+  width: 100%;
   border: 1px solid rgb(143 214 255 / 0.4);
   background: rgb(18 30 52 / 0.95);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   animation: rise 0.25s ease;
+}
+
+.vote-banner .vote-actions .btn {
+  min-height: 44px;
 }
 
 .vote-banner p {
@@ -1119,6 +1177,7 @@ select.input {
 .vote-voters {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
@@ -1484,23 +1543,12 @@ select.input {
 /* ───────────── Pantallas bajas (móvil en horizontal) ───────────── */
 
 @media (max-height: 560px) {
-  .card-xl {
-    width: 96px;
-    height: 134px;
+  .card-xl,
+  .pile-empty {
+    height: 112px;
   }
   .card-xl .card-value {
-    font-size: 2.6rem;
-  }
-  .pile,
-  .hand {
-    min-height: 0;
-  }
-  .pile-empty {
-    width: 96px;
-    height: 134px;
-  }
-  .table {
-    min-height: 150px;
+    font-size: 2.4rem;
   }
   .countdown-number {
     font-size: 4.5rem;

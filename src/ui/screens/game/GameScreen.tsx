@@ -103,14 +103,21 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         })}
       </ul>
 
-      <section className="table" aria-live="polite">
-        {feed.item && (
-          <div className="toast-layer toast-layer-table">
+      <section className="table">
+        {/* Avisos en su propia línea: nunca tapan cartas. Prioridad: error propio, evento, pista. */}
+        <div className="status-line" aria-live="polite">
+          {vote && playing ? (
+            <VoteBanner ctl={ctl} snap={snap} />
+          ) : errorToast ? (
+            <Toast tone="danger" title={errorToast} />
+          ) : feed.item ? (
             <Toast tone={feed.item.tone} title={feed.item.title} detail={feed.item.detail} />
-          </div>
-        )}
+          ) : (
+            playing && !vote && <p className="table-hint">{t('game.hint')}</p>
+          )}
+        </div>
         <div className="pile">
-          {previous && <Card value={previous.c} size="lg" className="pile-previous" muted />}
+          {previous && <Card value={previous.c} size="xl" className="pile-previous" muted />}
           {top ? (
             <div className="pile-top" key={`${room.level}-${pile.length}`}>
               <Card value={top.c} size="xl" />
@@ -125,15 +132,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             <span className="field-label">{t('game.discarded')}</span>
             <div className="revealed-cards">
               {revealed.map((r) => (
-                <Card key={`${r.c}`} value={r.c} size="sm" muted className={`revealed-${r.r}`} />
+                <Card key={`${r.c}`} value={r.c} size="xs" muted className={`revealed-${r.r}`} />
               ))}
             </div>
           </div>
         )}
-        {playing && !vote && <p className="table-hint">{t('game.hint')}</p>}
       </section>
-
-      {vote && playing && <VoteBanner ctl={ctl} snap={snap} />}
 
       <section className="hand" aria-label={t('game.yourCards')}>
         {lowest !== undefined ? (
@@ -150,7 +154,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             {myHand.length > 1 && (
               <div className="hand-rest" aria-label={t('game.yourCards')}>
                 {myHand.slice(1).map((c) => (
-                  <Card key={c} value={c} size="sm" />
+                  <Card key={c} value={c} size={myHand.length > 7 ? 'xs' : 'sm'} />
                 ))}
               </div>
             )}
@@ -176,12 +180,6 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           </button>
         )}
       </footer>
-
-      {errorToast && (
-        <div className="toast-layer">
-          <Toast tone="danger" title={errorToast} />
-        </div>
-      )}
 
       {chatEnabled && chatOpen && <ChatSheet ctl={ctl} onClose={() => setChatOpen(false)} />}
       {playing && room.config.countdown && feed.countdownSeq !== null && (

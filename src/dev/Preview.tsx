@@ -36,6 +36,16 @@ function build(kind: string): E.EngineState {
     s.lives = 1;
     step(E.playCard(s, 'b', 40, NOW));
   }
+  if (kind === 'big' || kind === 'bigvote') {
+    // Nivel 11 de 2 jugadores con muchas cartas y varias descartadas (peor caso de espacio).
+    s.players = s.players.slice(0, 2);
+    s.level = 11;
+    s.maxLevel = 12;
+    s.hands = { me: [25, 37, 57, 58, 60, 64, 69, 86, 89, 94], a: [26, 30, 41, 50, 52, 70, 71, 80, 95] };
+    s.pile = [{ c: 11, p: 'a' }, { c: 14, p: 'me' }];
+    s.revealed = [3, 5, 9, 12, 13].map((c) => ({ c, p: 'a', r: 'mistake' as const }));
+    if (kind === 'bigvote') step(E.proposeShuriken(s, 'a', NOW));
+  }
   if (kind === 'won') {
     s.status = 'won';
     s.level = s.maxLevel;
