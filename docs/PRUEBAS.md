@@ -96,7 +96,7 @@ penalización del SQL (−2 vidas), fallaron 5 escenarios; se restauró el códi
 | La reconexión no rompe el estado | ✅ (recarga en plena partida) · ⏳ pantalla bloqueada en móvil real |
 | No se pueden duplicar jugadas ni manipular recursos | ✅ |
 | Funciona en iPhone y Android | ⏳ probado en emulación móvil, no en dispositivos reales |
-| Publicado en una URL accesible | ⏳ pendiente de los pasos manuales de `DESPLIEGUE.md` |
+| Publicado en una URL accesible | ✅ <https://auri-981.github.io/unisono/> (sala creada, partida y error detectado desde la web pública) |
 | Instrucciones completas de despliegue | ✅ `docs/DESPLIEGUE.md` |
 | Sin pagos dentro de las cuotas gratuitas | ✅ (planes Free de Supabase y GitHub Pages) |
 
@@ -104,7 +104,7 @@ penalización del SQL (−2 vidas), fallaron 5 escenarios; se restauró el códi
 
 - [x] Crear el proyecto de Supabase y ejecutar la migración.
 - [x] Ejecutar `npm run smoke` contra él.
-- [ ] Publicar en GitHub Pages.
+- [x] Publicar en GitHub Pages: <https://auri-981.github.io/unisono/>
 - [ ] Probar con 2–4 móviles reales (iPhone + Android), incluida reconexión y pantalla bloqueada.
 - [ ] (Opcional) Activar CAPTCHA de Supabase si la web se comparte públicamente.
 
