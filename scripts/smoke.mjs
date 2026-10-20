@@ -92,11 +92,12 @@ async function main() {
   ok(missing?.error === 'ROOM_NOT_FOUND', 'código inexistente → ROOM_NOT_FOUND');
   const joined = await c.rpc('join_room', { p_code: created.room.code, p_name: 'Carla' });
 
-  for (const p of [a, b, c]) await p.rpc('set_lobby_ready', { p_room: room, p_ready: true });
+  let readyVersion = 0;
+  for (const p of [a, b, c]) readyVersion = (await p.rpc('set_lobby_ready', { p_room: room, p_ready: true })).room.version;
   const started = await a.rpc('start_game', { p_room: room });
   for (let i = 0; i < 20 && !signals.includes(started.room.version); i++) await sleep(250);
   await sleep(1000); // margen por si llegara alguna señal duplicada
-  const got = signals.filter((v) => v > joined.room.version);
+  const got = signals.filter((v) => v > Math.max(joined.room.version, readyVersion));
   ok(got.includes(started.room.version), `Beto recibe el aviso en tiempo real (versión ${started.room.version})`);
   ok(got.length === 1, `una sola señal por acción (recibidas: ${got.length})`);
 
