@@ -252,6 +252,7 @@ begin
 
   return jsonb_build_object(
     'maxPlayers',      game_private.jint(p, 'maxPlayers', 4, 2, 4),
+    'levels',          game_private.jint(p, 'levels', 0, 0, 12),
     'mode',            game_private.jenum(p, 'mode', array['concentration', 'friends'], 'concentration'),
     'shurikenVariant', game_private.jenum(p, 'shurikenVariant', array['classic', 'reveal'], 'classic'),
     'rewardPreset',    game_private.jenum(p, 'rewardPreset', array['classic', 'custom', 'none'], 'classic'),
@@ -274,7 +275,10 @@ declare
   v_lives int := n;
   v_sh int := 1;
   v_diff text := p_config ->> 'difficulty';
+  -- Niveles elegidos (0 = todos), nunca más de los que permite el número de jugadores.
+  v_req int := coalesce((p_config ->> 'levels')::int, 0);
 begin
+  if v_req >= 1 then v_levels := least(v_req, v_levels); end if;
   if v_diff = 'easy' then
     v_lives := v_lives + 1; v_sh := v_sh + 1;
   elsif v_diff = 'hard' then

@@ -97,6 +97,14 @@ describe('configuración', () => {
     expect(startingResources(DEFAULT_CONFIG, 4)).toMatchObject({ maxLevel: 8, lives: 4, shurikens: 1 });
   });
 
+  it('permite jugar menos niveles, pero nunca más de los que tocan por jugadores', () => {
+    expect(startingResources({ ...DEFAULT_CONFIG, levels: 5 }, 2).maxLevel).toBe(5);
+    expect(startingResources({ ...DEFAULT_CONFIG, levels: 10 }, 4).maxLevel).toBe(8);
+    expect(startingResources({ ...DEFAULT_CONFIG, levels: 0 }, 3).maxLevel).toBe(10);
+    expect(normalizeConfig({ levels: 50 }).levels).toBe(12);
+    expect(normalizeConfig({}).levels).toBe(0);
+  });
+
   it('aplica la dificultad', () => {
     expect(startingResources({ ...DEFAULT_CONFIG, difficulty: 'easy' }, 2)).toMatchObject({ lives: 3, shurikens: 2 });
     expect(startingResources({ ...DEFAULT_CONFIG, difficulty: 'hard' }, 2)).toMatchObject({ lives: 1, shurikens: 0 });

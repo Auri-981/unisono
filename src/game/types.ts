@@ -22,6 +22,8 @@ export interface Reward {
 
 export interface RoomConfig {
   maxPlayers: number;
+  /** Niveles a jugar. 0 = todos los que permite el número de jugadores (nunca más). */
+  levels: number;
   mode: GameMode;
   shurikenVariant: ShurikenVariant;
   rewardPreset: RewardPreset;

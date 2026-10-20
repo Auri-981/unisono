@@ -89,6 +89,10 @@ describe('configuración: el servidor y el cliente coinciden', () => {
     { customRewards: [{ level: 'x' }, { level: 4, lives: 50, shurikens: 0 }, { level: 4, lives: 1 }, null, { level: 1, lives: 0, shurikens: 0 }, { level: 1, lives: 1 }] },
     { rewardPreset: 'custom', customRewards: [{ level: 7, shurikens: 2 }, { level: 2, lives: 1, shurikens: 1 }] },
     { rewardPreset: 'none', countdown: false, maxLives: 1e30 },
+    { levels: 5 },
+    { levels: 99 },
+    { levels: -3 },
+    { levels: '7' },
     { customRewards: Array.from({ length: 30 }, (_, i) => ({ level: (i % 12) + 1, lives: 1 })) },
   ];
 
@@ -102,8 +106,11 @@ describe('configuración: el servidor y el cliente coinciden', () => {
       for (const rewardPreset of ['classic', 'custom', 'none'] as const) {
         const cfg = normalizeConfig({ difficulty, rewardPreset, maxLives: 3 });
         for (const n of [2, 3, 4]) {
-          const [row] = await t.admin<{ r: unknown }>(`select game_private.starting_resources($1::jsonb, $2) as r`, [JSON.stringify(cfg), n]);
-          expect(row!.r).toEqual(startingResources(cfg, n));
+          for (const levels of [0, 1, 6, 9, 12]) {
+            const c = { ...cfg, levels };
+            const [row] = await t.admin<{ r: unknown }>(`select game_private.starting_resources($1::jsonb, $2) as r`, [JSON.stringify(c), n]);
+            expect(row!.r).toEqual(startingResources(c, n));
+          }
         }
         for (let level = 1; level <= 12; level++) {
           const [row] = await t.admin<{ r: unknown }>(`select game_private.reward_for($1::jsonb, $2) as r`, [JSON.stringify(cfg), level]);

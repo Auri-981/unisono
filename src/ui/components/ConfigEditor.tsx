@@ -1,4 +1,4 @@
-import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, normalizeConfig } from '../../config/gameConfig';
+import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, levelsToPlay, normalizeConfig, presetFor } from '../../config/gameConfig';
 import { t } from '../../i18n';
 import type { Reward, RoomConfig } from '../../game/types';
 
@@ -8,6 +8,8 @@ interface Props {
   disabled?: boolean;
   /** Oculta opciones que no tienen sentido (p. ej. chat y jugadores en el modo práctica). */
   practice?: boolean;
+  /** Jugadores que habrá en la partida: limita cuántos niveles se pueden elegir. */
+  playerCount: number;
 }
 
 function Select<T extends string | number>({
@@ -47,7 +49,10 @@ function Select<T extends string | number>({
 
 const range = (min: number, max: number) => Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
-export function ConfigEditor({ config, onChange, disabled, practice }: Props) {
+export function ConfigEditor({ config, onChange, disabled, practice, playerCount }: Props) {
+  const maxLevels = presetFor(playerCount).levels;
+  // Si se eligieron más niveles de los que permiten los jugadores actuales, cuenta como «todos».
+  const levelsValue = config.levels >= 1 && config.levels < maxLevels ? config.levels : 0;
   const set = (patch: Partial<RoomConfig>) => onChange(normalizeConfig({ ...config, ...patch }));
   const setReward = (i: number, patch: Partial<Reward>) =>
     set({ customRewards: config.customRewards.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
@@ -76,6 +81,16 @@ export function ConfigEditor({ config, onChange, disabled, practice }: Props) {
           />
         </>
       )}
+      <Select
+        label={t('config.levels')}
+        value={levelsValue}
+        disabled={disabled}
+        options={[
+          { value: 0, label: t('config.levels.all', { n: maxLevels }) },
+          ...range(1, maxLevels - 1).map((n) => ({ value: n, label: String(n) })),
+        ]}
+        onChange={(levels) => set({ levels })}
+      />
       <Select
         label={t('config.difficulty')}
         value={config.difficulty}
@@ -181,7 +196,9 @@ export function ConfigEditor({ config, onChange, disabled, practice }: Props) {
 }
 
 /** Resumen legible de la configuración (para quien no es anfitrión). */
-export function ConfigSummary({ config }: { config: RoomConfig }) {
+export function ConfigSummary({ config, playerCount }: { config: RoomConfig; playerCount: number }) {
+  const levels = levelsToPlay(config, playerCount);
+  const allLevels = levels === presetFor(playerCount).levels;
   const rewards =
     config.rewardPreset === 'custom'
       ? config.customRewards
@@ -190,6 +207,8 @@ export function ConfigSummary({ config }: { config: RoomConfig }) {
       : t(`config.rewards.${config.rewardPreset}`);
   return (
     <dl className="config-summary">
+      <dt>{t('config.levels')}</dt>
+      <dd>{allLevels ? t('config.levels.all', { n: levels }) : levels}</dd>
       <dt>{t('config.mode')}</dt>
       <dd>{t(`config.mode.${config.mode}`)}</dd>
       <dt>{t('config.difficulty')}</dt>

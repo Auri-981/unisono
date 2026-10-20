@@ -63,6 +63,8 @@ export const es = {
   'lobby.config': 'Configuración de la partida',
 
   'config.maxPlayers': 'Jugadores máximos',
+  'config.levels': 'Niveles a jugar',
+  'config.levels.all': 'Todos ({n})',
   'config.mode': 'Modo',
   'config.mode.concentration': 'Concentración (sin chat)',
   'config.mode.friends': 'Amigos (con chat)',

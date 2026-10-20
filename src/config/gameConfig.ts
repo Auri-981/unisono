@@ -55,6 +55,7 @@ export const DEFAULT_CUSTOM_REWARDS: Reward[] = [
 ];
 
 export const CONFIG_LIMITS = {
+  levels: { min: 0, max: 12 },
   maxLives: { min: 1, max: 10 },
   maxShurikens: { min: 0, max: 10 },
   rewardLevel: { min: 1, max: 12 },
@@ -64,6 +65,7 @@ export const CONFIG_LIMITS = {
 
 export const DEFAULT_CONFIG: RoomConfig = {
   maxPlayers: 4,
+  levels: 0,
   mode: 'concentration',
   shurikenVariant: 'classic',
   rewardPreset: 'classic',
@@ -109,6 +111,7 @@ export function normalizeConfig(input: unknown): RoomConfig {
 
   return {
     maxPlayers: intIn(raw.maxPlayers, d.maxPlayers, MIN_PLAYERS, MAX_PLAYERS),
+    levels: intIn(raw.levels, d.levels, CONFIG_LIMITS.levels.min, CONFIG_LIMITS.levels.max),
     mode: oneOf(raw.mode, ['concentration', 'friends'] as const, d.mode),
     shurikenVariant: oneOf(raw.shurikenVariant, ['classic', 'reveal'] as const, d.shurikenVariant),
     rewardPreset: oneOf(raw.rewardPreset, ['classic', 'custom', 'none'] as const, d.rewardPreset),
@@ -140,13 +143,22 @@ export interface StartingResources {
   shurikensCap: number;
 }
 
+/**
+ * Niveles que se jugarán: los elegidos, pero nunca más de los que permite el número de
+ * jugadores (12 / 10 / 8). 0 = todos.
+ */
+export function levelsToPlay(config: RoomConfig, playerCount: number): number {
+  const max = presetFor(playerCount).levels;
+  return config.levels >= 1 ? Math.min(config.levels, max) : max;
+}
+
 export function startingResources(config: RoomConfig, playerCount: number): StartingResources {
   const preset = presetFor(playerCount);
   const adj = DIFFICULTY_ADJUST[config.difficulty];
   const lives = Math.max(1, preset.lives + adj.lives);
   const shurikens = adj.shurikens === null ? 0 : Math.max(0, preset.shurikens + adj.shurikens);
   return {
-    maxLevel: preset.levels,
+    maxLevel: levelsToPlay(config, playerCount),
     lives,
     shurikens,
     livesCap: Math.max(config.maxLives, lives),

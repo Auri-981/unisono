@@ -44,6 +44,7 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
             </li>
           ))}
         </ul>
+        <p>El anfitrión puede elegir jugar menos niveles para una partida más corta (nunca más de los que tocan).</p>
         <p>
           Recompensas clásicas al superar un nivel:{' '}
           {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')} (máximo {DEFAULT_CONFIG.maxLives}{' '}
@@ -158,7 +159,7 @@ export function PracticeSetup({ onBack, onStart }: { onBack: () => void; onStart
             ))}
           </div>
         </div>
-        <ConfigEditor config={config} onChange={setConfig} practice />
+        <ConfigEditor config={config} onChange={setConfig} practice playerCount={bots + 1} />
         <button type="button" className="btn btn-primary btn-large" onClick={() => onStart(bots, config)}>
           {t('practice.start')}
         </button>

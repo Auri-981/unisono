@@ -441,6 +441,26 @@ describe('migración', () => {
   });
 });
 
+describe('niveles a jugar', () => {
+  it('se puede elegir jugar menos niveles y la partida termina antes', async () => {
+    const { ids, room } = await started(2, { levels: 2 });
+    const snap0: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap0.room.maxLevel).toBe(2);
+    for (let level = 1; level <= 2; level++) {
+      for (const h of await allHands(room)) await t.rpc(h.user_id, 'play_card', { p_room: room, p_card: h.card });
+      if (level < 2) for (const id of ids) await t.rpc(id, 'ready_next_level', { p_room: room, p_level: level });
+    }
+    const final: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(final.room.status).toBe('won');
+  });
+
+  it('nunca más niveles de los que permite el número de jugadores', async () => {
+    const { ids, room } = await started(4, { levels: 12 });
+    const snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap.room.maxLevel).toBe(8);
+  });
+});
+
 describe('chat (modo amigos)', () => {
   it('desactivado en modo concentración', async () => {
     const { ids, room } = await started(2);
