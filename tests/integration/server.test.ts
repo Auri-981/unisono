@@ -506,6 +506,19 @@ describe('niveles a jugar', () => {
   });
 });
 
+describe('orden descendente', () => {
+  it('la mano llega ordenada en orden de juego (de mayor a menor) y el reparto también', async () => {
+    const { ids, room } = await started(2, { order: 'desc' });
+    const dealt: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(dealt.room.config.order).toBe('desc');
+    await setHands(room, ids, [[10, 30, 20], [5, 7, 6]]);
+    const snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap.myHand).toEqual([30, 20, 10]);
+    expect(await errorOf(t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 }))).toBe('NOT_LOWEST');
+    expect(await errorOf(t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 30 }))).toBe('OK');
+  });
+});
+
 describe('chat (modo amigos)', () => {
   it('desactivado en modo concentración', async () => {
     const { ids, room } = await started(2);

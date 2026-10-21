@@ -22,6 +22,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const playing = room.status === 'playing';
+  // Orden descendente (100 → 1): la mano ya llega ordenada «en orden de juego» desde el servidor.
+  const desc = room.config.order === 'desc';
   const lowest = myHand[0];
   const top = pile.at(-1);
   const previous = pile.at(-2);
@@ -145,7 +147,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           ) : feed.item ? (
             <Toast tone={feed.item.tone} title={feed.item.title} detail={feed.item.detail} />
           ) : (
-            playing && !vote && <p className="table-hint">{t('game.hint')}</p>
+            playing && !vote && <p className="table-hint">{t(desc ? 'game.hintDesc' : 'game.hint')}</p>
           )}
         </div>
         <div className="pile">
@@ -156,7 +158,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
               <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
             </div>
           ) : (
-            <div className="pile-empty">{t('game.tableEmpty')}</div>
+            <div className="pile-empty">{t(desc ? 'game.tableEmptyDesc' : 'game.tableEmpty')}</div>
           )}
         </div>
         {revealed.length > 0 && (
@@ -218,6 +220,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         <Countdown
           level={room.level}
           reward={reward ? t('reward.ifPass', { reward: rewardText(reward) }) : null}
+          orderNote={desc ? t('game.orderDesc') : null}
           onDone={feed.clearCountdown}
         />
       )}

@@ -12,6 +12,8 @@ export type GameMode = 'concentration' | 'friends';
 export type ShurikenVariant = 'classic' | 'reveal';
 export type RewardPreset = 'classic' | 'custom' | 'none';
 export type Difficulty = 'easy' | 'classic' | 'hard';
+/** Orden en que se juegan las cartas: de 1 a 100 (clásico) o de 100 a 1. */
+export type CardOrder = 'asc' | 'desc';
 
 export interface Reward {
   /** Nivel que hay que superar para recibir la recompensa. */
@@ -24,6 +26,7 @@ export interface RoomConfig {
   maxPlayers: number;
   /** Niveles a jugar. 0 = todos los que permite el número de jugadores (nunca más). */
   levels: number;
+  order: CardOrder;
   mode: GameMode;
   shurikenVariant: ShurikenVariant;
   rewardPreset: RewardPreset;

@@ -120,9 +120,19 @@ export function cleanName(raw: unknown): string | null {
   return name;
 }
 
+/**
+ * Orden de juego. Las manos se guardan siempre en el orden en que hay que jugarlas:
+ * la primera carta de cada mano es la que toca (la más baja, o la más alta en descendente).
+ */
+const isDesc = (s: EngineState) => s.config.order === 'desc';
+/** ¿La carta `a` debía jugarse antes que `b`? */
+const goesBefore = (s: EngineState, a: number, b: number) => (isDesc(s) ? a > b : a < b);
+const byPlayOrder = (s: EngineState) => (a: number, b: number) => (isDesc(s) ? b - a : a - b);
+
 function dealLevel(d: Draft, rng: Rng) {
   const ids = playersBySeat(d.s).map((p) => p.id);
   d.s.hands = deal(ids, d.s.level, rng);
+  if (isDesc(d.s)) for (const h of Object.values(d.s.hands)) h.reverse();
   d.s.pile = [];
   d.s.revealed = [];
   d.s.vote = null;
@@ -304,8 +314,9 @@ export function startGame(state: EngineState, actor: PlayerId, rng: Rng, now: nu
 
 /**
  * Juega la carta `card` del jugador `actor`.
- * Solo se acepta si es la carta más baja de su mano. Si otros jugadores tenían cartas
- * menores, se produce UN error: −1 vida y se descartan TODAS esas cartas menores.
+ * Solo se acepta si es la carta que le toca (la más baja; la más alta en orden descendente).
+ * Si otros jugadores tenían cartas que debían ir antes, se produce UN error: −1 vida y se
+ * descartan TODAS esas cartas.
  */
 export function playCard(state: EngineState, actor: PlayerId, card: number, now: number): EngineResult {
   if (!isMember(state, actor)) return fail('NOT_MEMBER');
@@ -324,9 +335,10 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
   const lower: PlayedCard[] = [];
   for (const p of playersBySeat(d.s)) {
     const h = d.s.hands[p.id] ?? [];
-    while (h.length > 0 && h[0]! < card) lower.push({ c: h.shift()!, p: p.id });
+    while (h.length > 0 && goesBefore(d.s, h[0]!, card)) lower.push({ c: h.shift()!, p: p.id });
   }
-  lower.sort((a, b) => a.c - b.c);
+  const order = byPlayOrder(d.s);
+  lower.sort((a, b) => order(a.c, b.c));
 
   if (lower.length > 0) {
     d.s.lives -= 1;

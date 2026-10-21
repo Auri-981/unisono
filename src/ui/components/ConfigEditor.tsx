@@ -83,6 +83,13 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
         </>
       )}
       <Select
+        label={t('config.order')}
+        value={config.order}
+        disabled={disabled}
+        options={(['asc', 'desc'] as const).map((o) => ({ value: o, label: t(`config.order.${o}`) }))}
+        onChange={(order) => set({ order })}
+      />
+      <Select
         label={t('config.levels')}
         value={levelsValue}
         disabled={disabled}
@@ -208,6 +215,8 @@ export function ConfigSummary({ config, playerCount }: { config: RoomConfig; pla
       : rewardPresetLabel(config);
   return (
     <dl className="config-summary">
+      <dt>{t('config.order')}</dt>
+      <dd>{t(`config.order.${config.order}`)}</dd>
       <dt>{t('config.levels')}</dt>
       <dd>{allLevels ? t('config.levels.all', { n: levels }) : levels}</dd>
       <dt>{t('config.mode')}</dt>

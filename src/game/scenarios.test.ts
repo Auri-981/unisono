@@ -23,7 +23,9 @@ function setup(sc: Scenario) {
   s.level = sc.level;
   if (sc.lives !== undefined) s.lives = sc.lives;
   if (sc.shurikens !== undefined) s.shurikens = sc.shurikens;
-  s.hands = Object.fromEntries(ids.map((id, i) => [id, [...sc.hands[i]!]]));
+  // Las manos del motor van en orden de juego (de mayor a menor en descendente).
+  const desc = sc.config?.order === 'desc';
+  s.hands = Object.fromEntries(ids.map((id, i) => [id, [...sc.hands[i]!].sort((a, b) => (desc ? b - a : a - b))]));
   return { s, ids };
 }
 
@@ -54,7 +56,7 @@ describe('escenarios compartidos (motor TypeScript)', () => {
       if (ex.level !== undefined) expect(s.level).toBe(ex.level);
       if (ex.lives !== undefined) expect(s.lives).toBe(ex.lives);
       if (ex.shurikens !== undefined) expect(s.shurikens).toBe(ex.shurikens);
-      if (ex.hands) expect(present.map((id) => s.hands[id] ?? [])).toEqual(ex.hands);
+      if (ex.hands) expect(present.map((id) => [...(s.hands[id] ?? [])].sort((a, b) => a - b))).toEqual(ex.hands);
       if (ex.pile) expect(s.pile.map((x) => x.c)).toEqual(ex.pile);
       if (ex.revealed) expect(s.revealed.map((x) => x.c).sort((a, b) => a - b)).toEqual(ex.revealed);
       if (ex.reward !== undefined) {

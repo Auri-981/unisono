@@ -51,6 +51,12 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
           {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')} (máximo {DEFAULT_CONFIG.maxLives}{' '}
           vidas y {DEFAULT_CONFIG.maxShurikens} shurikens). El anfitrión puede personalizarlas.
         </p>
+        <h2>Orden descendente</h2>
+        <p>
+          El anfitrión puede elegir jugar de mayor a menor (del 100 al 1). Todo funciona igual, pero al revés: juegas
+          siempre tu carta más alta, es un error si alguien tenía una carta más alta que la jugada, y el shuriken
+          descarta la carta más alta de cada uno.
+        </p>
         <h2>Dificultad</h2>
         <ul>
           <li>Fácil: una vida y un shuriken más al empezar.</li>

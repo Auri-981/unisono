@@ -76,6 +76,7 @@ export const CONFIG_LIMITS = {
 export const DEFAULT_CONFIG: RoomConfig = {
   maxPlayers: 4,
   levels: 0,
+  order: 'asc',
   mode: 'concentration',
   shurikenVariant: 'classic',
   rewardPreset: 'classic',
@@ -122,6 +123,7 @@ export function normalizeConfig(input: unknown): RoomConfig {
   return {
     maxPlayers: intIn(raw.maxPlayers, d.maxPlayers, MIN_PLAYERS, MAX_PLAYERS),
     levels: intIn(raw.levels, d.levels, CONFIG_LIMITS.levels.min, CONFIG_LIMITS.levels.max),
+    order: oneOf(raw.order, ['asc', 'desc'] as const, d.order),
     mode: oneOf(raw.mode, ['concentration', 'friends'] as const, d.mode),
     shurikenVariant: oneOf(raw.shurikenVariant, ['classic', 'reveal'] as const, d.shurikenVariant),
     rewardPreset: oneOf(raw.rewardPreset, ['classic', 'custom', 'none'] as const, d.rewardPreset),

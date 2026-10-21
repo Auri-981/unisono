@@ -6,7 +6,17 @@ import { CheckIcon, CrownIcon, LifeIcon, ShurikenIcon } from '../../components/I
 import { rewardText, upcomingReward } from '../../rewards';
 
 /** Cuenta atrás visual al empezar un nivel. No bloquea: se puede cerrar tocando. */
-export function Countdown({ level, reward, onDone }: { level: number; reward: string | null; onDone: () => void }) {
+export function Countdown({
+  level,
+  reward,
+  orderNote,
+  onDone,
+}: {
+  level: number;
+  reward: string | null;
+  orderNote: string | null;
+  onDone: () => void;
+}) {
   const [n, setN] = useState(3);
   useEffect(() => {
     if (n <= 0) {
@@ -23,6 +33,7 @@ export function Countdown({ level, reward, onDone }: { level: number; reward: st
         {n > 0 ? n : ''}
       </span>
       <span className="countdown-hint">{t('game.concentrate')}</span>
+      {orderNote && <span className="countdown-order">{orderNote}</span>}
       {reward && <span className="countdown-reward">{reward}</span>}
       <span className="muted small">{t('game.countdownSkip')}</span>
     </button>

@@ -1822,3 +1822,8 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+.countdown-order {
+  font-weight: 700;
+  color: var(--cool);
+}

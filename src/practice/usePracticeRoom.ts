@@ -68,14 +68,16 @@ export function usePracticeRoom(
     const bots = s.players.filter((p) => p.id !== PRACTICE_ME);
 
     if (s.status === 'playing' && !s.vote) {
-      const top = s.pile.at(-1)?.c ?? 0;
+      // Los bots «cuentan» la distancia desde la última carta (hacia arriba o hacia abajo).
+      const desc = s.config.order === 'desc';
+      const top = s.pile.at(-1)?.c ?? (desc ? 101 : 0);
       let best: { id: string; card: number; at: number } | null = null;
       for (const b of bots) {
         const card = s.hands[b.id]?.[0];
         if (card === undefined) continue;
         const key = `${s.gameNo}:${b.id}:${card}`;
         if (!jitter.current.has(key)) jitter.current.set(key, 0.7 + cryptoRng() * 0.6);
-        const at = clockRef.current + BOT_BASE_MS + Math.max(0, card - top) * BOT_MS_PER_STEP * jitter.current.get(key)!;
+        const at = clockRef.current + BOT_BASE_MS + Math.max(0, desc ? top - card : card - top) * BOT_MS_PER_STEP * jitter.current.get(key)!;
         if (!best || at < best.at) best = { id: b.id, card, at };
       }
       if (best) {

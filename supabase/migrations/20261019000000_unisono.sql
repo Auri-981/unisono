@@ -263,6 +263,7 @@ begin
   return jsonb_build_object(
     'maxPlayers',      game_private.jint(p, 'maxPlayers', 4, 2, 4),
     'levels',          game_private.jint(p, 'levels', 0, 0, 12),
+    'order',           game_private.jenum(p, 'order', array['asc', 'desc'], 'asc'),
     'mode',            game_private.jenum(p, 'mode', array['concentration', 'friends'], 'concentration'),
     'shurikenVariant', game_private.jenum(p, 'shurikenVariant', array['classic', 'reveal'], 'classic'),
     'rewardPreset',    game_private.jenum(p, 'rewardPreset', array['classic', 'custom', 'none'], 'classic'),
@@ -420,7 +421,8 @@ as $$
       from (select * from public.room_events ev where ev.room_id = r.id order by ev.seq desc limit 8) e),
     'lastReward', r.last_reward,
     'myHand', (
-      select coalesce(jsonb_agg(h.card order by h.card), '[]'::jsonb)
+      -- En el orden en que se juegan (de menor a mayor, o de mayor a menor en descendente).
+      select coalesce(jsonb_agg(h.card order by case when r.config ->> 'order' = 'desc' then -h.card else h.card end), '[]'::jsonb)
       from public.hands h where h.room_id = r.id and h.user_id = p_uid)
   )
   from public.rooms r where r.id = p_room;
@@ -564,16 +566,18 @@ returns void language plpgsql set search_path = ''
 as $$
 declare
   v_reveal boolean;
+  v_desc boolean;
   v_discarded jsonb;
 begin
-  select (config ->> 'shurikenVariant') = 'reveal' into v_reveal from public.rooms where id = p_room;
+  select (config ->> 'shurikenVariant') = 'reveal', (config ->> 'order') = 'desc'
+    into v_reveal, v_desc from public.rooms where id = p_room;
 
   with lowest as (
     select distinct on (h.user_id) h.user_id, h.card, p.seat
     from public.hands h
     join public.room_players p on p.room_id = h.room_id and p.user_id = h.user_id
     where h.room_id = p_room
-    order by h.user_id, h.card
+    order by h.user_id, case when v_desc then -h.card else h.card end -- la que toca a cada uno
   ),
   removed as (
     delete from public.hands h using lowest l
@@ -825,7 +829,8 @@ as $$
 declare
   v_uid uuid := game_private.require_uid();
   r public.rooms := game_private.lock_room(p_room, v_uid);
-  v_lowest int;
+  v_desc boolean := (r.config ->> 'order') = 'desc'; -- orden descendente: de 100 a 1
+  v_lowest int; -- la carta que toca: la más baja (o la más alta en descendente)
   v_lower jsonb;
   v_lives int;
 begin
@@ -841,7 +846,8 @@ begin
     raise exception 'VOTE_IN_PROGRESS';
   end if;
 
-  select min(card) into v_lowest from public.hands where room_id = p_room and user_id = v_uid;
+  select case when v_desc then max(card) else min(card) end into v_lowest
+    from public.hands where room_id = p_room and user_id = v_uid;
   if v_lowest is null then raise exception 'NO_CARDS'; end if;
   if p_card is distinct from v_lowest then
     if exists (select 1 from public.hands where room_id = p_room and user_id = v_uid and card = p_card) then
@@ -856,11 +862,15 @@ begin
                           shuriken_blocked = '[]'::jsonb
    where id = p_room;
 
-  -- ¿Alguien tenía cartas menores? Error: se descartan TODAS y se pierde UNA vida.
+  -- ¿Alguien tenía cartas que debían ir antes (menores; mayores en descendente)?
+  -- Error: se descartan TODAS y se pierde UNA vida.
   with removed as (
-    delete from public.hands where room_id = p_room and card < p_card returning card, user_id
+    delete from public.hands
+     where room_id = p_room and (case when v_desc then card > p_card else card < p_card end)
+    returning card, user_id
   )
-  select jsonb_agg(jsonb_build_object('c', card, 'p', user_id) order by card) into v_lower from removed;
+  select jsonb_agg(jsonb_build_object('c', card, 'p', user_id)
+                   order by case when v_desc then -card else card end) into v_lower from removed;
 
   if v_lower is not null then
     update public.rooms
