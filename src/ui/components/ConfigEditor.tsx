@@ -1,5 +1,6 @@
 import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, levelsToPlay, normalizeConfig, presetFor } from '../../config/gameConfig';
 import { t } from '../../i18n';
+import { rewardPresetLabel } from '../rewards';
 import type { Reward, RoomConfig } from '../../game/types';
 
 interface Props {
@@ -109,7 +110,7 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
         label={t('config.rewards')}
         value={config.rewardPreset}
         disabled={disabled}
-        options={(['classic', 'custom', 'none'] as const).map((v) => ({ value: v, label: t(`config.rewards.${v}`) }))}
+        options={(['classic', 'custom', 'none'] as const).map((v) => ({ value: v, label: rewardPresetLabel(config, v) }))}
         onChange={(rewardPreset) => set({ rewardPreset })}
       />
 
@@ -204,7 +205,7 @@ export function ConfigSummary({ config, playerCount }: { config: RoomConfig; pla
       ? config.customRewards
           .map((r) => `${r.level}:${r.lives ? ` +${r.lives}♥` : ''}${r.shurikens ? ` +${r.shurikens}★` : ''}`)
           .join(' · ') || t('config.rewards.none')
-      : t(`config.rewards.${config.rewardPreset}`);
+      : rewardPresetLabel(config);
   return (
     <dl className="config-summary">
       <dt>{t('config.levels')}</dt>

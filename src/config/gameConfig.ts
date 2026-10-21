@@ -47,6 +47,16 @@ export const CLASSIC_REWARDS: Reward[] = [
   { level: 9, lives: 1, shurikens: 0 },
 ];
 
+/**
+ * Recompensas «clásicas» en dificultad difícil: la mitad y más espaciadas (3 ★, 6 ♥, 9 ★).
+ * Diseño propio de Unísono, no forma parte del juego original.
+ */
+export const HARD_REWARDS: Reward[] = [
+  { level: 3, lives: 0, shurikens: 1 },
+  { level: 6, lives: 1, shurikens: 0 },
+  { level: 9, lives: 0, shurikens: 1 },
+];
+
 export const DEFAULT_CUSTOM_REWARDS: Reward[] = [
   { level: 2, lives: 0, shurikens: 1 },
   { level: 3, lives: 1, shurikens: 0 },
@@ -128,11 +138,22 @@ export function presetFor(playerCount: number): PlayerPreset {
   return PLAYER_PRESETS[n]!;
 }
 
-const DIFFICULTY_ADJUST: Record<Difficulty, { lives: number; shurikens: number | null }> = {
-  easy: { lives: 1, shurikens: 1 },
-  classic: { lives: 0, shurikens: 0 },
-  hard: { lives: -1, shurikens: null }, // null = sin shurikens iniciales
-};
+/**
+ * Recursos iniciales por dificultad:
+ * - fácil: los clásicos +1 vida y +1 shuriken;
+ * - clásica: los del juego (vidas = jugadores, 1 shuriken);
+ * - difícil: 1 sola vida y ningún shuriken, sea cual sea el número de jugadores.
+ */
+function startingLivesAndShurikens(difficulty: Difficulty, preset: PlayerPreset): { lives: number; shurikens: number } {
+  switch (difficulty) {
+    case 'easy':
+      return { lives: preset.lives + 1, shurikens: preset.shurikens + 1 };
+    case 'classic':
+      return { lives: preset.lives, shurikens: preset.shurikens };
+    case 'hard':
+      return { lives: 1, shurikens: 0 };
+  }
+}
 
 export interface StartingResources {
   maxLevel: number;
@@ -153,10 +174,7 @@ export function levelsToPlay(config: RoomConfig, playerCount: number): number {
 }
 
 export function startingResources(config: RoomConfig, playerCount: number): StartingResources {
-  const preset = presetFor(playerCount);
-  const adj = DIFFICULTY_ADJUST[config.difficulty];
-  const lives = Math.max(1, preset.lives + adj.lives);
-  const shurikens = adj.shurikens === null ? 0 : Math.max(0, preset.shurikens + adj.shurikens);
+  const { lives, shurikens } = startingLivesAndShurikens(config.difficulty, presetFor(playerCount));
   return {
     maxLevel: levelsToPlay(config, playerCount),
     lives,
@@ -169,7 +187,8 @@ export function startingResources(config: RoomConfig, playerCount: number): Star
 export function rewardTable(config: RoomConfig): Reward[] {
   switch (config.rewardPreset) {
     case 'classic':
-      return CLASSIC_REWARDS;
+      // En difícil, la tabla «clásica» da menos premios y más espaciados.
+      return config.difficulty === 'hard' ? HARD_REWARDS : CLASSIC_REWARDS;
     case 'custom':
       return config.customRewards;
     case 'none':

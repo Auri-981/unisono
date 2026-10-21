@@ -1,6 +1,6 @@
 /** Recompensa que se obtendrá al superar un nivel (para anunciarla antes de jugarlo). */
-import { rewardFor, startingResources } from '../config/gameConfig';
-import type { PublicRoom } from '../game/types';
+import { rewardFor, rewardTable, startingResources } from '../config/gameConfig';
+import type { PublicRoom, Reward, RoomConfig } from '../game/types';
 import { t } from '../i18n';
 
 export interface UpcomingReward {
@@ -26,6 +26,19 @@ export function upcomingReward(room: PublicRoom, players: number, level = room.l
     livesFull: r.lives > 0 && room.lives >= start.livesCap,
     shurikensFull: r.shurikens > 0 && room.shurikens >= start.shurikensCap,
   };
+}
+
+/** «2★ 3♥ 5★…»: lista compacta de una tabla de recompensas. */
+export function rewardListText(rewards: Reward[]): string {
+  return rewards
+    .map((r) => `${r.level}${'♥'.repeat(r.lives)}${'★'.repeat(r.shurikens)}`)
+    .join(' ');
+}
+
+/** Nombre de la opción de recompensas tal y como se aplicará con esta configuración. */
+export function rewardPresetLabel(config: RoomConfig, preset = config.rewardPreset): string {
+  if (preset === 'classic') return t('config.rewards.classic', { list: rewardListText(rewardTable({ ...config, rewardPreset: 'classic' })) });
+  return t(`config.rewards.${preset}`);
 }
 
 /** «+1 vida y +1 shuriken», indicando lo que no se sumará por estar al máximo. */

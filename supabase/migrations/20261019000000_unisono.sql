@@ -218,6 +218,14 @@ as $$
            {"level":8,"lives":0,"shurikens":1},{"level":9,"lives":1,"shurikens":0}]'::jsonb;
 $$;
 
+-- Dificultad difícil: la mitad de premios y más espaciados (3 ★, 6 ♥, 9 ★).
+create or replace function game_private.hard_rewards()
+returns jsonb language sql immutable set search_path = ''
+as $body$
+  select '[{"level":3,"lives":0,"shurikens":1},{"level":6,"lives":1,"shurikens":0},
+           {"level":9,"lives":0,"shurikens":1}]'::jsonb;
+$body$;
+
 create or replace function game_private.default_custom_rewards()
 returns jsonb language sql immutable set search_path = ''
 as $$
@@ -284,7 +292,7 @@ begin
   if v_diff = 'easy' then
     v_lives := v_lives + 1; v_sh := v_sh + 1;
   elsif v_diff = 'hard' then
-    v_lives := greatest(1, v_lives - 1); v_sh := 0;
+    v_lives := 1; v_sh := 0; -- difícil: una sola vida y ningún shuriken
   end if;
   return jsonb_build_object(
     'maxLevel', v_levels,
@@ -303,7 +311,9 @@ as $$
     (select jsonb_build_object('lives', (e ->> 'lives')::int, 'shurikens', (e ->> 'shurikens')::int)
        from jsonb_array_elements(
          case p_config ->> 'rewardPreset'
-           when 'classic' then game_private.classic_rewards()
+           when 'classic' then
+             case when p_config ->> 'difficulty' = 'hard' then game_private.hard_rewards()
+                  else game_private.classic_rewards() end
            when 'custom' then coalesce(p_config -> 'customRewards', '[]'::jsonb)
            else '[]'::jsonb
          end) as e

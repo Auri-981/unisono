@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CLASSIC_REWARDS, DEFAULT_CONFIG, PLAYER_PRESETS } from '../../config/gameConfig';
+import { CLASSIC_REWARDS, DEFAULT_CONFIG, HARD_REWARDS, PLAYER_PRESETS } from '../../config/gameConfig';
 import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { api, ApiError } from '../../net/api';
@@ -51,6 +51,15 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
           {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')} (máximo {DEFAULT_CONFIG.maxLives}{' '}
           vidas y {DEFAULT_CONFIG.maxShurikens} shurikens). El anfitrión puede personalizarlas.
         </p>
+        <h2>Dificultad</h2>
+        <ul>
+          <li>Fácil: una vida y un shuriken más al empezar.</li>
+          <li>Clásica: como el juego original.</li>
+          <li>
+            Difícil: empezáis con 1 sola vida y sin shuriken, y hay menos recompensas (
+            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')}).
+          </li>
+        </ul>
         <h2>Consejos</h2>
         <ul>
           <li>Antes de cada nivel, respirad y esperad a que todos estén «listos».</li>

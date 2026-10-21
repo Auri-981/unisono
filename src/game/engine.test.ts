@@ -6,6 +6,7 @@ import {
   SHURIKEN_VOTE_SECONDS,
   normalizeConfig,
   rewardFor,
+  rewardTable,
   startingResources,
 } from '../config/gameConfig';
 import { createDeck, deal, shuffle } from './deck';
@@ -114,7 +115,10 @@ describe('configuración', () => {
 
   it('aplica la dificultad', () => {
     expect(startingResources({ ...DEFAULT_CONFIG, difficulty: 'easy' }, 2)).toMatchObject({ lives: 3, shurikens: 2 });
-    expect(startingResources({ ...DEFAULT_CONFIG, difficulty: 'hard' }, 2)).toMatchObject({ lives: 1, shurikens: 0 });
+    // Difícil: 1 sola vida y ningún shuriken, sea cual sea el número de jugadores.
+    for (const n of [2, 3, 4]) {
+      expect(startingResources({ ...DEFAULT_CONFIG, difficulty: 'hard' }, n)).toMatchObject({ lives: 1, shurikens: 0 });
+    }
   });
 
   it('normaliza entradas maliciosas o incorrectas sin romperse', () => {
@@ -131,6 +135,16 @@ describe('configuración', () => {
     expect(c.customRewards).toEqual([{ level: 4, lives: 3, shurikens: 0 }]);
     expect(c.countdown).toBe(true);
     expect(normalizeConfig(null)).toEqual(DEFAULT_CONFIG);
+  });
+
+  it('en difícil hay menos recompensas y más espaciadas (salvo personalizadas)', () => {
+    const hard = { ...DEFAULT_CONFIG, rewardPreset: 'classic' as const, difficulty: 'hard' as const };
+    expect(rewardTable(hard).map((r) => r.level)).toEqual([3, 6, 9]);
+    expect(rewardFor(hard, 2)).toEqual({ lives: 0, shurikens: 0 });
+    expect(rewardFor(hard, 3)).toEqual({ lives: 0, shurikens: 1 });
+    expect(rewardFor(hard, 6)).toEqual({ lives: 1, shurikens: 0 });
+    const custom = { ...hard, rewardPreset: 'custom' as const, customRewards: [{ level: 1, lives: 1, shurikens: 0 }] };
+    expect(rewardFor(custom, 1)).toEqual({ lives: 1, shurikens: 0 });
   });
 
   it('tabla de recompensas clásica', () => {
