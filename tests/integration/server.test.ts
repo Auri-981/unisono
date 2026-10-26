@@ -74,6 +74,11 @@ describe('privacidad de las cartas', () => {
     expect(Object.keys(snap.players[0]!).sort()).toEqual(['cardsLeft', 'id', 'lastSeenAt', 'name', 'ready', 'seat']);
   });
 
+  it('la señal de vida (ping) responde sin sesión y no da acceso a nada más', async () => {
+    const [row] = await t.asAnon<{ r: string }>(`select public.ping() as r`);
+    expect(row!.r).toBe('ok');
+  });
+
   it('un usuario sin sesión (anon) no puede leer ni llamar a nada', async () => {
     const { room } = await started(2);
     expect(await errorOf(t.asAnon(`select * from public.hands`))).toMatch(/permission denied/);

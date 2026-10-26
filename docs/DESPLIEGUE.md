@@ -159,9 +159,11 @@ En Android/Chrome: menú ⋮ → **Instalar aplicación** / **Añadir a pantalla
 
 ## Mantenimiento y límites
 
-- **Pausa por inactividad**: si nadie juega durante 7 días, Supabase pausa el proyecto gratuito.
-  Entra en el panel y pulsa **Restore project** (tarda un par de minutos). Las salas antiguas se
-  borran solas, pero el historial de partidas se conserva.
+- **Pausa por inactividad**: Supabase pausa el proyecto gratuito tras 7 días sin actividad. Para
+  evitarlo, la tarea automática `.github/workflows/keepalive.yml` llama al servidor cada 3 días
+  (función `ping`). Si aun así se pausa, GitHub te avisa por correo: entra en el panel y pulsa
+  **Restore project**. En repositorios públicos GitHub desactiva las tareas programadas tras 60 días
+  sin cambios en el repositorio (avisa antes por correo); se reactiva en Actions → *Enable workflow*.
 - **Usuarios anónimos antiguos**: Supabase no los borra solo. Si algún día quieres limpiar, en el
   SQL Editor: `delete from auth.users where is_anonymous and created_at < now() - interval '90 days';`
   (los jugadores afectados simplemente obtendrán una identidad nueva).

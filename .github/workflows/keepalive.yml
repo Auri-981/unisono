@@ -1,0 +1,39 @@
+# Mantiene despierto el proyecto gratuito de Supabase (se pausa tras 7 días sin actividad).
+# Cada 3 días llama a la función `ping` del servidor. Si falla (p. ej. el proyecto se pausó),
+# GitHub te avisa por correo: entra en Supabase y pulsa «Restore project».
+#
+# Ojo: en repositorios públicos GitHub desactiva las tareas programadas tras 60 días sin
+# ningún cambio en el repositorio (avisa antes por correo). Para reactivarla:
+# GitHub → Actions → «Mantener Supabase despierto» → «Enable workflow».
+name: Mantener Supabase despierto
+
+on:
+  schedule:
+    - cron: '17 9 */3 * *' # cada 3 días a las 09:17 UTC
+  workflow_dispatch: # también se puede lanzar a mano desde la pestaña Actions
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Llamar a la función ping de Supabase
+        env:
+          URL: ${{ vars.VITE_SUPABASE_URL }}
+          KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          for attempt in 1 2 3; do
+            if response=$(curl --silent --show-error --fail-with-body --max-time 30 \
+                -X POST "$URL/rest/v1/rpc/ping" \
+                -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}'); then
+              echo "Respuesta del servidor: $response"
+              [ "$response" = '"ok"' ] && exit 0
+            fi
+            echo "Intento $attempt fallido; reintentando en 20 s…"
+            sleep 20
+          done
+          echo "::error::Supabase no responde. Puede que el proyecto esté pausado: entra en supabase.com y pulsa «Restore project»."
+          exit 1

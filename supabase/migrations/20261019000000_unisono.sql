@@ -1131,6 +1131,15 @@ begin
 end;
 $$;
 
+-- Señal de vida para la tarea automática de GitHub (.github/workflows/keepalive.yml):
+-- una consulta mínima cada pocos días evita que Supabase pause el proyecto gratuito por
+-- inactividad. No lee ni escribe nada del juego.
+create or replace function public.ping()
+returns text language sql stable set search_path = ''
+as $ping$
+  select 'ok';
+$ping$;
+
 -- ───────────────────────────── Permisos de funciones ─────────────────────────────
 
 revoke all on all functions in schema game_private from public, anon, authenticated;
@@ -1155,6 +1164,9 @@ revoke all on function
   public.send_chat(uuid, text),
   public.get_my_history()
 from public, anon;
+
+revoke all on function public.ping() from public;
+grant execute on function public.ping() to anon, authenticated;
 
 grant execute on function
   public.is_room_member(uuid),
