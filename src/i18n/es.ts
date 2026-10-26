@@ -27,7 +27,6 @@ export const es = {
   'home.settings': 'Ajustes',
   'home.history': 'Historial',
   'home.offlineNotice': 'El modo online todavía no está configurado en esta web. Puedes practicar mientras tanto.',
-  'home.resume': 'Volver a tu sala {code}',
 
   'entry.createTitle': 'Crear partida',
   'entry.joinTitle': 'Unirse a una partida',

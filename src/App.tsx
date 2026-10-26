@@ -45,7 +45,8 @@ function setUrlCode(code: string | null) {
  * Dónde empieza la app:
  * - Misma pestaña/app todavía abierta (recarga, volver de otra app) → directamente a la sala.
  * - Abriendo un enlace de invitación de la sala en la que ya estabas → a la sala.
- * - App cerrada del todo y vuelta a abrir → inicio (con el botón «Volver a tu sala»).
+ * - App o pestaña cerrada del todo (salida a propósito) → inicio, y se abandona esa sala
+ *   en el servidor para no dejar un jugador «fantasma» que bloquee a los demás.
  * Mientras estás en una sala la dirección queda limpia (sin ?sala=): así, si el sistema
  * restaura la pestaña al reabrir, no te mete otra vez en la sala sin querer.
  */
@@ -59,6 +60,11 @@ function initialScreen(): Screen {
     setUrlCode(null);
     storedRoom.set(stored);
     return { name: 'room', roomId: stored.id, initial: null };
+  }
+  if (stored) {
+    // Cerró la app/pestaña a propósito: sale de esa sala (si falla la red, el anfitrión puede expulsarle).
+    void api.leaveRoom(stored.id).catch(() => {});
+    storedRoom.set(null);
   }
   if (urlCode) return { name: 'join', code: urlCode };
   return { name: 'home' };
@@ -90,16 +96,9 @@ export function App() {
     case 'home':
       return (
         <HomeScreen
-          resume={storedRoom.get()}
           message={screen.message ?? null}
           onCreate={() => setScreen({ name: 'create' })}
           onJoin={() => setScreen({ name: 'join' })}
-          onResume={() => {
-            const s = storedRoom.get();
-            if (!s) return;
-            storedRoom.set(s); // vuelve a ser la sala activa de esta sesión
-            setScreen({ name: 'room', roomId: s.id, initial: null });
-          }}
           onPractice={() => setScreen({ name: 'practiceSetup' })}
           onRules={() => setScreen({ name: 'rules' })}
           onSettings={() => setScreen({ name: 'settings' })}

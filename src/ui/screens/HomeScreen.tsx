@@ -1,14 +1,11 @@
 import { t } from '../../i18n';
 import { onlineAvailable } from '../../net/supabase';
 import { LogoMark } from '../components/Icons';
-import type { StoredRoom } from '../prefs';
 
 interface Props {
-  resume: StoredRoom | null;
   message: string | null;
   onCreate: () => void;
   onJoin: () => void;
-  onResume: () => void;
   onPractice: () => void;
   onRules: () => void;
   onSettings: () => void;
@@ -32,12 +29,7 @@ export function HomeScreen(p: Props) {
       )}
 
       <nav className="home-actions">
-        {p.resume && onlineAvailable && (
-          <button type="button" className="btn btn-primary btn-large" onClick={p.onResume}>
-            {t('home.resume', { code: p.resume.code })}
-          </button>
-        )}
-        <button type="button" className={`btn btn-large ${p.resume ? 'btn-secondary' : 'btn-primary'}`} onClick={p.onCreate} disabled={!onlineAvailable}>
+        <button type="button" className="btn btn-large btn-primary" onClick={p.onCreate} disabled={!onlineAvailable}>
           {t('home.create')}
         </button>
         <button type="button" className="btn btn-secondary btn-large" onClick={p.onJoin} disabled={!onlineAvailable}>
