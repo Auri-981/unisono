@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import type { RoomController } from '../../../game/controller';
 import { errorMessage, t } from '../../../i18n';
 import { Card, CardBacks } from '../../components/Card';
-import { ChatIcon, CrownIcon, ExitIcon, LifeIcon, ShurikenIcon } from '../../components/Icons';
+import { ChatIcon, CrownIcon, ExitIcon, LifeIcon, VistazoIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
-import { ConnectionDot, Lives, Shurikens } from '../../components/Resources';
+import { ConnectionDot, Lives, Vistazos } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
 import { Countdown, EndScreen, LevelComplete, VoteBanner } from './Overlays';
 import { useAfterPause } from './useAfterPause';
@@ -104,7 +104,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
               )}
               {reward.shurikens > 0 && (
                 <span className={`resource resource-shuriken ${reward.shurikensFull ? 'is-full' : ''}`}>
-                  <ShurikenIcon size={15} />+{reward.shurikens}
+                  <VistazoIcon size={15} />+{reward.shurikens}
                 </span>
               )}
             </span>
@@ -112,7 +112,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         )}
         <div className="game-resources">
           <Lives count={room.lives} />
-          <Shurikens count={room.shurikens} />
+          <Vistazos count={room.shurikens} />
         </div>
         {ctl.kind === 'online' && <ConnectionDot state={ctl.connection} />}
       </header>
@@ -205,7 +205,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           disabled={!canPropose || ctl.busy}
           onClick={() => void ctl.actions.proposeShuriken()}
         >
-          <ShurikenIcon size={18} /> {playing && shurikenBlocked && !vote ? t('game.shurikenBlocked') : t('game.useShuriken')}
+          <VistazoIcon size={18} /> {playing && shurikenBlocked && !vote ? t('game.shurikenBlocked') : t('game.useShuriken')}
         </button>
         {chatEnabled && (
           <button type="button" className="btn btn-secondary chat-btn" onClick={() => setChatOpen(true)} aria-label={t('game.chat')}>

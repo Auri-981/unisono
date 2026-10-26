@@ -22,13 +22,13 @@ export const LifeIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
-export const ShurikenIcon = ({ size, ...p }: P) => (
+/** Vistazo: un ojo abierto (el recurso que permite «echar un vistazo» y descartar). */
+export const VistazoIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
-    <path
-      d="M12 2.5 14 10l7.5 2-7.5 2-2 7.5-2-7.5-7.5-2 7.5-2 2-7.5Z"
-      fill="currentColor"
-    />
-    <circle cx="12" cy="12" r="1.6" fill="var(--bg)" />
+    <path d="M12 5.5c-5.1 0-8.9 3.6-10.3 6.5 1.4 2.9 5.2 6.5 10.3 6.5s8.9-3.6 10.3-6.5C20.9 9.1 17.1 5.5 12 5.5Z" fill="currentColor" />
+    <circle cx="12" cy="12" r="4.3" fill="var(--bg)" />
+    <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+    <circle cx="13.1" cy="10.9" r="0.8" fill="var(--bg)" />
   </svg>
 );
 

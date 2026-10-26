@@ -28,10 +28,14 @@ export function upcomingReward(room: PublicRoom, players: number, level = room.l
   };
 }
 
-/** «2★ 3♥ 5★…»: lista compacta de una tabla de recompensas. */
+/** Símbolos para textos sencillos (listas en desplegables, reglas). */
+export const LIFE_SYMBOL = '♥';
+export const VISTAZO_SYMBOL = '👁';
+
+/** «2👁 3♥ 5👁…»: lista compacta de una tabla de recompensas. */
 export function rewardListText(rewards: Reward[]): string {
   return rewards
-    .map((r) => `${r.level}${'♥'.repeat(r.lives)}${'★'.repeat(r.shurikens)}`)
+    .map((r) => `${r.level}${LIFE_SYMBOL.repeat(r.lives)}${VISTAZO_SYMBOL.repeat(r.shurikens)}`)
     .join(' ');
 }
 

@@ -4,7 +4,9 @@ import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { api, ApiError } from '../../net/api';
 import { ConfigEditor } from '../components/ConfigEditor';
+import { VistazoIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
+import { LIFE_SYMBOL, VISTAZO_SYMBOL } from '../rewards';
 import { setPrefs, usePrefs } from '../prefs';
 
 export function RulesScreen({ onBack }: { onBack: () => void }) {
@@ -31,39 +33,41 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
           Si alguien juega una carta y otro jugador tenía una más baja, el equipo pierde <strong>una vida</strong>. Todas
           las cartas más bajas que la jugada se descartan boca arriba y la partida sigue. Sin vidas, se pierde.
         </p>
-        <h2>Shurikens</h2>
+        <h2>
+          <VistazoIcon size={18} className="rules-icon" /> Vistazos
+        </h2>
         <p>
-          Cualquiera puede proponer usar un shuriken. Si todos aceptan en 15 segundos, cada jugador descarta su carta más
-          baja. Es una forma de salir de un atasco y de obtener información. Si te lo rechazan, no puedes volver a
+          Cualquiera puede proponer usar un vistazo. Si todos aceptan en 15 segundos, cada jugador descarta la carta que
+          le toca. Es una forma de salir de un atasco y de obtener información. Si te lo rechazan, no puedes volver a
           pedirlo hasta que se juegue alguna carta.
         </p>
         <h2>Niveles y recompensas</h2>
         <ul>
           {Object.entries(PLAYER_PRESETS).map(([n, p]) => (
             <li key={n}>
-              {n} jugadores: {p.levels} niveles, {p.lives} vidas, {p.shurikens} shuriken.
+              {n} jugadores: {p.levels} niveles, {p.lives} vidas, {p.shurikens} vistazo.
             </li>
           ))}
         </ul>
         <p>El anfitrión puede elegir jugar menos niveles para una partida más corta (nunca más de los que tocan).</p>
         <p>
           Recompensas clásicas al superar un nivel:{' '}
-          {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')} (máximo {DEFAULT_CONFIG.maxLives}{' '}
-          vidas y {DEFAULT_CONFIG.maxShurikens} shurikens). El anfitrión puede personalizarlas.
+          {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : VISTAZO_SYMBOL}`).join(' · ')} (máximo{' '}
+          {DEFAULT_CONFIG.maxLives} vidas y {DEFAULT_CONFIG.maxShurikens} vistazos). El anfitrión puede personalizarlas.
         </p>
         <h2>Orden descendente</h2>
         <p>
           El anfitrión puede elegir jugar de mayor a menor (del 100 al 1). Todo funciona igual, pero al revés: juegas
-          siempre tu carta más alta, es un error si alguien tenía una carta más alta que la jugada, y el shuriken
+          siempre tu carta más alta, es un error si alguien tenía una carta más alta que la jugada, y el vistazo
           descarta la carta más alta de cada uno.
         </p>
         <h2>Dificultad</h2>
         <ul>
-          <li>Fácil: una vida y un shuriken más al empezar.</li>
+          <li>Fácil: una vida y un vistazo más al empezar.</li>
           <li>Clásica: como el juego original.</li>
           <li>
-            Difícil: empezáis con 1 sola vida y sin shuriken, y hay menos recompensas (
-            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? '♥' : '★'}`).join(' · ')}).
+            Difícil: empezáis con 1 sola vida y sin vistazos, y hay menos recompensas (
+            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : VISTAZO_SYMBOL}`).join(' · ')}).
           </li>
         </ul>
         <h2>Consejos</h2>

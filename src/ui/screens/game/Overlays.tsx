@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RoomController } from '../../../game/controller';
 import type { RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
-import { CheckIcon, CrownIcon, LifeIcon, ShurikenIcon } from '../../components/Icons';
+import { CheckIcon, CrownIcon, LifeIcon, VistazoIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
 
 /** Cuenta atrás visual al empezar un nivel. No bloquea: se puede cerrar tocando. */
@@ -66,7 +66,7 @@ export function VoteBanner({ ctl, snap }: { ctl: RoomController; snap: RoomSnaps
   return (
     <div className="vote-banner" role="alertdialog" aria-live="assertive">
       <div className="vote-head">
-        <ShurikenIcon size={22} />
+        <VistazoIcon size={22} />
         <strong>{vote.proposer === snap.me ? t('vote.proposedByMe') : t('vote.proposed', { name: proposer })}</strong>
         <span className="vote-timer">{t('vote.seconds', { s: remaining })}</span>
       </div>
@@ -121,7 +121,7 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
               )}
               {reward.shurikens > 0 && (
                 <span className="reward-item reward-shuriken">
-                  <ShurikenIcon size={26} /> {t('level.rewardShuriken', { n: reward.shurikens })}
+                  <VistazoIcon size={26} /> {t('level.rewardShuriken', { n: reward.shurikens })}
                 </span>
               )}
             </div>

@@ -36,8 +36,8 @@ describe('premio anunciado del nivel', () => {
     expect(rewardText(r)).toBe('+1 vida (ya tenéis el máximo)');
   });
 
-  it('combina vidas y shurikens en recompensas personalizadas', () => {
+  it('combina vidas y vistazos en recompensas personalizadas', () => {
     const config = { ...DEFAULT_CONFIG, rewardPreset: 'custom' as const, customRewards: [{ level: 1, lives: 2, shurikens: 1 }] };
-    expect(rewardText(upcomingReward(room({ level: 1, config }), 2)!)).toBe('+2 vidas y +1 shuriken');
+    expect(rewardText(upcomingReward(room({ level: 1, config }), 2)!)).toBe('+2 vidas y +1 vistazo');
   });
 });

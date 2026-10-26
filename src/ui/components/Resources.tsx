@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import type { ConnectionState } from '../../game/controller';
-import { LifeIcon, ShurikenIcon } from './Icons';
+import { LifeIcon, VistazoIcon } from './Icons';
 
 export function Lives({ count }: { count: number }) {
   return (
@@ -13,10 +13,10 @@ export function Lives({ count }: { count: number }) {
   );
 }
 
-export function Shurikens({ count }: { count: number }) {
+export function Vistazos({ count }: { count: number }) {
   return (
     <span className="resource resource-shuriken" aria-label={`${t('common.shurikens')}: ${count}`} title={t('common.shurikens')}>
-      <ShurikenIcon size={20} />
+      <VistazoIcon size={20} />
       <span className="resource-count" key={count}>
         {count}
       </span>
