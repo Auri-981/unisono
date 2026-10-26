@@ -19,8 +19,18 @@ export interface Reward {
   /** Nivel que hay que superar para recibir la recompensa. */
   level: number;
   lives: number;
+  /** Comodines a elegir (nombre histórico: antes solo existía el vistazo / shuriken). */
   shurikens: number;
 }
+
+/**
+ * Comodines. En el código el vistazo se llama «shuriken» por motivos históricos.
+ * - shuriken (Vistazo): cada uno descarta la carta que le toca.
+ * - rewind (Rebobinar): se ofrece al perder una vida y la devuelve.
+ * - shield (Escudo): el siguiente error del nivel no cuesta vida.
+ */
+export type ComodinKind = 'shuriken' | 'rewind' | 'shield';
+export const COMODIN_KINDS: readonly ComodinKind[] = ['shuriken', 'rewind', 'shield'];
 
 export interface RoomConfig {
   maxPlayers: number;
@@ -51,7 +61,10 @@ export interface RevealedCard {
 }
 
 export interface ShurikenVote {
-  proposer: PlayerId;
+  /** Qué comodín se vota. Ausente en servidores antiguos = vistazo. */
+  kind?: ComodinKind;
+  /** Quién lo propuso. null en Rebobinar: lo propone el juego al perder una vida. */
+  proposer: PlayerId | null;
   votes: PlayerId[];
   /** Fecha ISO del servidor en la que caduca la votación. */
   expiresAt: string;
@@ -69,6 +82,10 @@ export type GameEventKind =
   | 'shuriken_proposed'
   | 'shuriken_used'
   | 'shuriken_cancelled'
+  | 'shield_used'
+  | 'rewind_offered'
+  | 'rewind_used'
+  | 'comodin_chosen'
   | 'level_complete'
   | 'won'
   | 'lost'
@@ -88,6 +105,8 @@ export interface MistakePayload {
   card: number;
   discarded: PlayedCard[];
   lives: number;
+  /** Un escudo activo ha evitado perder la vida. */
+  shielded?: boolean;
 }
 
 export interface ShurikenUsedPayload {
@@ -99,6 +118,21 @@ export interface LevelReward {
   level: number;
   lives: number;
   shurikens: number;
+  /** Comodines elegidos al superar el nivel (opcionales: servidores antiguos). */
+  rewinds?: number;
+  shields?: number;
+}
+
+/**
+ * Elección de comodín pendiente al superar un nivel: se ofrecen 2 de los 3 al azar y cada
+ * jugador vota uno. Cuando han votado todos, gana el más votado (empate: al azar).
+ */
+export interface ComodinOffer {
+  choices: ComodinKind[];
+  /** Elecciones que quedan (incluida esta). */
+  left: number;
+  /** Voto de cada jugador. */
+  votes: Record<PlayerId, ComodinKind>;
 }
 
 export interface PublicPlayer {
@@ -121,6 +155,12 @@ export interface PublicRoom {
   maxLevel: number;
   lives: number;
   shurikens: number;
+  /** Comodines Rebobinar y Escudo, y si hay un escudo activo en este nivel (opcionales: servidores antiguos). */
+  rewinds?: number;
+  shields?: number;
+  shieldActive?: boolean;
+  /** Elección de comodín pendiente (solo en «nivel superado»). */
+  offer?: ComodinOffer | null;
   version: number;
   /** Quién no puede proponer shuriken hasta que se juegue una carta (opcional: servidores antiguos). */
   shurikenBlocked?: PlayerId[];
@@ -166,6 +206,9 @@ export const GAME_ERROR_CODES = [
   'NO_VOTE',
   'NO_SHURIKENS',
   'SHURIKEN_BLOCKED',
+  'NO_SHIELDS',
+  'SHIELD_ACTIVE',
+  'NO_OFFER',
   'INVALID_NAME',
   'INVALID_MESSAGE',
   'CHAT_DISABLED',

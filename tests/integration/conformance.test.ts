@@ -12,6 +12,10 @@ beforeAll(async () => {
   t = await createTestDb();
 });
 
+async function levelOf(room: string): Promise<number> {
+  return (await t.admin<{ level: number }>(`select level from public.rooms where id = $1`, [room]))[0]!.level;
+}
+
 async function setup(sc: Scenario) {
   const ids: string[] = [];
   for (let i = 0; i < sc.players; i++) ids.push(await t.newUser());
@@ -23,8 +27,10 @@ async function setup(sc: Scenario) {
   for (const id of ids) await t.rpc(id, 'set_lobby_ready', { p_room: room, p_ready: true });
   await t.rpc(ids[0]!, 'start_game', { p_room: room });
   await t.admin(
-    `update public.rooms set level = $2, lives = coalesce($3, lives), shurikens = coalesce($4, shurikens) where id = $1`,
-    [room, sc.level, sc.lives ?? null, sc.shurikens ?? null],
+    `update public.rooms set level = $2, lives = coalesce($3, lives), shurikens = coalesce($4, shurikens),
+       rewinds = coalesce($5, rewinds), shields = coalesce($6, shields), shield_active = coalesce($7, shield_active)
+     where id = $1`,
+    [room, sc.level, sc.lives ?? null, sc.shurikens ?? null, sc.rewinds ?? null, sc.shields ?? null, sc.shieldActive ?? null],
   );
   await t.admin(`delete from public.hands where room_id = $1`, [room]);
   for (let i = 0; i < sc.players; i++) {
@@ -45,6 +51,9 @@ describe('escenarios compartidos (servidor SQL)', () => {
         if ('play' in step) p = t.rpc(ids[step.play[0]]!, 'play_card', { p_room: room, p_card: step.play[1] });
         else if ('propose' in step) p = t.rpc(ids[step.propose]!, 'propose_shuriken', { p_room: room });
         else if ('vote' in step) p = t.rpc(ids[step.vote[0]]!, 'vote_shuriken', { p_room: room, p_accept: step.vote[1] });
+        else if ('shield' in step) p = t.rpc(ids[step.shield]!, 'propose_shield', { p_room: room });
+        else if ('pick' in step) p = t.rpc(ids[step.pick[0]]!, 'pick_comodin', { p_room: room, p_level: await levelOf(room), p_kind: step.pick[1] });
+        else if ('ready' in step) p = t.rpc(ids[step.ready]!, 'ready_next_level', { p_room: room, p_level: await levelOf(room) });
         else {
           p = t.rpc(ids[step.leave]!, 'leave_room', { p_room: room });
           present.splice(present.indexOf(ids[step.leave]!), 1);
@@ -59,6 +68,11 @@ describe('escenarios compartidos (servidor SQL)', () => {
       if (ex.level !== undefined) expect(r.level).toBe(ex.level);
       if (ex.lives !== undefined) expect(r.lives).toBe(ex.lives);
       if (ex.shurikens !== undefined) expect(r.shurikens).toBe(ex.shurikens);
+      if (ex.rewinds !== undefined) expect(r.rewinds).toBe(ex.rewinds);
+      if (ex.shields !== undefined) expect(r.shields).toBe(ex.shields);
+      if (ex.shieldActive !== undefined) expect(r.shield_active).toBe(ex.shieldActive);
+      if (ex.vote !== undefined) expect(r.vote ? (r.vote.kind ?? 'shuriken') : null).toBe(ex.vote);
+      if (ex.offer !== undefined) expect(r.offer ? [...r.offer.choices].sort() : null).toEqual(ex.offer);
       if (ex.hands) {
         const hands = [];
         for (const id of present) {
@@ -73,7 +87,8 @@ describe('escenarios compartidos (servidor SQL)', () => {
       if (ex.pile) expect(r.pile.map((x: any) => x.c)).toEqual(ex.pile);
       if (ex.revealed) expect(r.revealed.map((x: any) => x.c).sort((a: number, b: number) => a - b)).toEqual(ex.revealed);
       if (ex.reward !== undefined) {
-        expect(r.last_reward ? { lives: r.last_reward.lives, shurikens: r.last_reward.shurikens } : null).toEqual(ex.reward);
+        const w = r.last_reward;
+        expect(w ? { lives: w.lives, shurikens: w.shurikens, rewinds: w.rewinds ?? 0, shields: w.shields ?? 0 } : null).toEqual(ex.reward);
       }
     });
   }

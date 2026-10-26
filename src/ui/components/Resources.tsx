@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import type { ConnectionState } from '../../game/controller';
-import { LifeIcon, VistazoIcon } from './Icons';
+import { LifeIcon, ShieldIcon } from './Icons';
 
 export function Lives({ count }: { count: number }) {
   return (
@@ -13,13 +13,11 @@ export function Lives({ count }: { count: number }) {
   );
 }
 
-export function Vistazos({ count }: { count: number }) {
+/** Escudo activado en este nivel. */
+export function ShieldOn() {
   return (
-    <span className="resource resource-shuriken" aria-label={`${t('common.shurikens')}: ${count}`} title={t('common.shurikens')}>
-      <VistazoIcon size={20} />
-      <span className="resource-count" key={count}>
-        {count}
-      </span>
+    <span className="resource resource-shield shield-on" title={t('comodin.shieldOnHint')} aria-label={t('comodin.shieldOnHint')}>
+      <ShieldIcon size={20} />
     </span>
   );
 }

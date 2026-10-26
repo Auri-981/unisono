@@ -4,9 +4,9 @@ import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { api, ApiError } from '../../net/api';
 import { ConfigEditor } from '../components/ConfigEditor';
-import { VistazoIcon } from '../components/Icons';
+import { ComodinIcon, RewindIcon, ShieldIcon, VistazoIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
-import { LIFE_SYMBOL, VISTAZO_SYMBOL } from '../rewards';
+import { LIFE_SYMBOL, COMODIN_SYMBOL } from '../rewards';
 import { setPrefs, usePrefs } from '../prefs';
 
 export function RulesScreen({ onBack }: { onBack: () => void }) {
@@ -34,12 +34,37 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
           las cartas más bajas que la jugada se descartan boca arriba y la partida sigue. Sin vidas, se pierde.
         </p>
         <h2>
-          <VistazoIcon size={18} className="rules-icon" /> Vistazos
+          <ComodinIcon size={18} className="rules-icon" /> Comodines
         </h2>
         <p>
-          Cualquiera puede proponer usar un vistazo. Si todos aceptan en 15 segundos, cada jugador descarta la carta que
-          le toca. Es una forma de salir de un atasco y de obtener información. Si te lo rechazan, no puedes volver a
-          pedirlo hasta que se juegue alguna carta.
+          Hay tres comodines. Para usar uno tienen que aceptarlo <strong>todos</strong>; basta un «no» para que no se
+          use (y no se gasta).
+        </p>
+        <h3>
+          <VistazoIcon size={16} className="rules-icon" /> Vistazo
+        </h3>
+        <p>
+          Cualquiera puede proponerlo. Si todos aceptan en 15 segundos, cada jugador descarta la carta que le toca. Sirve
+          para salir de un atasco y obtener información.
+        </p>
+        <h3>
+          <ShieldIcon size={16} className="rules-icon rules-icon-shield" /> Escudo
+        </h3>
+        <p>
+          Cualquiera puede proponerlo cuando el grupo no lo tenga claro. Si todos aceptan, el siguiente error de ese nivel
+          no cuesta vida (las cartas se descartan igualmente). Si no hay ningún error, el escudo se pierde al acabar el
+          nivel.
+        </p>
+        <h3>
+          <RewindIcon size={16} className="rules-icon rules-icon-rewind" /> Rebobinar
+        </h3>
+        <p>
+          No se propone: aparece solo cuando perdéis una vida, preguntando si queréis usarlo. Si todos aceptan en 20
+          segundos, recuperáis esa vida y seguís jugando (las cartas descartadas no vuelven). Funciona incluso con la
+          última vida: si no lo usáis, la partida termina.
+        </p>
+        <p>
+          Si te rechazan un vistazo o un escudo, no puedes proponer otro comodín hasta que se juegue alguna carta.
         </p>
         <h2>Niveles y recompensas</h2>
         <ul>
@@ -52,8 +77,13 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
         <p>El anfitrión puede elegir jugar menos niveles para una partida más corta (nunca más de los que tocan).</p>
         <p>
           Recompensas clásicas al superar un nivel:{' '}
-          {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : VISTAZO_SYMBOL}`).join(' · ')} (máximo{' '}
-          {DEFAULT_CONFIG.maxLives} vidas y {DEFAULT_CONFIG.maxShurikens} vistazos). El anfitrión puede personalizarlas.
+          {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : COMODIN_SYMBOL}`).join(' · ')} (máximo{' '}
+          {DEFAULT_CONFIG.maxLives} vidas y {DEFAULT_CONFIG.maxShurikens} de cada comodín). El anfitrión puede
+          personalizarlas.
+        </p>
+        <p>
+          {COMODIN_SYMBOL} es un comodín a elegir: aparecen dos de los tres al azar, con su explicación, y cada uno vota el
+          que prefiere. Gana el más votado; si hay empate, se decide al azar. Los que ya estén al máximo no se ofrecen.
         </p>
         <h2>Orden descendente</h2>
         <p>
@@ -67,7 +97,7 @@ export function RulesScreen({ onBack }: { onBack: () => void }) {
           <li>Clásica: como el juego original.</li>
           <li>
             Difícil: empezáis con 1 sola vida y sin vistazos, y hay menos recompensas (
-            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : VISTAZO_SYMBOL}`).join(' · ')}).
+            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : COMODIN_SYMBOL}`).join(' · ')}).
           </li>
         </ul>
         <h2>Consejos</h2>

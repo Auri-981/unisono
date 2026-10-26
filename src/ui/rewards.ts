@@ -1,14 +1,22 @@
 /** Recompensa que se obtendrá al superar un nivel (para anunciarla antes de jugarlo). */
 import { rewardFor, rewardTable, startingResources } from '../config/gameConfig';
-import type { PublicRoom, Reward, RoomConfig } from '../game/types';
+import { COMODIN_KINDS, type ComodinKind, type PublicRoom, type Reward, type RoomConfig } from '../game/types';
 import { t } from '../i18n';
 
 export interface UpcomingReward {
   lives: number;
+  /** Comodines a elegir (nombre histórico del campo). */
   shurikens: number;
   /** Ya tenéis el máximo: esa parte del premio no se sumará. */
   livesFull: boolean;
+  /** Todos los comodines están al máximo. */
   shurikensFull: boolean;
+}
+
+/** Cuántos comodines de cada tipo tiene el equipo. */
+export function comodinCount(room: PublicRoom, kind: ComodinKind): number {
+  if (kind === 'shuriken') return room.shurikens;
+  return (kind === 'rewind' ? room.rewinds : room.shields) ?? 0;
 }
 
 /**
@@ -24,18 +32,19 @@ export function upcomingReward(room: PublicRoom, players: number, level = room.l
   return {
     ...r,
     livesFull: r.lives > 0 && room.lives >= start.livesCap,
-    shurikensFull: r.shurikens > 0 && room.shurikens >= start.shurikensCap,
+    shurikensFull: r.shurikens > 0 && COMODIN_KINDS.every((k) => comodinCount(room, k) >= start.shurikensCap),
   };
 }
 
 /** Símbolos para textos sencillos (listas en desplegables, reglas). */
 export const LIFE_SYMBOL = '♥';
-export const VISTAZO_SYMBOL = '👁';
+/** Un comodín a elegir. */
+export const COMODIN_SYMBOL = '★';
 
-/** «2👁 3♥ 5👁…»: lista compacta de una tabla de recompensas. */
+/** «2★ 3♥ 5★…»: lista compacta de una tabla de recompensas. */
 export function rewardListText(rewards: Reward[]): string {
   return rewards
-    .map((r) => `${r.level}${LIFE_SYMBOL.repeat(r.lives)}${VISTAZO_SYMBOL.repeat(r.shurikens)}`)
+    .map((r) => `${r.level}${LIFE_SYMBOL.repeat(r.lives)}${COMODIN_SYMBOL.repeat(r.shurikens)}`)
     .join(' ');
 }
 
@@ -45,7 +54,7 @@ export function rewardPresetLabel(config: RoomConfig, preset = config.rewardPres
   return t(`config.rewards.${preset}`);
 }
 
-/** «+1 vida y +1 shuriken», indicando lo que no se sumará por estar al máximo. */
+/** «+1 vida y +1 comodín», indicando lo que no se sumará por estar al máximo. */
 export function rewardText(r: UpcomingReward): string {
   const parts: string[] = [];
   if (r.lives > 0) {

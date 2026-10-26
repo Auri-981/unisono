@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { RoomController } from '../../../game/controller';
+import type { ComodinKind } from '../../../game/types';
 import { errorMessage, t } from '../../../i18n';
 import { Card, CardBacks } from '../../components/Card';
-import { ChatIcon, CrownIcon, ExitIcon, LifeIcon, VistazoIcon } from '../../components/Icons';
+import { ChatIcon, ComodinIcon, ComodinKindIcon, CrownIcon, ExitIcon, LifeIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
-import { ConnectionDot, Lives, Vistazos } from '../../components/Resources';
+import { ConnectionDot, Lives, ShieldOn } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
-import { Countdown, EndScreen, LevelComplete, VoteBanner } from './Overlays';
+import { Countdown, EndScreen, LevelComplete, RewindVote, VoteBanner } from './Overlays';
 import { useAfterPause } from './useAfterPause';
 import { useEventFeed } from './useEventFeed';
 
@@ -20,6 +21,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const [chatOpen, setChatOpen] = useState(false);
   const [seenChat, setSeenChat] = useState(ctl.chat.length);
   const [errorToast, setErrorToast] = useState<string | null>(null);
+  const [infoToast, setInfoToast] = useState<string | null>(null);
 
   const playing = room.status === 'playing';
   // Orden descendente (100 → 1): la mano ya llega ordenada «en orden de juego» desde el servidor.
@@ -58,6 +60,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
     }
   };
 
+  useEffect(() => {
+    if (!infoToast) return;
+    const id = window.setTimeout(() => setInfoToast(null), 3000);
+    return () => window.clearTimeout(id);
+  }, [infoToast]);
+
   const leave = () => {
     if (room.status === 'playing' || room.status === 'level_complete') {
       if (!window.confirm(t('game.leaveConfirm'))) return;
@@ -65,18 +73,24 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
     void ctl.actions.leave();
   };
 
-  // Si te rechazaron (o caducó) tu shuriken, no puedes repetirlo hasta que se juegue una carta.
-  const shurikenBlocked = room.shurikenBlocked?.includes(me) ?? false;
-  const canPropose =
-    playing && !vote && !shurikenBlocked && room.shurikens > 0 && myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0) > 0;
+  // Si te rechazaron (o caducó) un comodín, no puedes proponer otro hasta que se juegue una carta.
+  const blocked = room.shurikenBlocked?.includes(me) ?? false;
+  const cardsOnTable = myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0);
+  const canPropose = playing && !vote && !blocked && cardsOnTable > 0 && !ctl.busy;
+  const shields = room.shields ?? 0;
+  const rewinds = room.rewinds ?? 0;
+  const shieldActive = room.shieldActive ?? false;
+  // Rebobinar se pregunta en una ventana propia (lo propone el juego al perder una vida).
+  const rewindVote = playing && vote?.kind === 'rewind';
 
   // Premio que se obtendrá al superar el nivel actual (se anuncia durante la ronda).
   const reward = upcomingReward(room, players.length);
 
   // Tras la última carta, unos segundos para verla antes de «nivel superado» / fin de partida.
   const ended = room.status === 'won' || room.status === 'lost' || room.status === 'abandoned';
-  const resultAt =
-    snap.lastEvent && ['level_complete', 'won', 'lost'].includes(snap.lastEvent.kind) ? snap.lastEvent.at : undefined;
+  // (Tras «nivel superado» puede llegar otro evento, p. ej. el comodín dado directamente.)
+  const recent = snap.recentEvents?.length ? snap.recentEvents : snap.lastEvent ? [snap.lastEvent] : [];
+  const resultAt = [...recent].reverse().find((e) => ['level_complete', 'won', 'lost'].includes(e.kind))?.at;
   const showLevelComplete = useAfterPause(room.status === 'level_complete', resultAt, ctl.clockOffset);
   const showEnd = useAfterPause(ended, room.status === 'abandoned' ? undefined : resultAt, ctl.clockOffset);
 
@@ -103,8 +117,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
                 </span>
               )}
               {reward.shurikens > 0 && (
-                <span className={`resource resource-shuriken ${reward.shurikensFull ? 'is-full' : ''}`}>
-                  <VistazoIcon size={15} />+{reward.shurikens}
+                <span className={`resource resource-comodin ${reward.shurikensFull ? 'is-full' : ''}`}>
+                  <ComodinIcon size={15} />+{reward.shurikens}
                 </span>
               )}
             </span>
@@ -112,7 +126,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         )}
         <div className="game-resources">
           <Lives count={room.lives} />
-          <Vistazos count={room.shurikens} />
+          {shieldActive && <ShieldOn />}
         </div>
         {ctl.kind === 'online' && <ConnectionDot state={ctl.connection} />}
       </header>
@@ -140,14 +154,25 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       <section className="table">
         {/* Avisos en su propia línea: nunca tapan cartas. Prioridad: error propio, evento, pista. */}
         <div className="status-line" aria-live="polite">
-          {vote && playing ? (
+          {vote && playing && !rewindVote ? (
             <VoteBanner ctl={ctl} snap={snap} />
           ) : errorToast ? (
             <Toast tone="danger" title={errorToast} />
+          ) : infoToast ? (
+            <Toast tone="info" title={infoToast} />
           ) : feed.item ? (
             <Toast tone={feed.item.tone} title={feed.item.title} detail={feed.item.detail} />
           ) : (
-            playing && !vote && <p className="table-hint">{t(desc ? 'game.hintDesc' : 'game.hint')}</p>
+            playing &&
+            !vote && (
+              <p className={`table-hint ${shieldActive ? 'table-hint-shield' : ''}`}>
+                {blocked
+                  ? t('comodin.blocked')
+                  : shieldActive
+                    ? t('comodin.shieldOnHint')
+                    : t(desc ? 'game.hintDesc' : 'game.hint')}
+              </p>
+            )
           )}
         </div>
         <div className="pile">
@@ -199,14 +224,23 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       </section>
 
       <footer className="game-footer">
-        <button
-          type="button"
-          className="btn btn-secondary shuriken-btn"
-          disabled={!canPropose || ctl.busy}
-          onClick={() => void ctl.actions.proposeShuriken()}
-        >
-          <VistazoIcon size={18} /> {playing && shurikenBlocked && !vote ? t('game.shurikenBlocked') : t('game.useShuriken')}
-        </button>
+        <div className="comodin-bar" role="group" aria-label={t('common.comodines')}>
+          <ComodinButton
+            kind="shuriken"
+            count={room.shurikens}
+            disabled={!canPropose || room.shurikens <= 0}
+            onClick={() => void ctl.actions.proposeShuriken()}
+          />
+          <ComodinButton
+            kind="shield"
+            count={shields}
+            active={shieldActive}
+            disabled={!canPropose || shields <= 0 || shieldActive}
+            onClick={() => void ctl.actions.proposeShield()}
+          />
+          {/* Rebobinar no se propone: se ofrece solo al perder una vida. Al tocarlo se explica. */}
+          <ComodinButton kind="rewind" count={rewinds} passive onClick={() => setInfoToast(t('comodin.rewindInfo'))} />
+        </div>
         {chatEnabled && (
           <button type="button" className="btn btn-secondary chat-btn" onClick={() => setChatOpen(true)} aria-label={t('game.chat')}>
             <ChatIcon size={18} />
@@ -224,10 +258,47 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           onDone={feed.clearCountdown}
         />
       )}
+      {rewindVote && <RewindVote ctl={ctl} snap={snap} />}
       {room.status === 'level_complete' && showLevelComplete && <LevelComplete ctl={ctl} snap={snap} />}
       {ended && showEnd && (
         <EndScreen ctl={ctl} snap={snap} onExit={onExit} />
       )}
     </div>
+  );
+}
+
+/** Botón de un comodín con su número. */
+function ComodinButton({
+  kind,
+  count,
+  disabled,
+  active,
+  passive,
+  onClick,
+}: {
+  kind: ComodinKind;
+  count: number;
+  disabled?: boolean;
+  active?: boolean;
+  passive?: boolean;
+  onClick: () => void;
+}) {
+  const name = t(`comodin.${kind}`);
+  return (
+    <button
+      type="button"
+      className={`comodin-btn comodin-${kind} ${active ? 'is-active' : ''} ${passive ? 'is-passive' : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={`${name}: ${count}${active ? ` · ${t('comodin.shieldOn')}` : ''}`}
+    >
+      <span className="comodin-btn-top">
+        <ComodinKindIcon kind={kind} size={20} />
+        <span className="comodin-btn-count" key={count}>
+          {count}
+        </span>
+      </span>
+      <span className="comodin-btn-name">{active ? t('comodin.shieldOn') : name}</span>
+    </button>
   );
 }

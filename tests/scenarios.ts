@@ -4,12 +4,15 @@
  * funciones SQL reales del servidor (tests/integration/conformance.test.ts).
  * Si ambos motores dan el mismo resultado, las reglas no se han desincronizado.
  */
-import type { GameErrorCode, RoomConfig, RoomStatus } from '../src/game/types';
+import type { ComodinKind, GameErrorCode, RoomConfig, RoomStatus } from '../src/game/types';
 
 export type Step =
   | { play: [player: number, card: number]; error?: GameErrorCode }
   | { propose: number; error?: GameErrorCode }
   | { vote: [player: number, accept: boolean]; error?: GameErrorCode }
+  | { shield: number; error?: GameErrorCode }
+  | { pick: [player: number, kind: ComodinKind]; error?: GameErrorCode }
+  | { ready: number }
   | { leave: number };
 
 export interface Scenario {
@@ -20,6 +23,9 @@ export interface Scenario {
   level: number;
   lives?: number;
   shurikens?: number;
+  rewinds?: number;
+  shields?: number;
+  shieldActive?: boolean;
   hands: number[][];
   steps: Step[];
   expect: {
@@ -27,13 +33,22 @@ export interface Scenario {
     level?: number;
     lives?: number;
     shurikens?: number;
+    rewinds?: number;
+    shields?: number;
+    shieldActive?: boolean;
+    /** Votación en curso (su tipo) o null. */
+    vote?: ComodinKind | null;
+    /** Comodines ofrecidos para elegir (en orden alfabético) o null. */
+    offer?: ComodinKind[] | null;
     /** Manos restantes por jugador (índices de jugadores que siguen en la sala). */
     hands?: number[][];
     pile?: number[];
     revealed?: number[];
-    reward?: { lives: number; shurikens: number } | null;
+    reward?: { lives: number; shurikens: number; rewinds: number; shields: number } | null;
   };
 }
+
+const NO_REWARD = { lives: 0, shurikens: 0, rewinds: 0, shields: 0 };
 
 export const SCENARIOS: Scenario[] = [
   {
@@ -59,7 +74,7 @@ export const SCENARIOS: Scenario[] = [
     hands: [[30], [50]],
     steps: [{ play: [1, 50] }],
     // Se descarta el 30; las manos quedan vacías → nivel superado.
-    expect: { status: 'level_complete', lives: 1, hands: [[], []], pile: [50], revealed: [30], reward: { lives: 0, shurikens: 0 } },
+    expect: { status: 'level_complete', lives: 1, hands: [[], []], pile: [50], revealed: [30], reward: NO_REWARD },
   },
   {
     name: 'error con varias cartas inferiores: una sola vida y se descartan todas',
@@ -87,13 +102,58 @@ export const SCENARIOS: Scenario[] = [
     expect: { status: 'lost', lives: 0 },
   },
   {
-    name: 'nivel superado con recompensa clásica (nivel 2 → +1 shuriken)',
+    name: 'nivel superado con premio de comodín: se ofrecen 2 para elegir (sin los que están al máximo)',
     players: 2,
+    // Máximo 1 de cada comodín y ya tenéis 1 vistazo: se ofrecen Rebobinar y Escudo.
+    config: { maxShurikens: 1 },
     level: 2,
     shurikens: 1,
     hands: [[1, 2], [3, 4]],
     steps: [{ play: [0, 1] }, { play: [0, 2] }, { play: [1, 3] }, { play: [1, 4] }],
-    expect: { status: 'level_complete', level: 2, shurikens: 2, lives: 2, reward: { lives: 0, shurikens: 1 } },
+    expect: { status: 'level_complete', level: 2, shurikens: 1, lives: 2, offer: ['rewind', 'shield'], reward: NO_REWARD },
+  },
+  {
+    name: 'elegir comodín: cuando votan todos gana el más votado y después se pasa de nivel',
+    players: 3,
+    config: { maxShurikens: 1 },
+    level: 2,
+    shurikens: 1,
+    hands: [[1, 2], [3, 4], [5, 6]],
+    steps: [
+      ...[[0, 1], [0, 2], [1, 3], [1, 4], [2, 5], [2, 6]].map((x) => ({ play: x as [number, number] })),
+      { pick: [0, 'shuriken'], error: 'INVALID_STATE' },
+      { ready: 0 },
+      { ready: 1 },
+      { ready: 2 }, // todos listos, pero falta elegir: todavía no se avanza
+      { pick: [0, 'rewind'] },
+      { pick: [0, 'shield'] }, // se puede cambiar el voto
+      { pick: [1, 'rewind'] },
+      { pick: [2, 'shield'] },
+    ],
+    expect: { status: 'playing', level: 3, shields: 1, rewinds: 0, shurikens: 1, offer: null },
+  },
+  {
+    name: 'si solo queda un comodín posible se da directamente',
+    players: 2,
+    config: { maxShurikens: 1 },
+    level: 2,
+    shurikens: 1,
+    rewinds: 1,
+    hands: [[1], [2]],
+    steps: [{ play: [0, 1] }, { play: [1, 2] }],
+    expect: { status: 'level_complete', shields: 1, rewinds: 1, offer: null, reward: { ...NO_REWARD, shields: 1 } },
+  },
+  {
+    name: 'con todos los comodines al máximo el premio no se aplica',
+    players: 2,
+    config: { maxShurikens: 1 },
+    level: 2,
+    shurikens: 1,
+    rewinds: 1,
+    shields: 1,
+    hands: [[1], [2]],
+    steps: [{ play: [0, 1] }, { play: [1, 2] }],
+    expect: { status: 'level_complete', offer: null, reward: NO_REWARD },
   },
   {
     name: 'las recompensas no superan el máximo configurado',
@@ -103,16 +163,25 @@ export const SCENARIOS: Scenario[] = [
     lives: 3,
     hands: [[1, 2, 3], [4, 5, 6]],
     steps: [{ play: [0, 1] }, { play: [0, 2] }, { play: [0, 3] }, { play: [1, 4] }, { play: [1, 5] }, { play: [1, 6] }],
-    expect: { status: 'level_complete', lives: 3, reward: { lives: 0, shurikens: 0 } },
+    expect: { status: 'level_complete', lives: 3, reward: NO_REWARD },
   },
   {
-    name: 'recompensas personalizadas',
+    name: 'recompensas personalizadas: vidas y dos comodines a elegir, uno tras otro',
     players: 2,
-    config: { rewardPreset: 'custom', customRewards: [{ level: 1, lives: 2, shurikens: 1 }] },
+    config: { rewardPreset: 'custom', customRewards: [{ level: 1, lives: 2, shurikens: 2 }], maxShurikens: 1 },
     level: 1,
     hands: [[1], [2]],
-    steps: [{ play: [0, 1] }, { play: [1, 2] }],
-    expect: { status: 'level_complete', lives: 4, shurikens: 2, reward: { lives: 2, shurikens: 1 } },
+    steps: [{ play: [0, 1] }, { play: [1, 2] }, { pick: [0, 'rewind'] }, { pick: [1, 'rewind'] }],
+    // Tras elegir Rebobinar solo queda Escudo por debajo del máximo: se da directamente.
+    expect: {
+      status: 'level_complete',
+      lives: 4,
+      shurikens: 1,
+      rewinds: 1,
+      shields: 1,
+      offer: null,
+      reward: { lives: 2, shurikens: 0, rewinds: 1, shields: 1 },
+    },
   },
   {
     name: 'victoria al superar el último nivel',
@@ -227,6 +296,139 @@ export const SCENARIOS: Scenario[] = [
     hands: [[5], [8]],
     steps: [{ leave: 1 }],
     expect: { status: 'abandoned' },
+  },
+
+  // ───── Escudo ─────
+  {
+    name: 'escudo: todos aceptan y el siguiente error no cuesta vida (pero sí descarta)',
+    players: 2,
+    level: 2,
+    shields: 1,
+    hands: [[30, 80], [50, 90]],
+    steps: [{ shield: 0 }, { play: [1, 50], error: 'VOTE_IN_PROGRESS' }, { vote: [1, true] }, { play: [1, 50] }],
+    expect: { status: 'playing', lives: 2, shields: 0, shieldActive: false, hands: [[80], [90]], pile: [50], revealed: [30] },
+  },
+  {
+    name: 'escudo: solo protege de UN error',
+    players: 2,
+    level: 3,
+    shieldActive: true,
+    hands: [[10, 30, 70], [20, 50, 90]],
+    steps: [{ play: [1, 20] }, { play: [1, 50] }],
+    expect: { status: 'playing', lives: 1, shieldActive: false, revealed: [10, 30] },
+  },
+  {
+    name: 'escudo rechazado: no se gasta y quien lo propuso espera a que se juegue una carta',
+    players: 2,
+    level: 2,
+    shields: 1,
+    hands: [[5, 50], [8, 51]],
+    steps: [{ shield: 0 }, { vote: [1, false] }, { shield: 0, error: 'SHURIKEN_BLOCKED' }, { propose: 0, error: 'SHURIKEN_BLOCKED' }],
+    expect: { status: 'playing', shields: 1, shieldActive: false, vote: null },
+  },
+  {
+    name: 'escudo: no se puede proponer sin escudos',
+    players: 2,
+    level: 2,
+    shields: 0,
+    hands: [[5, 50], [8, 51]],
+    steps: [{ shield: 0, error: 'NO_SHIELDS' }],
+    expect: { status: 'playing', shields: 0, vote: null },
+  },
+  {
+    name: 'escudo: no se puede activar otro si ya hay uno activo',
+    players: 2,
+    level: 2,
+    shields: 1,
+    shieldActive: true,
+    hands: [[5, 50], [8, 51]],
+    steps: [{ shield: 1, error: 'SHIELD_ACTIVE' }],
+    expect: { status: 'playing', shields: 1, shieldActive: true },
+  },
+  {
+    name: 'el escudo dura solo el nivel en que se activa',
+    players: 2,
+    level: 1,
+    shieldActive: true,
+    hands: [[1], [2]],
+    steps: [{ play: [0, 1] }, { play: [1, 2] }],
+    expect: { status: 'level_complete', shieldActive: false },
+  },
+
+  // ───── Rebobinar ─────
+  {
+    name: 'rebobinar: tras perder una vida se vota y, si todos aceptan, se recupera',
+    players: 2,
+    level: 2,
+    rewinds: 1,
+    hands: [[30, 80], [50, 90]],
+    steps: [
+      { play: [1, 50] },
+      { play: [0, 80], error: 'VOTE_IN_PROGRESS' },
+      { propose: 0, error: 'VOTE_IN_PROGRESS' },
+      { vote: [0, true] },
+      { vote: [1, true] },
+      { play: [0, 80] },
+    ],
+    expect: { status: 'playing', lives: 2, rewinds: 0, vote: null, hands: [[], [90]], pile: [50, 80], revealed: [30] },
+  },
+  {
+    name: 'rebobinar rechazado: la vida se pierde, el comodín se guarda y se sigue jugando',
+    players: 2,
+    level: 2,
+    rewinds: 1,
+    hands: [[30, 80], [50, 90]],
+    steps: [{ play: [1, 50] }, { vote: [0, true] }, { vote: [1, false] }, { play: [0, 80] }],
+    expect: { status: 'playing', lives: 1, rewinds: 1, vote: null, pile: [50, 80] },
+  },
+  {
+    name: 'rebobinar en la última vida: si se usa, la partida sigue',
+    players: 2,
+    level: 2,
+    lives: 1,
+    rewinds: 2,
+    hands: [[30, 80], [50, 90]],
+    steps: [{ play: [1, 50] }, { vote: [0, true] }, { vote: [1, true] }],
+    expect: { status: 'playing', lives: 1, rewinds: 1, vote: null },
+  },
+  {
+    name: 'rebobinar en la última vida: si no se usa, se pierde la partida',
+    players: 2,
+    level: 2,
+    lives: 1,
+    rewinds: 1,
+    hands: [[30, 80], [50, 90]],
+    steps: [{ play: [1, 50] }, { vote: [0, false] }, { play: [0, 80], error: 'NOT_PLAYING' }],
+    expect: { status: 'lost', lives: 0, rewinds: 1 },
+  },
+  {
+    name: 'rebobinar cuando el error vacía las manos: el nivel termina después de votar',
+    players: 2,
+    level: 1,
+    rewinds: 1,
+    hands: [[30], [50]],
+    steps: [{ play: [1, 50] }, { vote: [0, true] }, { vote: [1, true] }],
+    expect: { status: 'level_complete', lives: 2, rewinds: 0, vote: null, reward: NO_REWARD },
+  },
+  {
+    name: 'con un escudo activo no se pierde vida, así que no se pregunta por rebobinar',
+    players: 2,
+    level: 2,
+    rewinds: 1,
+    shieldActive: true,
+    hands: [[30, 80], [50, 90]],
+    steps: [{ play: [1, 50] }],
+    expect: { status: 'playing', lives: 2, rewinds: 1, shieldActive: false, vote: null },
+  },
+  {
+    name: 'si alguien sale durante la votación de rebobinar, no se usa',
+    players: 3,
+    level: 2,
+    lives: 1,
+    rewinds: 1,
+    hands: [[30, 80], [50, 90], [60, 95]],
+    steps: [{ play: [1, 50] }, { vote: [0, true] }, { leave: 2 }],
+    expect: { status: 'lost', rewinds: 1 },
   },
 
   // ───── Orden descendente (100 → 1). Las manos se escriben de menor a mayor. ─────

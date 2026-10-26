@@ -3,6 +3,7 @@ import {
   CLASSIC_REWARDS,
   DEFAULT_CONFIG,
   PLAYER_PRESETS,
+  REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
   normalizeConfig,
   rewardFor,
@@ -256,7 +257,7 @@ describe('votación de shuriken', () => {
     s = ok(E.expireVote(s, later));
     expect(s.vote).toBeNull();
     expect(s.shurikens).toBe(1);
-    expect(s.lastEvent?.payload).toEqual({ reason: 'expired' });
+    expect(s.lastEvent?.payload).toEqual({ reason: 'expired', kind: 'shuriken' });
   });
 
   it('una votación caducada no bloquea las jugadas', () => {
@@ -434,5 +435,102 @@ describe('progresión de niveles', () => {
     expect(s.version).toBe(v0 + 1);
     s = ok(E.proposeShuriken(s, 'p0', NOW));
     expect(s.version).toBe(v0 + 2);
+  });
+});
+
+describe('comodines: rebobinar, escudo y elección', () => {
+  /** Partida de 2 jugadores con las manos indicadas en el nivel `level`. */
+  function game(hands: number[][], level = hands[0]!.length, config?: unknown) {
+    let { s } = room(hands.length, config);
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    s.level = level;
+    s.hands = Object.fromEntries(hands.map((h, i) => [`p${i}`, h]));
+    return s;
+  }
+
+  it('rebobinar caduca a los 20 segundos: cuenta como no usarlo', () => {
+    let s = game([[30, 80], [50, 90]]);
+    s.rewinds = 1;
+    s.lives = 1;
+    s = ok(E.playCard(s, 'p1', 50, NOW));
+    expect(s.vote).toMatchObject({ kind: 'rewind', proposer: null, votes: [] });
+    expect(s.status).toBe('playing');
+    expect(ok(E.expireVote(s, NOW + (REWIND_VOTE_SECONDS - 1) * 1000)).vote).not.toBeNull();
+    s = ok(E.expireVote(s, NOW + REWIND_VOTE_SECONDS * 1000 + 1));
+    expect(s.status).toBe('lost');
+    expect(s.rewinds).toBe(1);
+  });
+
+  it('elegir comodín: un empate se decide al azar entre los empatados', () => {
+    const kinds = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) {
+      let s = game([[1], [2]], 2, { maxShurikens: 1 });
+      s = ok(E.playCard(s, 'p0', 1, NOW));
+      s = ok(E.playCard(s, 'p1', 2, NOW, seededRng(seed)));
+      expect([...s.offer!.choices].sort()).toEqual(['rewind', 'shield']);
+      s = ok(E.pickComodin(s, 'p0', 2, 'rewind', seededRng(seed), NOW));
+      s = ok(E.pickComodin(s, 'p1', 2, 'shield', seededRng(seed + 1000), NOW));
+      expect(s.offer).toBeNull();
+      expect(s.rewinds + s.shields).toBe(1);
+      expect(s.lastEvent).toMatchObject({ kind: 'comodin_chosen', payload: { how: 'tie' } });
+      kinds.add(s.rewinds ? 'rewind' : 'shield');
+    }
+    expect(kinds).toEqual(new Set(['rewind', 'shield']));
+  });
+
+  it('se ofrecen siempre 2 comodines distintos y, con el tiempo, todas las parejas', () => {
+    const pairs = new Set<string>();
+    for (let seed = 1; seed <= 60; seed++) {
+      let s = game([[1], [2]], 2);
+      s = ok(E.playCard(s, 'p0', 1, NOW));
+      s = ok(E.playCard(s, 'p1', 2, NOW, seededRng(seed)));
+      const choices = s.offer!.choices;
+      expect(choices).toHaveLength(2);
+      expect(new Set(choices).size).toBe(2);
+      pairs.add([...choices].sort().join('+'));
+    }
+    expect(pairs).toEqual(new Set(['rewind+shield', 'rewind+shuriken', 'shield+shuriken']));
+  });
+
+  it('el anfitrión puede forzar el siguiente nivel aunque falte elegir: se decide con los votos que haya', () => {
+    let s = game([[1], [2]], 2, { maxShurikens: 1 });
+    s = ok(E.playCard(s, 'p0', 1, NOW));
+    s = ok(E.playCard(s, 'p1', 2, NOW));
+    s = ok(E.pickComodin(s, 'p1', 2, 'shield', seededRng(1), NOW));
+    // Votar algo que no se ofrece no vale.
+    expect(E.pickComodin(s, 'p0', 2, 'shuriken', seededRng(1), NOW)).toEqual({ ok: false, error: 'INVALID_STATE' });
+    s = ok(E.readyNextLevel(s, 'p0', 2, true, seededRng(2), NOW));
+    expect(s.status).toBe('playing');
+    expect(s.level).toBe(3);
+    expect(s.shields).toBe(1);
+    expect(s.offer).toBeNull();
+  });
+
+  it('si un jugador sale mientras se elige, cuentan los votos de los demás', () => {
+    let s = game([[1], [2], [3]], 2, { maxShurikens: 1 });
+    for (const [p, c] of [['p0', 1], ['p1', 2], ['p2', 3]] as const) s = ok(E.playCard(s, p, c, NOW));
+    s = ok(E.pickComodin(s, 'p0', 2, 'rewind', seededRng(1), NOW));
+    s = ok(E.pickComodin(s, 'p1', 2, 'rewind', seededRng(1), NOW));
+    s = ok(E.removePlayer(s, 'p2', 'left', seededRng(1), NOW));
+    expect(s.offer).toBeNull();
+    expect(s.rewinds).toBe(1);
+  });
+
+  it('el error protegido por el escudo lo indica en el evento', () => {
+    let s = game([[30, 80], [50, 90]]);
+    s.shieldActive = true;
+    s = ok(E.playCard(s, 'p1', 50, NOW));
+    expect(s.lastEvent).toMatchObject({ kind: 'mistake', payload: { shielded: true, lives: 2 } });
+  });
+
+  it('una foto incluye comodines, escudo activo y elección pendiente', () => {
+    let s = game([[1], [2]], 2, { maxShurikens: 1 });
+    s.shields = 1;
+    s = ok(E.playCard(s, 'p0', 1, NOW));
+    s = ok(E.playCard(s, 'p1', 2, NOW));
+    const snap = E.toSnapshot(s, 'p0', NOW);
+    // Solo quedaba Rebobinar por debajo del máximo: se da directamente.
+    expect(snap.room).toMatchObject({ rewinds: 1, shields: 1, shieldActive: false, offer: null });
+    expect(snap.lastReward).toMatchObject({ rewinds: 1, shields: 0, shurikens: 0 });
   });
 });

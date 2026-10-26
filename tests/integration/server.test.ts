@@ -442,6 +442,9 @@ describe('partidas completas a través de la API', () => {
         const snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
         expect(snap.room.status).toBe('level_complete');
         expect(snap.lastReward?.level).toBe(level);
+        // Si hay comodín para elegir, todos votan el primero que se ofrece.
+        const offer = snap.room.offer;
+        if (offer) for (const id of ids) await t.rpc(id, 'pick_comodin', { p_room: room, p_level: level, p_kind: offer.choices[0] });
         for (const id of ids) await t.rpc(id, 'ready_next_level', { p_room: room, p_level: level });
       }
     }
@@ -537,5 +540,82 @@ describe('chat (modo amigos)', () => {
     expect(await errorOf(t.rpc(ids[1]!, 'send_chat', { p_room: room, p_body: 'x'.repeat(201) }))).toBe('INVALID_MESSAGE');
     const rows = await t.as<{ name: string; body: string }>(ids[1]!, `select name, body from public.chat_messages where room_id = $1`, [room]);
     expect(rows).toEqual([{ name: 'Ana', body: '¡vamos!' }]);
+  });
+});
+
+describe('comodines a través de la API', () => {
+  it('la elección de comodín: votos visibles, empate al azar y solo entre los ofrecidos', async () => {
+    const seen = new Set<string>();
+    for (let i = 0; i < 12; i++) {
+      const { ids, room } = await started(2, { maxShurikens: 1 });
+      await setHands(room, ids, [[1], [2]], 2);
+      await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 1 });
+      let snap: RoomSnapshot = await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 2 });
+      expect(snap.room.status).toBe('level_complete');
+      expect([...snap.room.offer!.choices].sort()).toEqual(['rewind', 'shield']);
+      expect(await errorOf(t.rpc(ids[0]!, 'pick_comodin', { p_room: room, p_level: 2, p_kind: 'shuriken' }))).toBe('INVALID_STATE');
+      expect(await errorOf(t.rpc(ids[0]!, 'pick_comodin', { p_room: room, p_level: 2, p_kind: null }))).toBe('INVALID_STATE');
+      snap = await t.rpc(ids[0]!, 'pick_comodin', { p_room: room, p_level: 2, p_kind: 'rewind' });
+      expect(snap.room.offer!.votes).toEqual({ [ids[0]!]: 'rewind' });
+      // Un voto tardío de otro nivel no hace nada.
+      await t.rpc(ids[1]!, 'pick_comodin', { p_room: room, p_level: 1, p_kind: 'shield' });
+      snap = await t.rpc(ids[1]!, 'pick_comodin', { p_room: room, p_level: 2, p_kind: 'shield' });
+      expect(snap.room.offer).toBeNull();
+      expect((snap.room.rewinds ?? 0) + (snap.room.shields ?? 0)).toBe(1);
+      expect(snap.recentEvents!.at(-1)).toMatchObject({ kind: 'comodin_chosen', payload: { how: 'tie' } });
+      expect(snap.lastReward).toMatchObject({ level: 2, shurikens: 0 });
+      seen.add(snap.room.rewinds ? 'rewind' : 'shield');
+    }
+    expect(seen).toEqual(new Set(['rewind', 'shield']));
+  });
+
+  it('el anfitrión puede forzar el nivel con la elección pendiente', async () => {
+    const { ids, room } = await started(2, { maxShurikens: 1 });
+    await setHands(room, ids, [[1], [2]], 2);
+    await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 1 });
+    await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 2 });
+    await t.rpc(ids[1]!, 'pick_comodin', { p_room: room, p_level: 2, p_kind: 'shield' });
+    await t.rpc(ids[1]!, 'ready_next_level', { p_room: room, p_level: 2, p_force: true }); // no es anfitrión
+    let snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap.room.status).toBe('level_complete');
+    snap = await t.rpc(ids[0]!, 'ready_next_level', { p_room: room, p_level: 2, p_force: true });
+    expect(snap.room).toMatchObject({ status: 'playing', level: 3, shields: 1, offer: null });
+  });
+
+  it('rebobinar caduca y cuenta como no usarlo (con la última vida, se pierde)', async () => {
+    const { ids, room } = await started(2);
+    await setHands(room, ids, [[30, 80], [50, 90]]);
+    await t.admin(`update public.rooms set lives = 1, rewinds = 1 where id = $1`, [room]);
+    let snap: RoomSnapshot = await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 50 });
+    expect(snap.vote).toMatchObject({ kind: 'rewind', proposer: null, votes: [] });
+    expect(snap.room).toMatchObject({ status: 'playing', lives: 0 });
+    // Aún no ha caducado: no pasa nada.
+    snap = await t.rpc(ids[0]!, 'expire_shuriken_vote', { p_room: room });
+    expect(snap.vote).not.toBeNull();
+    await t.admin(`update public.rooms set vote = jsonb_set(vote, '{expiresAt}', to_jsonb(now() - interval '1 second')) where id = $1`, [room]);
+    snap = await t.rpc(ids[0]!, 'expire_shuriken_vote', { p_room: room });
+    expect(snap.room).toMatchObject({ status: 'lost', rewinds: 1 });
+    const h = await t.rpc(ids[0]!, 'get_my_history', {});
+    expect(h.games[0].result).toBe('lost');
+  });
+
+  it('proponer escudo dos veces con el mismo action_id solo crea una votación', async () => {
+    const { ids, room } = await started(2);
+    await t.admin(`update public.rooms set shields = 1 where id = $1`, [room]);
+    const action = crypto.randomUUID();
+    await t.rpc(ids[0]!, 'propose_shield', { p_room: room, p_action: action });
+    const snap: RoomSnapshot = await t.rpc(ids[0]!, 'propose_shield', { p_room: room, p_action: action });
+    expect(snap.vote).toMatchObject({ kind: 'shield', votes: [ids[0]] });
+    const after: RoomSnapshot = await t.rpc(ids[1]!, 'vote_shuriken', { p_room: room, p_accept: true });
+    expect(after.room).toMatchObject({ shields: 0, shieldActive: true });
+    expect(after.lastEvent?.kind).toBe('shield_used');
+  });
+
+  it('la revancha reinicia los comodines', async () => {
+    const { ids, room } = await started(2);
+    await t.admin(`update public.rooms set rewinds = 2, shields = 1, shield_active = true where id = $1`, [room]);
+    await t.rpc(ids[1]!, 'leave_room', { p_room: room });
+    const snap: RoomSnapshot = await t.rpc(ids[0]!, 'rematch', { p_room: room });
+    expect(snap.room).toMatchObject({ rewinds: 0, shields: 0, shieldActive: false, offer: null });
   });
 });

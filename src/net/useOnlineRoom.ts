@@ -216,7 +216,9 @@ export function useOnlineRoom(
     () => ({
       playCard: (card) => run(() => api.playCard(roomId, card)),
       proposeShuriken: () => run(() => api.proposeShuriken(roomId)),
+      proposeShield: () => run(() => api.proposeShield(roomId)),
       voteShuriken: (accept) => run(() => api.voteShuriken(roomId, accept)),
+      pickComodin: (kind) => run(() => api.pickComodin(roomId, snapRef.current?.room.level ?? 0, kind)),
       expireVote: () => run(() => api.expireVote(roomId)),
       readyNextLevel: (force) => run(() => api.readyNextLevel(roomId, snapRef.current?.room.level ?? 0, force)),
       setLobbyReady: (ready) => run(() => api.setLobbyReady(roomId, ready)),

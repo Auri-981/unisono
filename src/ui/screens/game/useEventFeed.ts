@@ -6,7 +6,7 @@
  * se procesan todos en orden y se muestra el mensaje más importante (error > éxito > info).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GameEvent, MistakePayload, RoomSnapshot, ShurikenUsedPayload } from '../../../game/types';
+import type { ComodinKind, GameEvent, MistakePayload, RoomSnapshot, ShurikenUsedPayload } from '../../../game/types';
 import { t } from '../../../i18n';
 import { sfx, vibrate } from '../../feedback';
 
@@ -64,14 +64,49 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
           break;
         case 'mistake': {
           const m = p as unknown as MistakePayload;
+          const cards = m.discarded.map((d) => d.c).join(', ');
           sfx.mistake();
           vibrate([80, 60, 120]);
           setShake(true);
           window.setTimeout(() => setShake(false), 550);
+          if (m.shielded) {
+            show(
+              'info',
+              ev.actor === me
+                ? t('event.mistakeShieldedMine', { card: m.card })
+                : t('event.mistakeShielded', { name: name(ev.actor), card: m.card }),
+              t('event.mistakeShieldedDetail', { cards }),
+            );
+          } else {
+            show(
+              'danger',
+              ev.actor === me ? t('event.mistakeMine', { card: m.card }) : t('event.mistake', { name: name(ev.actor), card: m.card }),
+              t('event.mistakeDetail', { cards }),
+            );
+          }
+          break;
+        }
+        case 'shield_used':
+          sfx.shuriken();
+          show('success', t('event.shieldUsed'));
+          break;
+        case 'rewind_offered':
+          vibrate(40);
+          break;
+        case 'rewind_used':
+          sfx.levelComplete();
+          show('success', t('event.rewindUsed'));
+          break;
+        case 'comodin_chosen': {
+          const comodin = t(`comodin.${String(p.kind) as ComodinKind}`);
+          sfx.shuriken();
           show(
-            'danger',
-            ev.actor === me ? t('event.mistakeMine', { card: m.card }) : t('event.mistake', { name: name(ev.actor), card: m.card }),
-            t('event.mistakeDetail', { cards: m.discarded.map((d) => d.c).join(', ') }),
+            'success',
+            p.how === 'tie'
+              ? t('event.comodinTie', { name: comodin })
+              : p.how === 'auto'
+                ? t('event.comodinAuto', { name: comodin })
+                : t('event.comodinChosen', { name: comodin }),
           );
           break;
         }
@@ -82,18 +117,21 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
           show('info', cards.length ? t('event.shurikenRevealed', { cards: cards.join(', ') }) : t('event.shurikenUsed'));
           break;
         }
-        case 'shuriken_cancelled':
+        case 'shuriken_cancelled': {
+          // Los textos de cada comodín: event.shuriken…, event.shield…, event.rewind…
+          const k = p.kind === 'shield' || p.kind === 'rewind' ? p.kind : 'shuriken';
           show(
             'info',
             p.reason === 'rejected'
               ? ev.actor === me
-                ? t('event.shurikenRejectedMine')
-                : t('event.shurikenRejected', { name: name(ev.actor) })
+                ? t(`event.${k}RejectedMine`)
+                : t(`event.${k}Rejected`, { name: name(ev.actor) })
               : p.reason === 'expired'
-                ? t('event.shurikenExpired')
-                : t('event.shurikenPlayerLeft'),
+                ? t(`event.${k}Expired`)
+                : t(`event.${k}PlayerLeft`),
           );
           break;
+        }
         case 'shuriken_proposed':
           sfx.shuriken();
           vibrate(40);

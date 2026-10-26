@@ -37,7 +37,7 @@ create table if not exists public.rooms (
   shurikens_cap int not null default 0,
   pile          jsonb not null default '[]'::jsonb,   -- [{c, p}] cartas jugadas en el nivel
   revealed      jsonb not null default '[]'::jsonb,   -- [{c, p, r}] descartes visibles
-  vote          jsonb,                                -- {proposer, votes[], expiresAt}
+  vote          jsonb,                                -- {kind, proposer, votes[], expiresAt}
   last_event    jsonb,
   last_reward   jsonb,
   event_seq     int not null default 0,
@@ -49,6 +49,12 @@ create index if not exists rooms_created_by_idx on public.rooms (created_by, cre
 create index if not exists rooms_updated_at_idx on public.rooms (updated_at);
 -- Añadida después: quién no puede volver a proponer shuriken hasta que se juegue una carta.
 alter table public.rooms add column if not exists shuriken_blocked jsonb not null default '[]'::jsonb;
+-- Añadidas después: comodines Rebobinar y Escudo, escudo activo en el nivel y elección de
+-- comodín pendiente tras superar un nivel ({choices[], left, votes{uid: tipo}}).
+alter table public.rooms add column if not exists rewinds int not null default 0;
+alter table public.rooms add column if not exists shields int not null default 0;
+alter table public.rooms add column if not exists shield_active boolean not null default false;
+alter table public.rooms add column if not exists offer jsonb;
 
 create table if not exists public.room_players (
   room_id      uuid not null references public.rooms (id) on delete cascade,
@@ -401,7 +407,8 @@ as $$
     'room', jsonb_build_object(
       'id', r.id, 'code', r.code, 'status', r.status, 'hostId', r.host_id, 'config', r.config,
       'gameNo', r.game_no, 'level', r.level, 'maxLevel', r.max_level, 'lives', r.lives,
-      'shurikens', r.shurikens, 'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
+      'shurikens', r.shurikens, 'rewinds', r.rewinds, 'shields', r.shields, 'shieldActive', r.shield_active,
+      'offer', r.offer, 'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
     'players', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
@@ -447,8 +454,9 @@ begin
     from public.room_players where room_id = p_room
   ) s on d.i % s.n = s.idx
   where d.i < s.n * v_level;
-  update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null,
-                          shuriken_blocked = '[]'::jsonb where id = p_room;
+  -- El escudo solo dura el nivel en que se activa.
+  update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, offer = null, last_reward = null,
+                          shield_active = false, shuriken_blocked = '[]'::jsonb where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
 end;
 $$;
@@ -458,7 +466,7 @@ returns void language plpgsql set search_path = ''
 as $$
 declare r public.rooms;
 begin
-  update public.rooms set status = p_status, vote = null where id = p_room returning * into r;
+  update public.rooms set status = p_status, vote = null, offer = null where id = p_room returning * into r;
   delete from public.hands where room_id = p_room;
   perform game_private.emit(p_room, p_status, null, jsonb_build_object('level', r.level));
   insert into public.game_results (room_id, game_no, result, level, max_level, player_ids, player_names)
@@ -469,6 +477,89 @@ begin
 end;
 $$;
 
+-- Comodín elegido: se suma y se apunta en la recompensa del nivel.
+create or replace function game_private.grant_comodin(p_room uuid, p_kind text, p_how text)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  v_field text := case p_kind when 'shuriken' then 'shurikens' when 'rewind' then 'rewinds' else 'shields' end;
+begin
+  update public.rooms
+     set shurikens = shurikens + (p_kind = 'shuriken')::int,
+         rewinds = rewinds + (p_kind = 'rewind')::int,
+         shields = shields + (p_kind = 'shield')::int,
+         last_reward = case when last_reward is null then null
+                            else jsonb_set(last_reward, array[v_field], to_jsonb(coalesce((last_reward ->> v_field)::int, 0) + 1)) end
+   where id = p_room;
+  perform game_private.emit(p_room, 'comodin_chosen', null, jsonb_build_object('kind', p_kind, 'how', p_how));
+end;
+$$;
+
+-- Prepara la elección: 2 de los 3 comodines al azar, sin los que ya están al máximo.
+-- Si solo queda uno posible se da directamente; si ninguno, el premio se pierde.
+create or replace function game_private.make_offer(p_room uuid, p_left int)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  v_left int := p_left;
+  v_open text[];
+  r public.rooms;
+begin
+  update public.rooms set offer = null where id = p_room;
+  while v_left > 0 loop
+    select * into r from public.rooms where id = p_room;
+    select coalesce(array_agg(k order by ord), '{}') into v_open
+      from unnest(array['shuriken', 'rewind', 'shield']) with ordinality as t (k, ord)
+     where case k when 'shuriken' then r.shurikens when 'rewind' then r.rewinds else r.shields end < r.shurikens_cap;
+    if cardinality(v_open) = 0 then return; end if;
+    if cardinality(v_open) = 1 then
+      perform game_private.grant_comodin(p_room, v_open[1], 'auto');
+      v_left := v_left - 1;
+      continue;
+    end if;
+    update public.rooms
+       set offer = jsonb_build_object(
+             'choices', (select jsonb_agg(x.k) from (select k from unnest(v_open) as k order by random() limit 2) x),
+             'left', v_left,
+             'votes', '{}'::jsonb)
+     where id = p_room;
+    return;
+  end loop;
+end;
+$$;
+
+-- Gana el comodín más votado (empate o sin votos: al azar entre los empatados).
+create or replace function game_private.resolve_offer(p_room uuid)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  v_offer jsonb;
+  v_kind text;
+  v_top int;
+begin
+  select offer into v_offer from public.rooms where id = p_room;
+  if v_offer is null then return; end if;
+  with tally as (
+    select c.k, (select count(*) from jsonb_each_text(v_offer -> 'votes') v where v.value = c.k) as n
+    from jsonb_array_elements_text(v_offer -> 'choices') as c (k)
+  ),
+  top as (select k from tally where n = (select max(n) from tally))
+  select (select k from top order by random() limit 1), (select count(*) from top) into v_kind, v_top;
+  perform game_private.grant_comodin(p_room, v_kind, case when v_top > 1 then 'tie' else 'vote' end);
+  perform game_private.make_offer(p_room, (v_offer ->> 'left')::int - 1);
+end;
+$$;
+
+-- ¿Han votado todos qué comodín elegir?
+create or replace function game_private.all_picked(p_room uuid)
+returns boolean language sql stable set search_path = ''
+as $$
+  select r.offer is not null and not exists (
+    select 1 from public.room_players p
+    where p.room_id = p_room and not ((r.offer -> 'votes') ? p.user_id::text))
+  from public.rooms r where r.id = p_room;
+$$;
+
 create or replace function game_private.check_level_end(p_room uuid)
 returns void language plpgsql set search_path = ''
 as $$
@@ -476,7 +567,6 @@ declare
   r public.rooms;
   v_reward jsonb;
   v_lives int;
-  v_sh int;
 begin
   select * into r from public.rooms where id = p_room;
   if r.status <> 'playing' then return; end if;
@@ -487,15 +577,17 @@ begin
   end if;
   v_reward := game_private.reward_for(r.config, r.level);
   v_lives := least(r.lives + (v_reward ->> 'lives')::int, greatest(r.lives_cap, r.lives));
-  v_sh := least(r.shurikens + (v_reward ->> 'shurikens')::int, greatest(r.shurikens_cap, r.shurikens));
   update public.rooms
-     set lives = v_lives, shurikens = v_sh, status = 'level_complete', vote = null,
-         last_reward = jsonb_build_object('level', r.level, 'lives', v_lives - r.lives, 'shurikens', v_sh - r.shurikens)
+     set lives = v_lives, status = 'level_complete', vote = null, shield_active = false,
+         last_reward = jsonb_build_object('level', r.level, 'lives', v_lives - r.lives,
+                                          'shurikens', 0, 'rewinds', 0, 'shields', 0)
    where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
   perform game_private.emit(p_room, 'level_complete', null, jsonb_build_object(
     'level', r.level,
-    'reward', jsonb_build_object('lives', v_lives - r.lives, 'shurikens', v_sh - r.shurikens)));
+    'reward', jsonb_build_object('lives', v_lives - r.lives, 'comodines', (v_reward ->> 'shurikens')::int)));
+  -- «shurikens» en la tabla de recompensas = comodines a elegir.
+  perform game_private.make_offer(p_room, (v_reward ->> 'shurikens')::int);
 end;
 $$;
 
@@ -514,7 +606,7 @@ create or replace function game_private.maybe_advance(p_room uuid)
 returns void language plpgsql set search_path = ''
 as $$
 begin
-  if exists (select 1 from public.rooms where id = p_room and status = 'level_complete')
+  if exists (select 1 from public.rooms where id = p_room and status = 'level_complete' and offer is null)
      and exists (select 1 from public.room_players where room_id = p_room)
      and not exists (select 1 from public.room_players where room_id = p_room and not ready) then
     perform game_private.start_next_level(p_room);
@@ -523,17 +615,38 @@ end;
 $$;
 
 -- Cancela la votación y apunta a quien la propuso: no podrá repetirla hasta que se juegue una carta.
-create or replace function game_private.cancel_vote_blocking(p_room uuid)
+drop function if exists game_private.cancel_vote_blocking(uuid);
+
+-- Cancela la votación en curso. Quien la propuso no podrá proponer otro comodín hasta que se
+-- juegue una carta (salvo si se canceló porque alguien salió). Si era Rebobinar, la vida no se
+-- recupera: sin vidas se pierde la partida; si no, el nivel sigue (o termina si no hay cartas).
+create or replace function game_private.cancel_vote(p_room uuid, p_actor uuid, p_reason text)
 returns void language plpgsql set search_path = ''
 as $$
+declare
+  v_vote jsonb;
+  v_kind text;
+  v_lives int;
 begin
+  select vote, lives into v_vote, v_lives from public.rooms where id = p_room;
+  if v_vote is null then return; end if;
+  v_kind := coalesce(v_vote ->> 'kind', 'shuriken');
   update public.rooms
      set shuriken_blocked = case
-           when shuriken_blocked ? (vote ->> 'proposer') then shuriken_blocked
-           else shuriken_blocked || jsonb_build_array(vote ->> 'proposer')
+           when p_reason = 'player_left' or (v_vote ->> 'proposer') is null
+                or shuriken_blocked ? (v_vote ->> 'proposer') then shuriken_blocked
+           else shuriken_blocked || jsonb_build_array(v_vote ->> 'proposer')
          end,
          vote = null
-   where id = p_room and vote is not null;
+   where id = p_room;
+  perform game_private.emit(p_room, 'shuriken_cancelled', p_actor, jsonb_build_object('reason', p_reason, 'kind', v_kind));
+  if v_kind = 'rewind' then
+    if v_lives <= 0 then
+      perform game_private.end_game(p_room, 'lost');
+    else
+      perform game_private.check_level_end(p_room);
+    end if;
+  end if;
 end;
 $$;
 
@@ -543,8 +656,7 @@ as $$
 begin
   if exists (select 1 from public.rooms
              where id = p_room and vote is not null and (vote ->> 'expiresAt')::timestamptz <= now()) then
-    perform game_private.cancel_vote_blocking(p_room);
-    perform game_private.emit(p_room, 'shuriken_cancelled', null, '{"reason":"expired"}'::jsonb);
+    perform game_private.cancel_vote(p_room, null, 'expired');
     return true;
   end if;
   return false;
@@ -604,6 +716,56 @@ begin
 end;
 $$;
 
+-- Todos han aceptado: se aplica el comodín votado.
+create or replace function game_private.execute_vote(p_room uuid)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  v_kind text;
+  v_lives int;
+begin
+  select coalesce(vote ->> 'kind', 'shuriken') into v_kind from public.rooms where id = p_room;
+  if v_kind = 'shuriken' then
+    perform game_private.execute_shuriken(p_room);
+  elsif v_kind = 'shield' then
+    update public.rooms set shields = shields - 1, shield_active = true, vote = null, shuriken_blocked = '[]'::jsonb
+     where id = p_room;
+    perform game_private.emit(p_room, 'shield_used', null, '{}'::jsonb);
+  else
+    update public.rooms set rewinds = rewinds - 1, lives = lives + 1, vote = null where id = p_room
+    returning lives into v_lives;
+    perform game_private.emit(p_room, 'rewind_used', null, jsonb_build_object('lives', v_lives));
+    perform game_private.check_level_end(p_room);
+  end if;
+end;
+$$;
+
+-- Propone usar un vistazo ('shuriken') o un escudo. Lo tienen que aceptar todos.
+create or replace function game_private.propose(p_room uuid, p_uid uuid, p_kind text)
+returns void language plpgsql set search_path = ''
+as $$
+declare r public.rooms;
+begin
+  select * into r from public.rooms where id = p_room;
+  if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
+  perform game_private.expire_if_due(p_room);
+  select * into r from public.rooms where id = p_room;
+  if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
+  if r.vote is not null then raise exception 'VOTE_IN_PROGRESS'; end if;
+  if p_kind = 'shuriken' and r.shurikens <= 0 then raise exception 'NO_SHURIKENS'; end if;
+  if p_kind = 'shield' and r.shields <= 0 then raise exception 'NO_SHIELDS'; end if;
+  if p_kind = 'shield' and r.shield_active then raise exception 'SHIELD_ACTIVE'; end if;
+  if r.shuriken_blocked ? p_uid::text then raise exception 'SHURIKEN_BLOCKED'; end if;
+
+  update public.rooms
+     set vote = jsonb_build_object('kind', p_kind, 'proposer', p_uid, 'votes', jsonb_build_array(p_uid),
+                                   'expiresAt', now() + interval '15 seconds')
+   where id = p_room;
+  perform game_private.emit(p_room, 'shuriken_proposed', p_uid, jsonb_build_object('kind', p_kind));
+  if game_private.all_voted(p_room) then perform game_private.execute_vote(p_room); end if;
+end;
+$$;
+
 -- Saca a un jugador (abandono o expulsión). La sala debe estar bloqueada.
 -- Devuelve false si la sala se ha quedado vacía y se ha borrado.
 create or replace function game_private.remove_player(p_room uuid, p_target uuid, p_reason text)
@@ -621,6 +783,7 @@ begin
   select count(*) into v_cards from public.hands where room_id = p_room and user_id = p_target;
   delete from public.hands where room_id = p_room and user_id = p_target;
   delete from public.room_players where room_id = p_room and user_id = p_target;
+  update public.rooms set offer = offer #- array['votes', p_target::text] where id = p_room and offer is not null;
   perform game_private.emit(p_room, case p_reason when 'kicked' then 'player_kicked' else 'player_left' end,
                             p_target, jsonb_build_object('name', v_name, 'cards', v_cards));
 
@@ -637,8 +800,8 @@ begin
     perform game_private.emit(p_room, 'host_changed', v_new_host, '{}'::jsonb);
   end if;
   if r.vote is not null then
-    update public.rooms set vote = null where id = p_room;
-    perform game_private.emit(p_room, 'shuriken_cancelled', null, '{"reason":"player_left"}'::jsonb);
+    perform game_private.cancel_vote(p_room, null, 'player_left');
+    select * into r from public.rooms where id = p_room; -- cancelar Rebobinar puede terminar la partida
   end if;
   if r.status in ('playing', 'level_complete') then
     if v_count < 2 then
@@ -650,6 +813,7 @@ begin
     elsif r.status = 'playing' then
       perform game_private.check_level_end(p_room);
     else
+      if game_private.all_picked(p_room) then perform game_private.resolve_offer(p_room); end if;
       perform game_private.maybe_advance(p_room);
     end if;
   end if;
@@ -810,6 +974,7 @@ begin
          max_level = (v_res ->> 'maxLevel')::int,
          lives = (v_res ->> 'lives')::int,
          shurikens = (v_res ->> 'shurikens')::int,
+         rewinds = 0, shields = 0, shield_active = false, offer = null,
          lives_cap = (v_res ->> 'livesCap')::int,
          shurikens_cap = (v_res ->> 'shurikensCap')::int
    where id = p_room;
@@ -842,9 +1007,9 @@ begin
 
   if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
   perform game_private.expire_if_due(p_room);
-  if exists (select 1 from public.rooms where id = p_room and vote is not null) then
-    raise exception 'VOTE_IN_PROGRESS';
-  end if;
+  select * into r from public.rooms where id = p_room;
+  if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
+  if r.vote is not null then raise exception 'VOTE_IN_PROGRESS'; end if;
 
   select case when v_desc then max(card) else min(card) end into v_lowest
     from public.hands where room_id = p_room and user_id = v_uid;
@@ -863,7 +1028,7 @@ begin
    where id = p_room;
 
   -- ¿Alguien tenía cartas que debían ir antes (menores; mayores en descendente)?
-  -- Error: se descartan TODAS y se pierde UNA vida.
+  -- Error: se descartan TODAS y se pierde UNA vida (salvo que haya un escudo activo).
   with removed as (
     delete from public.hands
      where room_id = p_room and (case when v_desc then card > p_card else card < p_card end)
@@ -874,18 +1039,35 @@ begin
 
   if v_lower is not null then
     update public.rooms
-       set lives = lives - 1,
-           revealed = revealed || (
+       set revealed = revealed || (
              select jsonb_agg(e || '{"r":"mistake"}'::jsonb order by ord)
              from jsonb_array_elements(v_lower) with ordinality as t (e, ord))
-     where id = p_room
-     returning lives into v_lives;
-    perform game_private.emit(p_room, 'mistake', v_uid,
-      jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives));
-    if v_lives <= 0 then
-      perform game_private.end_game(p_room, 'lost');
-      perform game_private.touch(p_room);
-      return game_private.snapshot(p_room, v_uid);
+     where id = p_room;
+    if r.shield_active then
+      -- El escudo absorbe este error: se descartan las cartas, pero no se pierde vida.
+      update public.rooms set shield_active = false where id = p_room returning lives into v_lives;
+      perform game_private.emit(p_room, 'mistake', v_uid,
+        jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives, 'shielded', true));
+    else
+      update public.rooms set lives = lives - 1 where id = p_room returning lives into v_lives;
+      perform game_private.emit(p_room, 'mistake', v_uid,
+        jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives));
+      if r.rewinds > 0 then
+        -- Se pregunta a todos si quieren usar Rebobinar. Hasta decidirlo, la partida espera
+        -- (incluso si era la última vida o el nivel se ha quedado sin cartas).
+        update public.rooms
+           set vote = jsonb_build_object('kind', 'rewind', 'proposer', null, 'votes', '[]'::jsonb,
+                                         'expiresAt', now() + interval '20 seconds')
+         where id = p_room;
+        perform game_private.emit(p_room, 'rewind_offered', null, jsonb_build_object('lives', v_lives));
+        perform game_private.touch(p_room);
+        return game_private.snapshot(p_room, v_uid);
+      end if;
+      if v_lives <= 0 then
+        perform game_private.end_game(p_room, 'lost');
+        perform game_private.touch(p_room);
+        return game_private.snapshot(p_room, v_uid);
+      end if;
     end if;
   else
     perform game_private.emit(p_room, 'play', v_uid, jsonb_build_object('card', p_card));
@@ -909,27 +1091,31 @@ begin
     on conflict do nothing;
     if not found then return game_private.snapshot(p_room, v_uid); end if;
   end if;
-  if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
-  perform game_private.expire_if_due(p_room);
-  if exists (select 1 from public.rooms where id = p_room and vote is not null) then
-    raise exception 'VOTE_IN_PROGRESS';
-  end if;
-  if r.shurikens <= 0 then raise exception 'NO_SHURIKENS'; end if;
-  if (select shuriken_blocked from public.rooms where id = p_room) ? v_uid::text then
-    raise exception 'SHURIKEN_BLOCKED';
-  end if;
-
-  update public.rooms
-     set vote = jsonb_build_object('proposer', v_uid, 'votes', jsonb_build_array(v_uid),
-                                   'expiresAt', now() + interval '15 seconds')
-   where id = p_room;
-  perform game_private.emit(p_room, 'shuriken_proposed', v_uid, '{}'::jsonb);
-  if game_private.all_voted(p_room) then perform game_private.execute_shuriken(p_room); end if;
+  perform game_private.propose(p_room, v_uid, 'shuriken');
   perform game_private.touch(p_room);
   return game_private.snapshot(p_room, v_uid);
 end;
 $$;
 
+create or replace function public.propose_shield(p_room uuid, p_action uuid default null)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  r public.rooms := game_private.lock_room(p_room, v_uid);
+begin
+  if p_action is not null then
+    insert into public.processed_actions (user_id, action_id, room_id) values (v_uid, p_action, p_room)
+    on conflict do nothing;
+    if not found then return game_private.snapshot(p_room, v_uid); end if;
+  end if;
+  perform game_private.propose(p_room, v_uid, 'shield');
+  perform game_private.touch(p_room);
+  return game_private.snapshot(p_room, v_uid);
+end;
+$$;
+
+-- Voto en la votación en curso (vistazo, escudo o rebobinar). Un «no» la cancela.
 create or replace function public.vote_shuriken(p_room uuid, p_accept boolean)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -945,8 +1131,7 @@ begin
   if r.vote is null then raise exception 'NO_VOTE'; end if;
 
   if not coalesce(p_accept, false) then
-    perform game_private.cancel_vote_blocking(p_room);
-    perform game_private.emit(p_room, 'shuriken_cancelled', v_uid, '{"reason":"rejected"}'::jsonb);
+    perform game_private.cancel_vote(p_room, v_uid, 'rejected');
     perform game_private.touch(p_room);
     return game_private.snapshot(p_room, v_uid);
   end if;
@@ -957,7 +1142,7 @@ begin
   update public.rooms
      set vote = jsonb_set(vote, '{votes}', (vote -> 'votes') || to_jsonb(v_uid::text))
    where id = p_room;
-  if game_private.all_voted(p_room) then perform game_private.execute_shuriken(p_room); end if;
+  if game_private.all_voted(p_room) then perform game_private.execute_vote(p_room); end if;
   perform game_private.touch(p_room);
   return game_private.snapshot(p_room, v_uid);
 end;
@@ -977,7 +1162,32 @@ begin
 end;
 $$;
 
+-- Voto para elegir comodín tras superar el nivel p_level (se puede cambiar mientras falten votos).
+-- Cuando han votado todos, gana el más votado; si hay empate, al azar.
+create or replace function public.pick_comodin(p_room uuid, p_level int, p_kind text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  r public.rooms := game_private.lock_room(p_room, v_uid);
+begin
+  if r.status <> 'level_complete' or r.level <> p_level or r.offer is null then
+    return game_private.snapshot(p_room, v_uid);
+  end if;
+  if not ((r.offer -> 'choices') ? coalesce(p_kind, '')) then raise exception 'INVALID_STATE'; end if;
+  if (r.offer -> 'votes' ->> v_uid::text) = p_kind then return game_private.snapshot(p_room, v_uid); end if;
+  update public.rooms set offer = jsonb_set(offer, array['votes', v_uid::text], to_jsonb(p_kind)) where id = p_room;
+  if game_private.all_picked(p_room) then
+    perform game_private.resolve_offer(p_room);
+    perform game_private.maybe_advance(p_room);
+  end if;
+  perform game_private.touch(p_room);
+  return game_private.snapshot(p_room, v_uid);
+end;
+$$;
+
 -- p_level es el nivel recién superado: una petición repetida o tardía no tiene efecto.
+-- Si el anfitrión fuerza el avance con una elección pendiente, se decide con los votos que haya.
 create or replace function public.ready_next_level(p_room uuid, p_level int, p_force boolean default false)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -990,6 +1200,9 @@ begin
   end if;
   update public.room_players set ready = true where room_id = p_room and user_id = v_uid;
   if coalesce(p_force, false) and r.host_id = v_uid then
+    while exists (select 1 from public.rooms where id = p_room and offer is not null) loop
+      perform game_private.resolve_offer(p_room);
+    end loop;
     perform game_private.start_next_level(p_room);
   else
     perform game_private.maybe_advance(p_room);
@@ -1040,6 +1253,7 @@ begin
   delete from public.hands where room_id = p_room;
   update public.rooms
      set status = 'lobby', level = 0, max_level = 0, lives = 0, shurikens = 0, lives_cap = 0, shurikens_cap = 0,
+         rewinds = 0, shields = 0, shield_active = false, offer = null,
          pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null, shuriken_blocked = '[]'::jsonb
    where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
@@ -1154,6 +1368,8 @@ revoke all on function
   public.start_game(uuid),
   public.play_card(uuid, int, uuid),
   public.propose_shuriken(uuid, uuid),
+  public.propose_shield(uuid, uuid),
+  public.pick_comodin(uuid, int, text),
   public.vote_shuriken(uuid, boolean),
   public.expire_shuriken_vote(uuid),
   public.ready_next_level(uuid, int, boolean),
@@ -1178,6 +1394,8 @@ grant execute on function
   public.start_game(uuid),
   public.play_card(uuid, int, uuid),
   public.propose_shuriken(uuid, uuid),
+  public.propose_shield(uuid, uuid),
+  public.pick_comodin(uuid, int, text),
   public.vote_shuriken(uuid, boolean),
   public.expire_shuriken_vote(uuid),
   public.ready_next_level(uuid, int, boolean),

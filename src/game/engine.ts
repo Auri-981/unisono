@@ -11,24 +11,28 @@
 import {
   NAME_MAX_LENGTH,
   MIN_PLAYERS,
+  REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
   normalizeConfig,
   rewardFor,
   startingResources,
 } from '../config/gameConfig';
-import { deal, type Rng } from './deck';
-import type {
-  GameErrorCode,
-  GameEvent,
-  GameEventKind,
-  LevelReward,
-  PlayedCard,
-  PlayerId,
-  RevealedCard,
-  RoomConfig,
-  RoomSnapshot,
-  RoomStatus,
-  ShurikenVote,
+import { cryptoRng, deal, shuffle, type Rng } from './deck';
+import {
+  COMODIN_KINDS,
+  type ComodinKind,
+  type ComodinOffer,
+  type GameErrorCode,
+  type GameEvent,
+  type GameEventKind,
+  type LevelReward,
+  type PlayedCard,
+  type PlayerId,
+  type RevealedCard,
+  type RoomConfig,
+  type RoomSnapshot,
+  type RoomStatus,
+  type ShurikenVote,
 } from './types';
 
 export interface EnginePlayer {
@@ -51,16 +55,24 @@ export interface EngineState {
   maxLevel: number;
   lives: number;
   shurikens: number;
+  /** Comodines Rebobinar y Escudo. */
+  rewinds: number;
+  shields: number;
+  /** Escudo activado en este nivel: el siguiente error no cuesta vida. */
+  shieldActive: boolean;
   livesCap: number;
+  /** Máximo de CADA comodín. */
   shurikensCap: number;
   players: EnginePlayer[];
   hands: Record<PlayerId, number[]>;
   pile: PlayedCard[];
   revealed: RevealedCard[];
   vote: ShurikenVote | null;
+  /** Elección de comodín pendiente tras superar un nivel. */
+  offer: ComodinOffer | null;
   /**
-   * Jugadores a los que se les rechazó (o caducó) un shuriken: no pueden volver a
-   * proponerlo hasta que se juegue una carta (evita insistir en bucle).
+   * Jugadores a los que se les rechazó (o caducó) un vistazo o escudo: no pueden volver a
+   * proponer comodines hasta que se juegue una carta (evita insistir en bucle).
    */
   shurikenBlocked: PlayerId[];
   lastEvent: GameEvent | null;
@@ -136,6 +148,8 @@ function dealLevel(d: Draft, rng: Rng) {
   d.s.pile = [];
   d.s.revealed = [];
   d.s.vote = null;
+  d.s.offer = null;
+  d.s.shieldActive = false; // el escudo solo dura el nivel en que se activa
   d.s.shurikenBlocked = [];
   d.s.lastReward = null;
   for (const p of d.s.players) p.ready = false;
@@ -145,11 +159,58 @@ function endGame(d: Draft, status: 'won' | 'lost' | 'abandoned') {
   d.s.status = status;
   d.s.hands = {};
   d.s.vote = null;
+  d.s.offer = null;
   d.emit(status, null, { level: d.s.level });
 }
 
+// ───── Comodines ─────
+
+const COUNT_FIELD = { shuriken: 'shurikens', rewind: 'rewinds', shield: 'shields' } as const;
+const comodinCount = (s: EngineState, kind: ComodinKind) => s[COUNT_FIELD[kind]];
+const voteKind = (v: ShurikenVote): ComodinKind => v.kind ?? 'shuriken';
+
+/** Suma un comodín elegido al superar el nivel y lo apunta en la recompensa. */
+function grantComodin(d: Draft, kind: ComodinKind, how: 'vote' | 'tie' | 'auto') {
+  const field = COUNT_FIELD[kind];
+  d.s[field] += 1;
+  if (d.s.lastReward) d.s.lastReward[field] = (d.s.lastReward[field] ?? 0) + 1;
+  d.emit('comodin_chosen', null, { kind, how });
+}
+
+/**
+ * Prepara la elección de comodín: 2 de los 3 al azar, sin contar los que ya están al máximo.
+ * Si solo queda uno posible se da directamente; si ninguno, el premio se pierde.
+ */
+function makeOffer(d: Draft, rng: Rng, left: number) {
+  d.s.offer = null;
+  while (left > 0) {
+    const open = COMODIN_KINDS.filter((k) => comodinCount(d.s, k) < d.s.shurikensCap);
+    if (open.length === 0) return;
+    if (open.length === 1) {
+      grantComodin(d, open[0]!, 'auto');
+      left -= 1;
+      continue;
+    }
+    d.s.offer = { choices: shuffle(open, rng).slice(0, 2), left, votes: {} };
+    return;
+  }
+}
+
+/** Gana el comodín más votado (empate o sin votos: al azar entre los empatados). */
+function resolveOffer(d: Draft, rng: Rng) {
+  const offer = d.s.offer!;
+  const tally = offer.choices.map((k) => Object.values(offer.votes).filter((v) => v === k).length);
+  const max = Math.max(...tally);
+  const top = offer.choices.filter((_, i) => tally[i] === max);
+  const kind = top.length === 1 ? top[0]! : top[Math.floor(rng() * top.length)]!;
+  grantComodin(d, kind, top.length === 1 ? 'vote' : 'tie');
+  makeOffer(d, rng, offer.left - 1);
+}
+
+const allPicked = (s: EngineState) => s.offer !== null && s.players.every((p) => s.offer!.votes[p.id] !== undefined);
+
 /** Si ya no quedan cartas en ninguna mano, el nivel termina (victoria final o recompensa). */
-function checkLevelEnd(d: Draft) {
+function checkLevelEnd(d: Draft, rng: Rng) {
   if (d.s.status !== 'playing' || totalCards(d.s) > 0) return;
   if (d.s.level >= d.s.maxLevel) {
     endGame(d, 'won');
@@ -157,19 +218,15 @@ function checkLevelEnd(d: Draft) {
   }
   const reward = rewardFor(d.s.config, d.s.level);
   const newLives = Math.min(d.s.lives + reward.lives, Math.max(d.s.livesCap, d.s.lives));
-  const newShurikens = Math.min(d.s.shurikens + reward.shurikens, Math.max(d.s.shurikensCap, d.s.shurikens));
-  const gained: LevelReward = {
-    level: d.s.level,
-    lives: newLives - d.s.lives,
-    shurikens: newShurikens - d.s.shurikens,
-  };
+  const gained: LevelReward = { level: d.s.level, lives: newLives - d.s.lives, shurikens: 0, rewinds: 0, shields: 0 };
   d.s.lives = newLives;
-  d.s.shurikens = newShurikens;
   d.s.lastReward = gained;
   d.s.status = 'level_complete';
   d.s.vote = null;
+  d.s.shieldActive = false;
   for (const p of d.s.players) p.ready = false;
-  d.emit('level_complete', null, { level: gained.level, reward: { lives: gained.lives, shurikens: gained.shurikens } });
+  d.emit('level_complete', null, { level: gained.level, reward: { lives: gained.lives, comodines: reward.shurikens } });
+  makeOffer(d, rng, reward.shurikens);
 }
 
 function startNextLevel(d: Draft, rng: Rng) {
@@ -179,29 +236,44 @@ function startNextLevel(d: Draft, rng: Rng) {
   d.emit('level_start', null, { level: d.s.level });
 }
 
+/** Se pasa de nivel cuando todos están listos y ya se ha elegido el comodín. */
 function maybeAdvance(d: Draft, rng: Rng) {
-  if (d.s.status === 'level_complete' && d.s.players.length > 0 && d.s.players.every((p) => p.ready)) {
+  if (d.s.status === 'level_complete' && !d.s.offer && d.s.players.length > 0 && d.s.players.every((p) => p.ready)) {
     startNextLevel(d, rng);
   }
 }
 
-/** Quien propuso un shuriken rechazado o caducado no puede repetirlo hasta que se juegue una carta. */
-function blockProposer(d: Draft, proposer: PlayerId) {
-  if (!d.s.shurikenBlocked.includes(proposer)) d.s.shurikenBlocked.push(proposer);
+/** Quien propuso un comodín rechazado o caducado no puede proponer otro hasta que se juegue una carta. */
+function blockProposer(d: Draft, proposer: PlayerId | null) {
+  if (proposer && !d.s.shurikenBlocked.includes(proposer)) d.s.shurikenBlocked.push(proposer);
+}
+
+/**
+ * Cancela la votación en curso. Si era Rebobinar, la vida no se recupera: si ya no
+ * quedaban vidas se pierde la partida; si no, el nivel sigue (o termina si no quedan cartas).
+ */
+function cancelVote(d: Draft, actor: PlayerId | null, reason: 'rejected' | 'expired' | 'player_left', rng: Rng) {
+  const vote = d.s.vote!;
+  const kind = voteKind(vote);
+  if (reason !== 'player_left') blockProposer(d, vote.proposer);
+  d.s.vote = null;
+  d.emit('shuriken_cancelled', actor, { reason, kind });
+  if (kind === 'rewind') {
+    if (d.s.lives <= 0) endGame(d, 'lost');
+    else checkLevelEnd(d, rng);
+  }
 }
 
 /** Cancela una votación caducada. Devuelve true si la ha cancelado. */
-function expireIfDue(d: Draft): boolean {
+function expireIfDue(d: Draft, rng: Rng): boolean {
   if (d.s.vote && d.now >= Date.parse(d.s.vote.expiresAt)) {
-    blockProposer(d, d.s.vote.proposer);
-    d.s.vote = null;
-    d.emit('shuriken_cancelled', null, { reason: 'expired' });
+    cancelVote(d, null, 'expired', rng);
     return true;
   }
   return false;
 }
 
-function executeShuriken(d: Draft) {
+function executeShuriken(d: Draft, rng: Rng) {
   const reveal = d.s.config.shurikenVariant === 'reveal';
   const discarded: { p: PlayerId; c?: number }[] = [];
   for (const p of playersBySeat(d.s)) {
@@ -219,8 +291,33 @@ function executeShuriken(d: Draft) {
   d.s.vote = null;
   d.s.shurikenBlocked = []; // la mesa ha cambiado
   d.emit('shuriken_used', null, { discarded });
-  checkLevelEnd(d);
+  checkLevelEnd(d, rng);
 }
+
+/** Todos han aceptado: se aplica el comodín votado. */
+function executeVote(d: Draft, rng: Rng) {
+  switch (voteKind(d.s.vote!)) {
+    case 'shuriken':
+      executeShuriken(d, rng);
+      return;
+    case 'shield':
+      d.s.shields -= 1;
+      d.s.shieldActive = true;
+      d.s.vote = null;
+      d.s.shurikenBlocked = [];
+      d.emit('shield_used', null, {});
+      return;
+    case 'rewind':
+      d.s.rewinds -= 1;
+      d.s.lives += 1;
+      d.s.vote = null;
+      d.emit('rewind_used', null, { lives: d.s.lives });
+      checkLevelEnd(d, rng);
+      return;
+  }
+}
+
+const allVoted = (s: EngineState) => s.players.every((p) => s.vote!.votes.includes(p.id));
 
 // ───────────────────────── API pública del motor ─────────────────────────
 
@@ -243,6 +340,9 @@ export function createRoom(params: {
     maxLevel: 0,
     lives: 0,
     shurikens: 0,
+    rewinds: 0,
+    shields: 0,
+    shieldActive: false,
     livesCap: 0,
     shurikensCap: 0,
     players: [{ id: params.hostId, name: params.hostName, seat: 1, ready: false, lastSeenAt: iso(params.now) }],
@@ -250,6 +350,7 @@ export function createRoom(params: {
     pile: [],
     revealed: [],
     vote: null,
+    offer: null,
     shurikenBlocked: [],
     lastEvent: null,
     recentEvents: [],
@@ -304,6 +405,8 @@ export function startGame(state: EngineState, actor: PlayerId, rng: Rng, now: nu
   d.s.maxLevel = res.maxLevel;
   d.s.lives = res.lives;
   d.s.shurikens = res.shurikens;
+  d.s.rewinds = 0;
+  d.s.shields = 0;
   d.s.livesCap = res.livesCap;
   d.s.shurikensCap = res.shurikensCap;
   d.s.status = 'playing';
@@ -318,11 +421,12 @@ export function startGame(state: EngineState, actor: PlayerId, rng: Rng, now: nu
  * Si otros jugadores tenían cartas que debían ir antes, se produce UN error: −1 vida y se
  * descartan TODAS esas cartas.
  */
-export function playCard(state: EngineState, actor: PlayerId, card: number, now: number): EngineResult {
+export function playCard(state: EngineState, actor: PlayerId, card: number, now: number, rng: Rng = cryptoRng): EngineResult {
   if (!isMember(state, actor)) return fail('NOT_MEMBER');
   if (state.status !== 'playing') return fail('NOT_PLAYING');
   const d = new Draft(state, now);
-  expireIfDue(d);
+  expireIfDue(d, rng);
+  if (d.s.status !== 'playing') return fail('NOT_PLAYING');
   if (d.s.vote) return fail('VOTE_IN_PROGRESS');
   const hand = d.s.hands[actor] ?? [];
   if (hand.length === 0) return fail('NO_CARDS');
@@ -341,64 +445,115 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
   lower.sort((a, b) => order(a.c, b.c));
 
   if (lower.length > 0) {
-    d.s.lives -= 1;
     for (const x of lower) d.s.revealed.push({ ...x, r: 'mistake' });
-    d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives });
-    if (d.s.lives <= 0) {
-      endGame(d, 'lost');
-      return d.commit();
+    if (d.s.shieldActive) {
+      // El escudo absorbe este error: se descartan las cartas, pero no se pierde vida.
+      d.s.shieldActive = false;
+      d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives, shielded: true });
+    } else {
+      d.s.lives -= 1;
+      d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives });
+      if (d.s.rewinds > 0) {
+        // Se pregunta a todos si quieren usar Rebobinar. Hasta decidirlo, la partida espera
+        // (incluso si era la última vida o el nivel se ha quedado sin cartas).
+        d.s.vote = { kind: 'rewind', proposer: null, votes: [], expiresAt: iso(now + REWIND_VOTE_SECONDS * 1000) };
+        d.emit('rewind_offered', null, { lives: d.s.lives });
+        return d.commit();
+      }
+      if (d.s.lives <= 0) {
+        endGame(d, 'lost');
+        return d.commit();
+      }
     }
   } else {
     d.emit('play', actor, { card });
   }
-  checkLevelEnd(d);
+  checkLevelEnd(d, rng);
   return d.commit();
 }
 
-export function proposeShuriken(state: EngineState, actor: PlayerId, now: number): EngineResult {
+/** Propone usar un vistazo (`shuriken`) o un escudo. Lo tienen que aceptar todos. */
+function propose(state: EngineState, actor: PlayerId, kind: 'shuriken' | 'shield', now: number, rng: Rng): EngineResult {
   if (!isMember(state, actor)) return fail('NOT_MEMBER');
   if (state.status !== 'playing') return fail('NOT_PLAYING');
   const d = new Draft(state, now);
-  expireIfDue(d);
+  expireIfDue(d, rng);
   if (d.s.vote) return fail('VOTE_IN_PROGRESS');
-  if (d.s.shurikens <= 0) return fail('NO_SHURIKENS');
+  if (kind === 'shuriken' && d.s.shurikens <= 0) return fail('NO_SHURIKENS');
+  if (kind === 'shield' && d.s.shields <= 0) return fail('NO_SHIELDS');
+  if (kind === 'shield' && d.s.shieldActive) return fail('SHIELD_ACTIVE');
   if (d.s.shurikenBlocked.includes(actor)) return fail('SHURIKEN_BLOCKED');
   d.s.vote = {
+    kind,
     proposer: actor,
     votes: [actor],
     expiresAt: iso(now + SHURIKEN_VOTE_SECONDS * 1000),
   };
-  d.emit('shuriken_proposed', actor, {});
-  if (d.s.players.every((p) => d.s.vote!.votes.includes(p.id))) executeShuriken(d);
+  d.emit('shuriken_proposed', actor, { kind });
+  if (allVoted(d.s)) executeVote(d, rng);
   return d.commit();
 }
 
-export function voteShuriken(state: EngineState, actor: PlayerId, accept: boolean, now: number): EngineResult {
+export function proposeShuriken(state: EngineState, actor: PlayerId, now: number, rng: Rng = cryptoRng): EngineResult {
+  return propose(state, actor, 'shuriken', now, rng);
+}
+
+export function proposeShield(state: EngineState, actor: PlayerId, now: number, rng: Rng = cryptoRng): EngineResult {
+  return propose(state, actor, 'shield', now, rng);
+}
+
+/** Voto en la votación en curso (vistazo, escudo o rebobinar). Un «no» la cancela. */
+export function voteShuriken(state: EngineState, actor: PlayerId, accept: boolean, now: number, rng: Rng = cryptoRng): EngineResult {
   if (!isMember(state, actor)) return fail('NOT_MEMBER');
   if (state.status !== 'playing') return fail('NOT_PLAYING');
   const d = new Draft(state, now);
-  if (expireIfDue(d)) return d.commit();
+  if (expireIfDue(d, rng)) return d.commit();
   if (!d.s.vote) return fail('NO_VOTE');
   if (!accept) {
-    blockProposer(d, d.s.vote.proposer);
-    d.s.vote = null;
-    d.emit('shuriken_cancelled', actor, { reason: 'rejected' });
+    cancelVote(d, actor, 'rejected', rng);
     return d.commit();
   }
   if (d.s.vote.votes.includes(actor)) return unchanged(state);
   d.s.vote.votes.push(actor);
-  if (d.s.players.every((p) => d.s.vote!.votes.includes(p.id))) executeShuriken(d);
+  if (allVoted(d.s)) executeVote(d, rng);
   return d.commit();
 }
 
-export function expireVote(state: EngineState, now: number): EngineResult {
+export function expireVote(state: EngineState, now: number, rng: Rng = cryptoRng): EngineResult {
   const d = new Draft(state, now);
-  return expireIfDue(d) ? d.commit() : unchanged(state);
+  return expireIfDue(d, rng) ? d.commit() : unchanged(state);
+}
+
+/**
+ * Voto para elegir comodín tras superar el nivel `level` (se puede cambiar mientras falten
+ * votos). Cuando han votado todos, gana el más votado; si hay empate, al azar.
+ */
+export function pickComodin(
+  state: EngineState,
+  actor: PlayerId,
+  level: number,
+  kind: ComodinKind,
+  rng: Rng,
+  now: number,
+): EngineResult {
+  if (!isMember(state, actor)) return fail('NOT_MEMBER');
+  if (state.status !== 'level_complete' || state.level !== level || !state.offer) return unchanged(state);
+  if (!state.offer.choices.includes(kind)) return fail('INVALID_STATE');
+  if (state.offer.votes[actor] === kind) return unchanged(state);
+  const d = new Draft(state, now);
+  d.s.offer!.votes[actor] = kind;
+  if (allPicked(d.s)) {
+    resolveOffer(d, rng);
+    maybeAdvance(d, rng);
+  }
+  return d.commit();
 }
 
 /**
  * El jugador indica que está listo para el siguiente nivel. `level` es el nivel recién
  * superado: si no coincide (petición repetida o tardía) no se hace nada.
+ * Si el anfitrión fuerza el avance con una elección de comodín pendiente, se decide con
+ * los votos que haya (o al azar).
  */
 export function readyNextLevel(
   state: EngineState,
@@ -412,8 +567,12 @@ export function readyNextLevel(
   if (state.status !== 'level_complete' || state.level !== level) return unchanged(state);
   const d = new Draft(state, now);
   d.s.players.find((p) => p.id === actor)!.ready = true;
-  if (force && actor === d.s.hostId) startNextLevel(d, rng);
-  else maybeAdvance(d, rng);
+  if (force && actor === d.s.hostId) {
+    while (d.s.offer) resolveOffer(d, rng);
+    startNextLevel(d, rng);
+  } else {
+    maybeAdvance(d, rng);
+  }
   return d.commit();
 }
 
@@ -430,6 +589,7 @@ export function removePlayer(
   const cards = d.s.hands[target]?.length ?? 0;
   delete d.s.hands[target];
   d.s.players = d.s.players.filter((p) => p.id !== target);
+  if (d.s.offer) delete d.s.offer.votes[target];
   d.emit(reason === 'left' ? 'player_left' : 'player_kicked', target, { name: player.name, cards });
 
   if (d.s.players.length === 0) {
@@ -440,16 +600,14 @@ export function removePlayer(
     d.s.hostId = playersBySeat(d.s)[0]!.id;
     d.emit('host_changed', d.s.hostId, {});
   }
-  if (d.s.vote) {
-    d.s.vote = null;
-    d.emit('shuriken_cancelled', null, { reason: 'player_left' });
-  }
+  if (d.s.vote) cancelVote(d, null, 'player_left', rng);
   if (d.s.status === 'playing' || d.s.status === 'level_complete') {
     if (d.s.players.length < MIN_PLAYERS) {
       endGame(d, 'abandoned');
     } else if (d.s.status === 'playing') {
-      checkLevelEnd(d);
+      checkLevelEnd(d, rng);
     } else {
+      if (allPicked(d.s)) resolveOffer(d, rng);
       maybeAdvance(d, rng);
     }
   }
@@ -474,12 +632,16 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
     maxLevel: 0,
     lives: 0,
     shurikens: 0,
+    rewinds: 0,
+    shields: 0,
+    shieldActive: false,
     livesCap: 0,
     shurikensCap: 0,
     hands: {},
     pile: [],
     revealed: [],
     vote: null,
+    offer: null,
     shurikenBlocked: [],
     lastReward: null,
   } satisfies Partial<EngineState>);
@@ -504,6 +666,10 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
       maxLevel: state.maxLevel,
       lives: state.lives,
       shurikens: state.shurikens,
+      rewinds: state.rewinds,
+      shields: state.shields,
+      shieldActive: state.shieldActive,
+      offer: structuredClone(state.offer),
       version: state.version,
       shurikenBlocked: [...state.shurikenBlocked],
     },

@@ -14,8 +14,10 @@ export const MAX_PLAYERS = 4;
 export const NAME_MAX_LENGTH = 20;
 export const CHAT_MAX_LENGTH = 200;
 
-/** Segundos que dura una votación de shuriken. */
+/** Segundos que dura una votación de vistazo o escudo. */
 export const SHURIKEN_VOTE_SECONDS = 15;
+/** Segundos para decidir si se usa Rebobinar tras perder una vida. */
+export const REWIND_VOTE_SECONDS = 20;
 /** Cada cuántos segundos un móvil avisa de que sigue conectado. */
 export const HEARTBEAT_SECONDS = 15;
 /** Si el anfitrión no da señales en este tiempo, el rol pasa a otro jugador. */
@@ -35,8 +37,9 @@ export const PLAYER_PRESETS: Record<number, PlayerPreset> = {
 };
 
 /**
- * Recompensas clásicas (2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥) con máximo 5 vidas y 3 shurikens.
- * Verificado con fuentes secundarias; el reglamento oficial las imprime en cada carta de nivel.
+ * Recompensas clásicas (2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥) con máximo 5 vidas y 3 de cada comodín.
+ * ★ = un comodín a elegir entre 2 de los 3 (Vistazo, Rebobinar, Escudo).
+ * Basadas en el juego original, donde ★ era siempre un shuriken.
  */
 export const CLASSIC_REWARDS: Reward[] = [
   { level: 2, lives: 0, shurikens: 1 },

@@ -40,6 +40,11 @@ while (Date.now() < end) {
         .then((s) => console.log('played', card, '→ lives', s.room.lives, 'status', s.room.status))
         .catch((e) => console.log('play', card, e.message));
     }
+  } else if (r.status === 'level_complete' && r.offer && !r.offer.votes[snap.me]) {
+    // Elección de comodín: el bot vota lo mismo que haya votado alguien, o el primero.
+    const kind = Object.values(r.offer.votes)[0] ?? r.offer.choices[0];
+    await rpc('pick_comodin', { p_room: room, p_level: r.level, p_kind: kind }).catch((e) => console.log('pick', e.message));
+    console.log('picked', kind);
   } else if (r.status === 'level_complete' && !snap.players.find((p) => p.id === snap.me)?.ready) {
     await rpc('ready_next_level', { p_room: room, p_level: r.level, p_force: false });
     console.log('ready after level', r.level);

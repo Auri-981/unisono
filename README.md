@@ -6,8 +6,9 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
 - Multijugador online real (2–4 jugadores) con salas privadas, código e enlace de invitación.
 - Sin cuentas ni datos personales: cada móvil recibe una sesión anónima segura.
 - Las cartas de cada jugador son privadas **en el servidor** (Row Level Security), no solo ocultas en pantalla.
-- Vidas, vistazos (con votación), recompensas configurables, orden ascendente o descendente, revancha,
-  historial, chat opcional. (En el código y la base de datos el vistazo se llama internamente «shuriken».)
+- Vidas y tres comodines con votación (Vistazo, Escudo y Rebobinar), recompensas configurables con
+  elección de comodín, orden ascendente o descendente, revancha, historial, chat opcional.
+  (En el código y la base de datos el vistazo se llama internamente «shuriken».)
 - Modo práctica contra bots, sin conexión.
 - Web móvil instalable (PWA). Interfaz en español, preparada para otros idiomas.
 

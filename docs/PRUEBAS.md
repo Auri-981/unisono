@@ -53,6 +53,7 @@ penalización del SQL (−2 vidas), fallaron 5 escenarios; se restauró el códi
 | 11 | Descarte correcto | ✅ | escenarios de error y shuriken comprueban manos y descartes |
 | 12 | Recompensas por nivel | ✅ | escenarios clásica y personalizada; partidas completas |
 | 13 | Límites de vidas y shurikens | ✅ | escenario «no superan el máximo»; partidas completas (≤5, ≤3) |
+| 13b | Escudo, Rebobinar y elección de comodín | ✅ | escenarios compartidos (TS y SQL): escudo aceptado/rechazado/activo/caduca con el nivel, rebobinar aceptado/rechazado/última vida/nivel vacío/jugador que sale, elección por mayoría, cambio de voto, comodín único, todos al máximo, dos elecciones seguidas; empate al azar, caducidad de 20 s, forzar nivel (motor y servidor); actualización desde la versión anterior con una votación en curso |
 | 14 | Victoria final | ✅ | escenario y partidas completas de 2, 3 y 4 jugadores (TS y SQL) |
 | 15 | Derrota sin vidas | ✅ | escenario «derrota al quedarse sin vidas» |
 | 16 | Peticiones duplicadas | ✅ | `action_id` repetido, doble pulsación, voto repetido, «listo» repetido |

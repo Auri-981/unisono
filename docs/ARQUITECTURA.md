@@ -66,7 +66,7 @@ escribir en tablas y llamar a funciones internas; todo debe fallar.
 
 | Tabla | Contenido | Quién puede leer | Quién escribe |
 |---|---|---|---|
-| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, shurikens, pila, votación, último evento, `version` | Miembros de la sala | Solo funciones |
+| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, comodines (`shurikens`, `rewinds`, `shields`), escudo activo, elección de comodín pendiente (`offer`), pila, votación, último evento, `version` | Miembros de la sala | Solo funciones |
 | `room_players` | Jugador, alias, asiento, «listo», última señal de vida | Miembros | Solo funciones |
 | `hands` | Una fila por carta: sala, jugador, valor (clave única sala+carta) | **Solo el dueño** | Solo funciones |
 | `room_events` | Registro de lo ocurrido (jugadas, errores, recompensas) | Miembros | Solo funciones |
@@ -80,14 +80,15 @@ La clave primaria `(room_id, card)` de `hands` hace **imposible** que una carta 
 ## 5. Funciones del servidor (la API del juego)
 
 `create_room`, `join_room`, `get_room_state`, `update_config`, `set_lobby_ready`, `start_game`,
-`play_card`, `propose_shuriken`, `vote_shuriken`, `expire_shuriken_vote`, `ready_next_level`,
+`play_card`, `propose_shuriken`, `propose_shield`, `vote_shuriken` (vota cualquier comodín),
+`expire_shuriken_vote`, `pick_comodin`, `ready_next_level`,
 `leave_room`, `kick_player`, `rematch`, `heartbeat`, `send_chat`, `get_my_history`.
 
 Todas las que modifican la partida:
 - empiezan con `SELECT … FOR UPDATE` sobre la sala → **las jugadas de una sala se procesan de una en
   una**, en un orden inequívoco, aunque dos personas pulsen a la vez;
 - incrementan `rooms.version` → un móvil nunca sustituye un estado nuevo por uno viejo;
-- aceptan un `action_id` (jugar carta, proponer shuriken) → un reintento de red no se aplica dos veces;
+- aceptan un `action_id` (jugar carta, proponer vistazo o escudo) → un reintento de red no se aplica dos veces;
 - `play_card` exige además el **valor** de la carta pulsada: una doble pulsación no juega la siguiente.
 
 ## 6. Máquina de estados
@@ -114,8 +115,8 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
 | Nivel en curso | `playing` |
 | Resolución de jugada | evento `play` |
 | Penalización | evento `mistake` (cartas descartadas, vida perdida) |
-| Uso de shuriken | `rooms.vote` + eventos `shuriken_proposed` / `shuriken_used` / `shuriken_cancelled` |
-| Nivel superado + recompensa | `level_complete` + `rooms.last_reward` |
+| Uso de un comodín | `rooms.vote` (`kind`: shuriken / shield / rewind) + eventos `shuriken_proposed` / `shuriken_used` / `shield_used` / `rewind_offered` / `rewind_used` / `shuriken_cancelled` |
+| Nivel superado + recompensa | `level_complete` + `rooms.last_reward`; si hay comodín a elegir, `rooms.offer` + evento `comodin_chosen` |
 | Victoria / derrota / abandono | `won` / `lost` / `abandoned` |
 
 ## 7. Reglas implementadas
@@ -128,10 +129,23 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
 - **Shuriken**: cualquiera propone; todos los jugadores deben aceptar en 15 s; cualquiera puede
   rechazar. Mientras hay votación no se pueden jugar cartas. Cada jugador descarta su carta más baja
   (variante clásica: ocultas; variante revelación: se muestran).
+- **Escudo**: se propone y vota igual que el vistazo. Aceptado, el siguiente error del nivel no
+  cuesta vida (las cartas sí se descartan). Caduca al terminar el nivel.
+- **Rebobinar**: no se propone. Si se pierde una vida y el equipo tiene alguno, la partida se
+  detiene y se vota (20 s, unanimidad). Aceptado, se recupera la vida; las cartas descartadas no
+  vuelven. Si no se acepta (o caduca, o alguien sale), la vida se pierde y, si era la última, la
+  partida termina. Un escudo activo evita la pregunta (no se pierde vida).
+- Si te rechazan (o caduca) un vistazo o un escudo, no puedes proponer otro comodín hasta que se
+  juegue una carta.
 - Si las manos quedan vacías tras un error o un shuriken, el nivel también se supera.
 - Configuración clásica (centralizada en `src/config/gameConfig.ts` y su espejo SQL):
   2 jugadores → 12 niveles, 2 vidas, 1 shuriken · 3 → 10, 3, 1 · 4 → 8, 4, 1.
-- **Recompensas clásicas**: nivel 2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥; máximo 5 vidas y 3 shurikens.
+- **Recompensas clásicas**: nivel 2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥; máximo 5 vidas y 3 de cada comodín.
+  ★ = un comodín a elegir (en el juego original era un shuriken): se ofrecen 2 de los 3 al azar, sin
+  los que ya están al máximo (si solo queda uno, se da directamente). Cada jugador vota; cuando han
+  votado todos gana el más votado y, si hay empate, se decide al azar. No se pasa de nivel hasta
+  elegir (el anfitrión puede forzarlo). En la tabla de recompensas el campo se sigue llamando
+  `shurikens` por compatibilidad.
   *Verificación*: las reglas oficiales indican que la recompensa figura en cada carta de nivel; la
   correspondencia exacta procede de fuentes secundarias coherentes entre sí (WikiBoardGames,
   RulesPal). Por eso es configurable.

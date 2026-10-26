@@ -1,6 +1,6 @@
 /**
  * Solo en desarrollo (`npm run dev`): muestra pantallas con estados de ejemplo sin servidor.
- * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote
+ * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -65,6 +65,34 @@ function build(kind: string): E.EngineState {
     step(E.proposeShuriken(s, 'me', NOW));
     step(E.voteShuriken(s, 'a', false, NOW));
   }
+  if (kind === 'shieldvote') {
+    s.shields = 1;
+    step(E.proposeShield(s, 'a', NOW));
+  }
+  if (kind === 'shieldon') {
+    s.shields = 1;
+    s.shieldActive = true;
+  }
+  if (kind === 'rewind' || kind === 'rewindlast') {
+    s.rewinds = 1;
+    s.shields = 1;
+    if (kind === 'rewindlast') s.lives = 1;
+    step(E.playCard(s, 'b', 40, NOW));
+    step(E.voteShuriken(s, 'a', true, NOW));
+  }
+  if (kind === 'pick' || kind === 'picked') {
+    s.level = 2;
+    s.hands = { me: [10, 11], a: [20, 21], b: [30, 31], c: [40, 41] };
+    for (const [p, c] of [['me', 10], ['me', 11], ['a', 20], ['a', 21], ['b', 30], ['b', 31], ['c', 40], ['c', 41]] as const) {
+      step(E.playCard(s, p, c, NOW - 4000, seededRng(4)));
+    }
+    s.lastEvent = null;
+    step(E.pickComodin(s, 'a', 2, s.offer!.choices[0]!, seededRng(5), NOW - 4000));
+    if (kind === 'picked') {
+      for (const p of ['me', 'b', 'c']) step(E.pickComodin(s, p, 2, s.offer!.choices[1]!, seededRng(5), NOW - 4000));
+      s.players.find((p) => p.id === 'a')!.ready = true;
+    }
+  }
   if (kind === 'won') {
     s.status = 'won';
     s.level = s.maxLevel;
@@ -86,7 +114,9 @@ export function Preview({ kind }: { kind: string }) {
     actions: {
       playCard: noop,
       proposeShuriken: noop,
+      proposeShield: noop,
       voteShuriken: noop,
+      pickComodin: noop,
       expireVote: noop,
       readyNextLevel: noop,
       setLobbyReady: noop,

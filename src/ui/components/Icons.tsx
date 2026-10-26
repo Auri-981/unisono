@@ -1,5 +1,6 @@
 /** Iconos SVG propios (sin dependencias). Heredan el color con `currentColor`. */
 import type { SVGProps } from 'react';
+import type { ComodinKind } from '../../game/types';
 
 type P = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -31,6 +32,35 @@ export const VistazoIcon = ({ size, ...p }: P) => (
     <circle cx="13.1" cy="10.9" r="0.8" fill="var(--bg)" />
   </svg>
 );
+
+/** Escudo: protege del siguiente error del nivel. */
+export const ShieldIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 2.8 4.5 5.6v5.6c0 4.8 3.2 8.6 7.5 10 4.3-1.4 7.5-5.2 7.5-10V5.6L12 2.8Z" fill="currentColor" />
+    <path d="m8.6 12.1 2.4 2.4 4.6-4.8" stroke="var(--bg)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Rebobinar: flecha que vuelve atrás (recupera la vida perdida). */
+export const RewindIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M5.2 8.5A8 8 0 1 1 4 13" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    <path d="M3.6 3.8v5.4H9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 8.2v4.3l2.8 1.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Comodín sin especificar (premio a elegir): una estrella de cuatro puntas. */
+export const ComodinIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 2.5c.7 4.6 2.9 6.8 7.5 7.5v.1c-4.6.7-6.8 2.9-7.5 7.5h-.1c-.7-4.6-2.9-6.8-7.5-7.5V10c4.6-.7 6.8-2.9 7.5-7.5h.1Z" fill="currentColor" />
+    <circle cx="18.5" cy="18.5" r="2" fill="currentColor" opacity="0.7" />
+  </svg>
+);
+
+/** Icono de un comodín concreto. */
+export const ComodinKindIcon = ({ kind, ...p }: P & { kind: ComodinKind }) =>
+  kind === 'shuriken' ? <VistazoIcon {...p} /> : kind === 'rewind' ? <RewindIcon {...p} /> : <ShieldIcon {...p} />;
 
 export const CrownIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>

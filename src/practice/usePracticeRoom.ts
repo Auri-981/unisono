@@ -50,7 +50,7 @@ export function usePracticeRoom(
       for (const ev of r.events) {
         if (ev.kind === 'level_start' || ev.kind === 'game_start') {
           clockRef.current = Date.now() + (r.state.config.countdown ? COUNTDOWN_MS : 0);
-        } else if (['play', 'mistake', 'shuriken_used', 'shuriken_cancelled'].includes(ev.kind)) {
+        } else if (['play', 'mistake', 'shuriken_used', 'shuriken_cancelled', 'shield_used', 'rewind_used'].includes(ev.kind)) {
           clockRef.current = Date.now();
         }
       }
@@ -95,6 +95,18 @@ export function usePracticeRoom(
       later(Date.parse(s.vote.expiresAt) - Date.now() + 50, () => commit(E.expireVote(stateRef.current, Date.now())));
     }
 
+    // Elección de comodín: los bots votan lo mismo que tú (en la práctica decides tú).
+    const myPick = s.offer?.votes[PRACTICE_ME];
+    if (s.status === 'level_complete' && s.offer && myPick) {
+      for (const b of bots) {
+        if (s.offer.votes[b.id] !== myPick) {
+          later(400 + cryptoRng() * 500, () =>
+            commit(E.pickComodin(stateRef.current, b.id, stateRef.current.level, myPick, cryptoRng, Date.now())),
+          );
+        }
+      }
+    }
+
     if (s.status === 'level_complete') {
       for (const b of bots) {
         if (!s.players.find((p) => p.id === b.id)?.ready) {
@@ -115,7 +127,9 @@ export function usePracticeRoom(
     return {
       playCard: (card) => act((s, now) => E.playCard(s, PRACTICE_ME, card, now))(),
       proposeShuriken: act((s, now) => E.proposeShuriken(s, PRACTICE_ME, now)),
+      proposeShield: act((s, now) => E.proposeShield(s, PRACTICE_ME, now)),
       voteShuriken: (accept) => act((s, now) => E.voteShuriken(s, PRACTICE_ME, accept, now))(),
+      pickComodin: (kind) => act((s, now) => E.pickComodin(s, PRACTICE_ME, s.level, kind, cryptoRng, now))(),
       expireVote: act((s, now) => E.expireVote(s, now)),
       readyNextLevel: (force) => act((s, now) => E.readyNextLevel(s, PRACTICE_ME, s.level, force, cryptoRng, now))(),
       setLobbyReady: async () => {},

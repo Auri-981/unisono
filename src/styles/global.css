@@ -20,6 +20,9 @@
   --success: #6fdcaa;
   --life: #ff8a8a;
   --shuriken: #8fd6ff;
+  --rewind: #c9a6ff;
+  --shield: #7fe3b8;
+  --comodin: #f5b971;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 10px 30px rgb(0 0 0 / 0.35);
@@ -679,6 +682,19 @@ select.input {
   color: var(--shuriken);
 }
 
+.resource-shield {
+  color: var(--shield);
+}
+
+.resource-comodin {
+  color: var(--comodin);
+}
+
+.shield-on {
+  animation: pop 0.4s ease;
+  filter: drop-shadow(0 0 6px rgb(127 227 184 / 0.6));
+}
+
 .resource-count {
   display: inline-block;
   min-width: 1ch;
@@ -1116,8 +1132,92 @@ select.input {
   gap: 10px;
 }
 
-.shuriken-btn {
+/* Barra de comodines: Vistazo, Escudo y Rebobinar con su número. */
+.comodin-bar {
   flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.comodin-btn {
+  min-width: 0;
+  min-height: 56px;
+  padding: 6px 4px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: transform 0.12s ease, opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.comodin-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.comodin-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.comodin-btn-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.comodin-btn-count {
+  animation: pop 0.35s ease;
+}
+
+.comodin-btn-name {
+  font-size: 0.74rem;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comodin-shuriken svg {
+  color: var(--shuriken);
+}
+
+.comodin-shield svg {
+  color: var(--shield);
+}
+
+.comodin-rewind svg {
+  color: var(--rewind);
+}
+
+/* Rebobinar no se pulsa para usarlo: se ofrece solo. */
+.comodin-btn.is-passive {
+  border-style: dashed;
+  background: transparent;
+}
+
+.comodin-btn.is-active {
+  opacity: 1;
+  border-color: var(--shield);
+  background: rgb(127 227 184 / 0.12);
+}
+
+.comodin-btn.is-active .comodin-btn-name {
+  color: var(--shield);
+  font-weight: 600;
+}
+
+.table-hint-shield {
+  color: var(--shield);
 }
 
 .chat-btn {
@@ -1168,6 +1268,52 @@ select.input {
   align-items: center;
   gap: 8px;
   color: var(--shuriken);
+}
+
+.vote-shield {
+  border-color: rgb(127 227 184 / 0.45);
+  background: rgb(14 38 34 / 0.95);
+}
+
+.vote-shield .vote-head {
+  color: var(--shield);
+}
+
+/* Rebobinar: ventana propia al perder una vida. */
+.rewind-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--rewind);
+  background: rgb(201 166 255 / 0.14);
+  border: 1px solid rgb(201 166 255 / 0.45);
+  animation: pop 0.45s ease;
+}
+
+.rewind-title {
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.rewind-mistake {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.rewind-warning {
+  color: var(--danger);
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgb(255 122 122 / 0.1);
+}
+
+.overlay-rewind .vote-actions,
+.overlay-rewind .vote-voters {
+  width: 100%;
+  justify-content: center;
 }
 
 .vote-head strong {
@@ -1316,6 +1462,106 @@ select.input {
 .reward-shuriken {
   background: rgb(143 214 255 / 0.15);
   color: var(--shuriken);
+}
+
+.reward-rewind {
+  background: rgb(201 166 255 / 0.15);
+  color: var(--rewind);
+}
+
+.reward-shield {
+  background: rgb(127 227 184 / 0.15);
+  color: var(--shield);
+}
+
+/* Elegir comodín al superar un nivel: dos tarjetas. */
+.choose {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.choose-title {
+  font-weight: 700;
+  color: var(--comodin);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.85rem;
+}
+
+.choose-cards {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.choose-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px 10px;
+  border-radius: 18px;
+  border: 2px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+  animation: pop 0.45s ease both;
+  transition: transform 0.12s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.choose-card:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.choose-card:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.choose-card.comodin-shuriken .choose-icon {
+  color: var(--shuriken);
+}
+
+.choose-card.comodin-rewind .choose-icon {
+  color: var(--rewind);
+}
+
+.choose-card.comodin-shield .choose-icon {
+  color: var(--shield);
+}
+
+.choose-card.is-picked {
+  border-color: var(--warm);
+  background: rgb(245 185 113 / 0.1);
+}
+
+.choose-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.choose-desc {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.choose-voters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.choose-voters .chip {
+  font-size: 0.72rem;
+  padding: 2px 8px;
 }
 
 .ready-list {
@@ -1481,6 +1727,11 @@ select.input {
   font-size: 1.05rem;
   margin: 20px 0 6px;
   color: var(--warm);
+}
+
+.prose h3 {
+  font-size: 0.98rem;
+  margin: 14px 0 4px;
 }
 
 .prose p,
@@ -1821,6 +2072,21 @@ html {
   .field-row {
     grid-template-columns: 1fr;
   }
+  .comodin-bar {
+    gap: 6px;
+  }
+  .choose-cards {
+    gap: 8px;
+  }
+  .choose-card {
+    padding: 12px 6px 8px;
+  }
+}
+
+@media (max-width: 320px) {
+  .comodin-btn-name {
+    display: none;
+  }
 }
 
 .countdown-order {
@@ -1828,7 +2094,20 @@ html {
   color: var(--cool);
 }
 
-.prose h2 .rules-icon {
+.prose h2 .rules-icon,
+.prose h3 .rules-icon {
   vertical-align: -3px;
   color: var(--shuriken);
+}
+
+.prose h2 .rules-icon {
+  color: var(--comodin);
+}
+
+.prose .rules-icon-shield {
+  color: var(--shield);
+}
+
+.prose .rules-icon-rewind {
+  color: var(--rewind);
 }

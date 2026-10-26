@@ -2,7 +2,7 @@
  * Llamadas a las funciones del servidor (RPC de Supabase), con tiempo límite,
  * reintentos seguros y errores traducidos a códigos del juego.
  */
-import { isGameErrorCode, type RoomConfig, type RoomSnapshot } from '../game/types';
+import { isGameErrorCode, type ComodinKind, type RoomConfig, type RoomSnapshot } from '../game/types';
 import { ensureSession, getSupabase } from './supabase';
 
 const TIMEOUT_MS = 8000;
@@ -57,6 +57,9 @@ export const api = {
   playCard: (room: string, card: number) =>
     rpc<RoomSnapshot>('play_card', { p_room: room, p_card: card, p_action: newActionId() }, 2),
   proposeShuriken: (room: string) => rpc<RoomSnapshot>('propose_shuriken', { p_room: room, p_action: newActionId() }, 2),
+  proposeShield: (room: string) => rpc<RoomSnapshot>('propose_shield', { p_room: room, p_action: newActionId() }, 2),
+  pickComodin: (room: string, level: number, kind: ComodinKind) =>
+    rpc<RoomSnapshot>('pick_comodin', { p_room: room, p_level: level, p_kind: kind }, 1),
   voteShuriken: (room: string, accept: boolean) => rpc<RoomSnapshot>('vote_shuriken', { p_room: room, p_accept: accept }, 1),
   expireVote: (room: string) => rpc<RoomSnapshot>('expire_shuriken_vote', { p_room: room }, 1),
   readyNextLevel: (room: string, level: number, force: boolean) =>

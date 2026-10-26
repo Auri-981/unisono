@@ -36,8 +36,15 @@ describe('premio anunciado del nivel', () => {
     expect(rewardText(r)).toBe('+1 vida (ya tenéis el máximo)');
   });
 
-  it('combina vidas y vistazos en recompensas personalizadas', () => {
+  it('el comodín solo cuenta como «al máximo» si lo están los tres', () => {
+    expect(upcomingReward(room({ level: 2, shurikens: 3 }), 2)!.shurikensFull).toBe(false);
+    const full = upcomingReward(room({ level: 2, shurikens: 3, rewinds: 3, shields: 3 }), 2)!;
+    expect(full.shurikensFull).toBe(true);
+    expect(rewardText(full)).toBe('+1 comodín (ya tenéis el máximo)');
+  });
+
+  it('combina vidas y comodines en recompensas personalizadas', () => {
     const config = { ...DEFAULT_CONFIG, rewardPreset: 'custom' as const, customRewards: [{ level: 1, lives: 2, shurikens: 1 }] };
-    expect(rewardText(upcomingReward(room({ level: 1, config }), 2)!)).toBe('+2 vidas y +1 vistazo');
+    expect(rewardText(upcomingReward(room({ level: 1, config }), 2)!)).toBe('+2 vidas y +1 comodín');
   });
 });

@@ -118,12 +118,27 @@ async function main() {
   const { error: privErr } = await a.sb.schema('game_private').rpc('deal', { p_room: room });
   ok(Boolean(privErr), 'las funciones internas no son accesibles');
 
+  // Comodines nuevos: al empezar no hay escudos (comprueba que el servidor tiene la versión nueva).
+  const shieldErr = await a.rpc('propose_shield', { p_room: room, p_action: crypto.randomUUID() }).then(() => 'OK', (e) => e.message);
+  ok(shieldErr === 'NO_SHIELDS', `proponer escudo sin tener ninguno → NO_SHIELDS (recibido: ${shieldErr})`);
+
   // Partida completa: en cada nivel, se juegan las cartas en el orden correcto.
   const players = [a, b, c];
   for (let guard = 0; guard < 20; guard++) {
     const state = await a.rpc('get_room_state', { p_room: room });
     if (state.room.status === 'won' || state.room.status === 'lost') break;
     if (state.room.status === 'level_complete') {
+      // Si hay que elegir comodín, Ana y Beto votan el primero y Carla el segundo: gana el primero.
+      const offer = state.room.offer;
+      if (offer) {
+        const before = { shuriken: state.room.shurikens, rewind: state.room.rewinds, shield: state.room.shields };
+        const kind = offer.choices[0];
+        await a.rpc('pick_comodin', { p_room: room, p_level: state.room.level, p_kind: kind });
+        await c.rpc('pick_comodin', { p_room: room, p_level: state.room.level, p_kind: offer.choices[1] });
+        const after = await b.rpc('pick_comodin', { p_room: room, p_level: state.room.level, p_kind: kind });
+        const now = { shuriken: after.room.shurikens, rewind: after.room.rewinds, shield: after.room.shields };
+        ok(!after.room.offer && now[kind] === before[kind] + 1, `nivel ${state.room.level}: se elige el comodín más votado (${kind})`);
+      }
       for (const p of players) await p.rpc('ready_next_level', { p_room: room, p_level: state.room.level, p_force: false });
       continue;
     }

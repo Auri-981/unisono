@@ -1,6 +1,6 @@
 import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, levelsToPlay, normalizeConfig, presetFor } from '../../config/gameConfig';
 import { t } from '../../i18n';
-import { LIFE_SYMBOL, VISTAZO_SYMBOL, rewardPresetLabel } from '../rewards';
+import { LIFE_SYMBOL, COMODIN_SYMBOL, rewardPresetLabel } from '../rewards';
 import type { Reward, RoomConfig } from '../../game/types';
 
 interface Props {
@@ -146,7 +146,7 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
                 </select>
               </label>
               <label className="reward-cell">
-                <span className="field-label">{VISTAZO_SYMBOL}</span>
+                <span className="field-label">{COMODIN_SYMBOL}</span>
                 <select className="input" value={r.shurikens} disabled={disabled} onChange={(e) => setReward(i, { shurikens: Number(e.target.value) })}>
                   {range(0, CONFIG_LIMITS.rewardAmount.max).map((n) => (
                     <option key={n} value={n}>
@@ -165,6 +165,7 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
               </button>
             </div>
           ))}
+          <p className="muted small">{t('config.comodinLegend', { symbol: COMODIN_SYMBOL })}</p>
           {freeLevel !== undefined && config.customRewards.length < CONFIG_LIMITS.maxRewardRows && (
             <button
               type="button"
@@ -210,7 +211,7 @@ export function ConfigSummary({ config, playerCount }: { config: RoomConfig; pla
   const rewards =
     config.rewardPreset === 'custom'
       ? config.customRewards
-          .map((r) => `${r.level}:${r.lives ? ` +${r.lives}${LIFE_SYMBOL}` : ''}${r.shurikens ? ` +${r.shurikens}${VISTAZO_SYMBOL}` : ''}`)
+          .map((r) => `${r.level}:${r.lives ? ` +${r.lives}${LIFE_SYMBOL}` : ''}${r.shurikens ? ` +${r.shurikens}${COMODIN_SYMBOL}` : ''}`)
           .join(' · ') || t('config.rewards.none')
       : rewardPresetLabel(config);
   return (
