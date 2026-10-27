@@ -13,6 +13,7 @@ import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
 import { HistoryScreen, PracticeSetup, RulesScreen, SettingsScreen } from './ui/screens/InfoScreens';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
+import { TutorialScreen } from './ui/screens/TutorialScreen';
 
 type Screen =
   | { name: 'home'; message?: string }
@@ -22,6 +23,7 @@ type Screen =
   | { name: 'practiceSetup' }
   | { name: 'practice'; bots: number; config: RoomConfig; run: number }
   | { name: 'rules' }
+  | { name: 'tutorial' }
   | { name: 'settings' }
   | { name: 'history' };
 
@@ -100,6 +102,7 @@ export function App() {
           onCreate={() => setScreen({ name: 'create' })}
           onJoin={() => setScreen({ name: 'join' })}
           onPractice={() => setScreen({ name: 'practiceSetup' })}
+          onTutorial={() => setScreen({ name: 'tutorial' })}
           onRules={() => setScreen({ name: 'rules' })}
           onSettings={() => setScreen({ name: 'settings' })}
           onHistory={() => setScreen({ name: 'history' })}
@@ -136,6 +139,15 @@ export function App() {
           config={screen.config}
           myName={getPrefs().name.trim() || 'Tú'}
           onExit={() => home()}
+        />
+      );
+    case 'tutorial':
+      return (
+        <TutorialScreen
+          onBack={() => home()}
+          onPractice={() => setScreen({ name: 'practiceSetup' })}
+          onCreate={() => setScreen({ name: 'create' })}
+          canCreate={onlineAvailable}
         />
       );
     case 'rules':

@@ -2111,3 +2111,463 @@ html {
 .prose .rules-icon-rewind {
   color: var(--rewind);
 }
+
+/* ───────────── Tutorial ───────────── */
+
+.tutorial {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.segmented-text button {
+  font-size: 1rem;
+}
+
+.tut-dots {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tut-dot {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.tut-dot::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.tut-dot.is-done::after {
+  background: rgb(245 185 113 / 0.45);
+}
+
+.tut-dot.is-on::after {
+  width: 18px;
+  background: var(--warm);
+}
+
+.tut-step {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: rise 0.3s ease;
+  touch-action: pan-y;
+}
+
+.tut-count {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.tut-title {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 1.55rem;
+  color: var(--warm);
+}
+
+.tut-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tut-body p {
+  margin: 0;
+  color: #d7dbea;
+  line-height: 1.5;
+}
+
+.tut-body strong {
+  color: var(--text);
+}
+
+.tut-visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 0;
+}
+
+.tut-fan {
+  display: flex;
+}
+
+.tut-fan .card {
+  flex: none;
+  margin: 0 -10px;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 0.4);
+}
+
+.tut-fan .card:nth-child(1) {
+  transform: rotate(-10deg) translateY(6px);
+}
+
+.tut-fan .card:nth-child(3) {
+  transform: rotate(10deg) translateY(6px);
+}
+
+.tut-levels {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.tut-levels th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 4px;
+}
+
+.tut-levels td {
+  padding: 8px 4px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+
+/* Ejemplo animado del objetivo */
+.tut-demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--bg-2);
+}
+
+.tut-players {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.tut-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tut-player-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.tut-player-cards {
+  display: flex;
+  gap: 4px;
+  min-height: 46px;
+  align-items: center;
+}
+
+.tut-player-cards .card {
+  flex: none;
+}
+
+.tut-done {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.tut-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tut-table-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 62px;
+}
+
+.tut-table-cards .card {
+  flex: none;
+}
+
+.tut-arrow {
+  color: var(--muted);
+}
+
+.tut-pop {
+  animation: pop 0.4s ease;
+}
+
+/* Regla de oro */
+.tut-bubble {
+  position: relative;
+  padding: 12px 16px;
+  border-radius: 18px 18px 18px 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-weight: 600;
+}
+
+.tut-bubble > span:first-child {
+  text-decoration: line-through;
+  text-decoration-color: var(--danger);
+  text-decoration-thickness: 2px;
+  color: var(--muted);
+}
+
+.tut-forbidden {
+  position: absolute;
+  top: -10px;
+  right: -8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  transform: rotate(6deg);
+}
+
+.tut-tip {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgb(126 166 255 / 0.1);
+  border: 1px solid rgb(126 166 255 / 0.3);
+}
+
+/* Tu carta */
+.tut-hand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.tut-hand-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tut-hand-main .card {
+  flex: none;
+}
+
+.tut-tap {
+  font-size: 0.78rem;
+  color: var(--warm);
+  font-weight: 600;
+}
+
+.tut-hand-rest {
+  display: flex;
+  gap: 6px;
+}
+
+.tut-hand-rest .card {
+  flex: none;
+}
+
+/* Errores */
+.tut-mistake {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgb(255 122 122 / 0.07);
+  border: 1px solid rgb(255 122 122 / 0.25);
+}
+
+.tut-mistake-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.tut-mistake-col .card {
+  flex: none;
+}
+
+.tut-row {
+  display: flex;
+  gap: 6px;
+}
+
+.tut-shake {
+  border-color: var(--danger);
+}
+
+.tut-lives-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 62px;
+}
+
+.tut-life {
+  color: var(--life);
+}
+
+.tut-life-lost {
+  opacity: 0.3;
+}
+
+.tut-minus {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* Comodines */
+.tut-comodines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tut-comodin {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.tut-comodin svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.tut-comodin div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.tut-comodin span {
+  font-size: 0.9rem;
+  color: #d7dbea;
+  line-height: 1.4;
+}
+
+.tut-comodin.comodin-shuriken svg {
+  color: var(--shuriken);
+}
+
+.tut-comodin.comodin-shield svg {
+  color: var(--shield);
+}
+
+.tut-comodin.comodin-rewind svg {
+  color: var(--rewind);
+}
+
+/* Premios */
+.tut-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tut-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.tut-reward-level {
+  color: var(--text);
+}
+
+.tut-reward-life {
+  background: rgb(255 138 138 / 0.12);
+  color: var(--life);
+}
+
+.tut-reward-comodin {
+  background: rgb(245 185 113 / 0.12);
+  color: var(--comodin);
+}
+
+.tut-choose .choose-card {
+  padding: 10px 6px;
+  animation: none;
+}
+
+.tut-options {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #d7dbea;
+  line-height: 1.45;
+}
+
+/* Navegación */
+.tut-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+
+.tut-actions-end {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 360px) {
+  .tut-step {
+    padding: 14px 12px 16px;
+  }
+  .tut-title {
+    font-size: 1.35rem;
+  }
+  .tut-hand {
+    gap: 8px;
+  }
+  .tut-hand .card-lg {
+    width: 80px;
+    height: 112px;
+  }
+}

@@ -7,6 +7,7 @@ interface Props {
   onCreate: () => void;
   onJoin: () => void;
   onPractice: () => void;
+  onTutorial: () => void;
   onRules: () => void;
   onSettings: () => void;
   onHistory: () => void;
@@ -38,6 +39,9 @@ export function HomeScreen(p: Props) {
         {!onlineAvailable && <p className="notice notice-warn">{t('home.offlineNotice')}</p>}
         <button type="button" className="btn btn-ghost btn-large" onClick={p.onPractice}>
           {t('home.practice')}
+        </button>
+        <button type="button" className="btn btn-ghost btn-large" onClick={p.onTutorial}>
+          {t('home.tutorial')}
         </button>
       </nav>
 
