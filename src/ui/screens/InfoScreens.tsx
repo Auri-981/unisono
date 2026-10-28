@@ -1,115 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CLASSIC_REWARDS, DEFAULT_CONFIG, HARD_REWARDS, PLAYER_PRESETS } from '../../config/gameConfig';
+import { DEFAULT_CONFIG } from '../../config/gameConfig';
 import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { api, ApiError } from '../../net/api';
 import { ConfigEditor } from '../components/ConfigEditor';
-import { ComodinIcon, RewindIcon, ShieldIcon, VistazoIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
-import { LIFE_SYMBOL, COMODIN_SYMBOL } from '../rewards';
 import { setPrefs, usePrefs } from '../prefs';
-
-export function RulesScreen({ onBack }: { onBack: () => void }) {
-  return (
-    <Page title={t('rules.title')} onBack={onBack}>
-      <article className="prose">
-        <p>
-          <strong>Unísono</strong> es cooperativo: ganáis o perdéis todos juntos. La baraja tiene 100 cartas, del 1 al
-          100.
-        </p>
-        <h2>El objetivo</h2>
-        <p>
-          En cada nivel, cada jugador recibe tantas cartas como el número del nivel (nivel 1: una carta; nivel 2: dos…).
-          Entre todos debéis jugar <strong>todas</strong> las cartas sobre la mesa en orden ascendente.
-        </p>
-        <h2>La regla de oro</h2>
-        <p>
-          No hay turnos y <strong>no se puede decir nada sobre los números</strong>. Cada uno juega su carta más baja
-          cuando siente que ha llegado el momento. Si tienes el 12 y nadie juega, quizá sea tu turno… o quizá alguien
-          tiene el 5.
-        </p>
-        <h2>Errores</h2>
-        <p>
-          Si alguien juega una carta y otro jugador tenía una más baja, el equipo pierde <strong>una vida</strong>. Todas
-          las cartas más bajas que la jugada se descartan boca arriba y la partida sigue. Sin vidas, se pierde.
-        </p>
-        <h2>
-          <ComodinIcon size={18} className="rules-icon" /> Comodines
-        </h2>
-        <p>
-          Hay tres comodines. Para usar uno tienen que aceptarlo <strong>todos</strong>; basta un «no» para que no se
-          use (y no se gasta).
-        </p>
-        <h3>
-          <VistazoIcon size={16} className="rules-icon" /> Vistazo
-        </h3>
-        <p>
-          Cualquiera puede proponerlo. Si todos aceptan en 15 segundos, cada jugador descarta la carta que le toca. Sirve
-          para salir de un atasco y obtener información.
-        </p>
-        <h3>
-          <ShieldIcon size={16} className="rules-icon rules-icon-shield" /> Escudo
-        </h3>
-        <p>
-          Cualquiera puede proponerlo cuando el grupo no lo tenga claro. Si todos aceptan, el siguiente error de ese nivel
-          no cuesta vida (las cartas se descartan igualmente). Si no hay ningún error, el escudo se pierde al acabar el
-          nivel.
-        </p>
-        <h3>
-          <RewindIcon size={16} className="rules-icon rules-icon-rewind" /> Rebobinar
-        </h3>
-        <p>
-          No se propone: aparece solo cuando perdéis una vida, preguntando si queréis usarlo. Si todos aceptan en 20
-          segundos, recuperáis esa vida y seguís jugando (las cartas descartadas no vuelven). Funciona incluso con la
-          última vida: si no lo usáis, la partida termina.
-        </p>
-        <p>
-          Si te rechazan un vistazo o un escudo, no puedes proponer otro comodín hasta que se juegue alguna carta.
-        </p>
-        <h2>Niveles y recompensas</h2>
-        <ul>
-          {Object.entries(PLAYER_PRESETS).map(([n, p]) => (
-            <li key={n}>
-              {n} jugadores: {p.levels} niveles, {p.lives} vidas, {p.shurikens} vistazo.
-            </li>
-          ))}
-        </ul>
-        <p>El anfitrión puede elegir jugar menos niveles para una partida más corta (nunca más de los que tocan).</p>
-        <p>
-          Recompensas clásicas al superar un nivel:{' '}
-          {CLASSIC_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : COMODIN_SYMBOL}`).join(' · ')} (máximo{' '}
-          {DEFAULT_CONFIG.maxLives} vidas y {DEFAULT_CONFIG.maxShurikens} de cada comodín). El anfitrión puede
-          personalizarlas.
-        </p>
-        <p>
-          {COMODIN_SYMBOL} es un comodín a elegir: aparecen dos de los tres al azar, con su explicación, y cada uno vota el
-          que prefiere. Gana el más votado; si hay empate, se decide al azar. Los que ya estén al máximo no se ofrecen.
-        </p>
-        <h2>Orden descendente</h2>
-        <p>
-          El anfitrión puede elegir jugar de mayor a menor (del 100 al 1). Todo funciona igual, pero al revés: juegas
-          siempre tu carta más alta, es un error si alguien tenía una carta más alta que la jugada, y el vistazo
-          descarta la carta más alta de cada uno.
-        </p>
-        <h2>Dificultad</h2>
-        <ul>
-          <li>Fácil: una vida y un vistazo más al empezar.</li>
-          <li>Clásica: como el juego original.</li>
-          <li>
-            Difícil: empezáis con 1 sola vida y sin vistazos, y hay menos recompensas (
-            {HARD_REWARDS.map((r) => `${r.level} ${r.lives ? LIFE_SYMBOL : COMODIN_SYMBOL}`).join(' · ')}).
-          </li>
-        </ul>
-        <h2>Consejos</h2>
-        <ul>
-          <li>Antes de cada nivel, respirad y esperad a que todos estén «listos».</li>
-          <li>Contad mentalmente desde la última carta jugada.</li>
-          <li>En modo amigos hay chat, pero el reto es no decir números.</li>
-        </ul>
-      </article>
-    </Page>
-  );
-}
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const prefs = usePrefs();

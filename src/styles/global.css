@@ -1723,26 +1723,6 @@ select.input {
 
 /* ───────────── Textos e historial ───────────── */
 
-.prose h2 {
-  font-size: 1.05rem;
-  margin: 20px 0 6px;
-  color: var(--warm);
-}
-
-.prose h3 {
-  font-size: 0.98rem;
-  margin: 14px 0 4px;
-}
-
-.prose p,
-.prose li {
-  color: #d7dbea;
-}
-
-.prose ul {
-  padding-left: 1.2em;
-}
-
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2092,24 +2072,6 @@ html {
 .countdown-order {
   font-weight: 700;
   color: var(--cool);
-}
-
-.prose h2 .rules-icon,
-.prose h3 .rules-icon {
-  vertical-align: -3px;
-  color: var(--shuriken);
-}
-
-.prose h2 .rules-icon {
-  color: var(--comodin);
-}
-
-.prose .rules-icon-shield {
-  color: var(--shield);
-}
-
-.prose .rules-icon-rewind {
-  color: var(--rewind);
 }
 
 /* ───────────── Tutorial ───────────── */

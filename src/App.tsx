@@ -11,7 +11,7 @@ import { onlineAvailable } from './net/supabase';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
-import { HistoryScreen, PracticeSetup, RulesScreen, SettingsScreen } from './ui/screens/InfoScreens';
+import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
 
@@ -22,7 +22,6 @@ type Screen =
   | { name: 'room'; roomId: string; initial: RoomSnapshot | null }
   | { name: 'practiceSetup' }
   | { name: 'practice'; bots: number; config: RoomConfig; run: number }
-  | { name: 'rules' }
   | { name: 'tutorial' }
   | { name: 'settings' }
   | { name: 'history' };
@@ -103,7 +102,6 @@ export function App() {
           onJoin={() => setScreen({ name: 'join' })}
           onPractice={() => setScreen({ name: 'practiceSetup' })}
           onTutorial={() => setScreen({ name: 'tutorial' })}
-          onRules={() => setScreen({ name: 'rules' })}
           onSettings={() => setScreen({ name: 'settings' })}
           onHistory={() => setScreen({ name: 'history' })}
         />
@@ -150,8 +148,6 @@ export function App() {
           canCreate={onlineAvailable}
         />
       );
-    case 'rules':
-      return <RulesScreen onBack={() => home()} />;
     case 'settings':
       return <SettingsScreen onBack={() => home()} />;
     case 'history':

@@ -35,7 +35,6 @@ export const es = {
   'home.create': 'Crear partida',
   'home.join': 'Unirse a una partida',
   'home.practice': 'Practicar con bots',
-  'home.rules': 'Reglas',
   'home.settings': 'Ajustes',
   'home.history': 'Historial',
   'home.offlineNotice': 'El modo online todavía no está configurado en esta web. Puedes practicar mientras tanto.',
@@ -225,7 +224,6 @@ export const es = {
   'exit.kicked': 'Ya no formas parte de esa sala.',
   'exit.gone': 'La sala ya no existe.',
 
-  'rules.title': 'Cómo se juega',
   'settings.title': 'Ajustes',
   'settings.name': 'Alias por defecto',
   'settings.sound': 'Efectos de sonido',
@@ -243,7 +241,7 @@ export const es = {
   'history.result.abandoned': 'Abandonada',
   'history.levelOf': 'Nivel {level}/{max}',
 
-  'home.tutorial': 'Tutorial: cómo se juega',
+  'home.tutorial': 'Tutorial',
 
   'tutorial.title': 'Tutorial',
   'tutorial.order': 'Orden de las cartas',

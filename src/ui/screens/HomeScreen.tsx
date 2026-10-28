@@ -8,7 +8,6 @@ interface Props {
   onJoin: () => void;
   onPractice: () => void;
   onTutorial: () => void;
-  onRules: () => void;
   onSettings: () => void;
   onHistory: () => void;
 }
@@ -40,14 +39,11 @@ export function HomeScreen(p: Props) {
         <button type="button" className="btn btn-ghost btn-large" onClick={p.onPractice}>
           {t('home.practice')}
         </button>
-        <button type="button" className="btn btn-ghost btn-large" onClick={p.onTutorial}>
-          {t('home.tutorial')}
-        </button>
       </nav>
 
       <footer className="home-footer">
-        <button type="button" className="link-btn" onClick={p.onRules}>
-          {t('home.rules')}
+        <button type="button" className="link-btn" onClick={p.onTutorial}>
+          {t('home.tutorial')}
         </button>
         <span aria-hidden>·</span>
         <button type="button" className="link-btn" onClick={p.onSettings}>
