@@ -82,6 +82,7 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
   return (
     <Page
       title={t('lobby.title')}
+      className="page-lobby"
       actions={<ConnectionDot state={ctl.connection} />}
     >
       <section className="panel invite">
@@ -106,7 +107,7 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel lobby-players-panel">
         <h2 className="panel-title">{t('lobby.players', { count: players.length, max: room.config.maxPlayers })}</h2>
         <ul className="lobby-players">
           {players.map((p) => {
@@ -151,7 +152,7 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
         </button>
       </section>
 
-      <section className="panel">
+      <section className="panel lobby-config">
         <h2 className="panel-title">{t('lobby.config')}</h2>
         <p className="muted small">{t('lobby.summary', { levels: res.maxLevel, lives: res.lives, shurikens: res.shurikens })}</p>
         {isHost ? (

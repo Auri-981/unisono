@@ -2871,3 +2871,108 @@ html {
     display: inline;
   }
 }
+
+/* ───────────── Pantallas anchas: sala de espera y decoración ───────────── */
+
+/* Sala de espera en el ordenador: invitación, jugadores y botones a la izquierda;
+   configuración a la derecha (así no hay que desplazarse para empezar). */
+@media (min-width: 1000px) {
+  .page-lobby {
+    max-width: 1120px;
+  }
+
+  .page-lobby .page-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      'invite config'
+      'players config'
+      'footer config';
+    column-gap: 24px;
+    row-gap: 16px;
+    align-items: start;
+  }
+
+  .page-lobby .invite {
+    grid-area: invite;
+  }
+
+  .page-lobby .lobby-players-panel {
+    grid-area: players;
+  }
+
+  .page-lobby .lobby-config {
+    grid-area: config;
+  }
+
+  .page-lobby .lobby-footer {
+    grid-area: footer;
+    margin-top: 0;
+  }
+}
+
+/* Cartas flotando a los lados del contenido (solo cuando sobra espacio). */
+.side-decor {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .page .side-decor {
+    display: block;
+  }
+}
+
+@media (max-width: 1599px) {
+  .page-lobby .side-decor {
+    display: none;
+  }
+}
+
+.side-decor-col {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: calc((100vw - 640px) / 2);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.page-lobby .side-decor-col {
+  width: calc((100vw - 1120px) / 2);
+}
+
+.side-decor-left {
+  left: 0;
+}
+
+.side-decor-right {
+  right: 0;
+}
+
+.side-decor-card {
+  position: absolute;
+  opacity: 0.32;
+  filter: saturate(0.85);
+  animation: card-float 9s ease-in-out infinite;
+}
+
+.side-decor-card .card {
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.5);
+}
+
+/* Posiciones y giros variados para que parezca una mesa desordenada. */
+.side-decor-left .side-decor-card:nth-child(1) { top: 8%; left: 22%; rotate: -14deg; }
+.side-decor-left .side-decor-card:nth-child(2) { top: 31%; left: 52%; rotate: 9deg; animation-delay: -3s; animation-duration: 11s; }
+.side-decor-left .side-decor-card:nth-child(3) { top: 55%; left: 16%; rotate: -5deg; animation-delay: -6s; }
+.side-decor-left .side-decor-card:nth-child(4) { top: 77%; left: 48%; rotate: 16deg; animation-delay: -2s; animation-duration: 12s; }
+.side-decor-right .side-decor-card:nth-child(1) { top: 12%; right: 46%; rotate: 12deg; animation-delay: -5s; animation-duration: 10s; }
+.side-decor-right .side-decor-card:nth-child(2) { top: 36%; right: 16%; rotate: -10deg; animation-delay: -1s; }
+.side-decor-right .side-decor-card:nth-child(3) { top: 59%; right: 50%; rotate: 6deg; animation-delay: -7s; animation-duration: 12s; }
+.side-decor-right .side-decor-card:nth-child(4) { top: 80%; right: 20%; rotate: -15deg; animation-delay: -4s; }
+
+/* El contenido siempre por encima de la decoración. */
+.page > :not(.side-decor) {
+  position: relative;
+  z-index: 1;
+}
