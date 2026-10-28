@@ -131,25 +131,29 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         {ctl.kind === 'online' && <ConnectionDot state={ctl.connection} />}
       </header>
 
-      <ul className="opponents" aria-label={t('common.players')}>
-        {others.map((p) => {
-          const online = ctl.onlineIds.has(p.id);
-          return (
-            <li key={p.id} className={`opponent ${online ? '' : 'opponent-offline'}`}>
-              <div className="opponent-name">
-                <span className={`presence ${online ? 'presence-on' : ''}`} aria-hidden />
-                <span className="truncate">{p.name}</span>
-                {p.id === room.hostId && <CrownIcon size={13} className="host-crown" />}
-              </div>
-              <CardBacks count={p.cardsLeft} />
-              <span className="opponent-count">
-                {p.cardsLeft === 1 ? t('game.cardsLeftOne') : t('game.cardsLeft', { count: p.cardsLeft })}
-                {!online && ` · ${t('game.offline')}`}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      {/* En el ordenador, columna izquierda con su título; en el móvil el contenedor no cuenta. */}
+      <div className="game-players">
+        <p className="game-side-label">{t('common.players')}</p>
+        <ul className="opponents" aria-label={t('common.players')}>
+          {others.map((p) => {
+            const online = ctl.onlineIds.has(p.id);
+            return (
+              <li key={p.id} className={`opponent ${online ? '' : 'opponent-offline'}`}>
+                <div className="opponent-name">
+                  <span className={`presence ${online ? 'presence-on' : ''}`} aria-hidden />
+                  <span className="truncate">{p.name}</span>
+                  {p.id === room.hostId && <CrownIcon size={13} className="host-crown" />}
+                </div>
+                <CardBacks count={p.cardsLeft} />
+                <span className="opponent-count">
+                  {p.cardsLeft === 1 ? t('game.cardsLeftOne') : t('game.cardsLeft', { count: p.cardsLeft })}
+                  {!online && ` · ${t('game.offline')}`}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       <section className="table">
         {/* Avisos en su propia línea: nunca tapan cartas. Prioridad: error propio, evento, pista. */}
@@ -166,11 +170,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             playing &&
             !vote && (
               <p className={`table-hint ${shieldActive ? 'table-hint-shield' : ''}`}>
-                {blocked
-                  ? t('comodin.blocked')
-                  : shieldActive
-                    ? t('comodin.shieldOnHint')
-                    : t(desc ? 'game.hintDesc' : 'game.hint')}
+                {blocked ? t('comodin.blocked') : shieldActive ? t('comodin.shieldOnHint') : t(desc ? 'game.hintDesc' : 'game.hint')}
               </p>
             )
           )}
@@ -224,6 +224,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       </section>
 
       <footer className="game-footer">
+        <p className="game-side-label">{t('common.comodines')}</p>
         <div className="comodin-bar" role="group" aria-label={t('common.comodines')}>
           <ComodinButton
             kind="shuriken"
@@ -244,6 +245,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         {chatEnabled && (
           <button type="button" className="btn btn-secondary chat-btn" onClick={() => setChatOpen(true)} aria-label={t('game.chat')}>
             <ChatIcon size={18} />
+            <span className="chat-btn-label">{t('game.chat')}</span>
             {unread > 0 && <span className="unread">{unread}</span>}
           </button>
         )}
@@ -260,9 +262,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       )}
       {rewindVote && <RewindVote ctl={ctl} snap={snap} />}
       {room.status === 'level_complete' && showLevelComplete && <LevelComplete ctl={ctl} snap={snap} />}
-      {ended && showEnd && (
-        <EndScreen ctl={ctl} snap={snap} onExit={onExit} />
-      )}
+      {ended && showEnd && <EndScreen ctl={ctl} snap={snap} onExit={onExit} />}
     </div>
   );
 }
@@ -299,6 +299,8 @@ function ComodinButton({
         </span>
       </span>
       <span className="comodin-btn-name">{active ? t('comodin.shieldOn') : name}</span>
+      {/* Solo en el ordenador, donde hay sitio. */}
+      <span className="comodin-btn-desc">{active ? t('comodin.shieldOnHint') : t(`comodin.desc.${kind}`)}</span>
     </button>
   );
 }

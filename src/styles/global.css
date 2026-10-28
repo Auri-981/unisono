@@ -2672,3 +2672,202 @@ html {
     height: 112px;
   }
 }
+
+/* ───────────── Partida en el ordenador ─────────────
+   En el móvil: una columna (los contenedores extra no cuentan y los textos extra no se ven).
+   En pantallas anchas: jugadores a la izquierda, mesa y mano en el centro, comodines a la derecha. */
+
+.game-players {
+  display: contents;
+}
+
+.game-side-label,
+.comodin-btn-desc,
+.chat-btn-label {
+  display: none;
+}
+
+@media (min-width: 1024px) and (min-height: 620px) {
+  .game {
+    max-width: 1320px;
+    height: 100dvh;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(220px, 270px) minmax(0, 1fr) minmax(250px, 300px);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'header header header'
+      'players table side'
+      'players hand side';
+    column-gap: 28px;
+    row-gap: 12px;
+    padding: calc(var(--safe-top) + 16px) calc(var(--safe-right) + 28px) calc(var(--safe-bottom) + 20px)
+      calc(var(--safe-left) + 28px);
+  }
+
+  .game-header {
+    grid-area: header;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .game-side-label {
+    display: block;
+    margin: 0 0 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+
+  .game-players {
+    grid-area: players;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .opponents {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .opponent {
+    padding: 12px 14px;
+    gap: 6px 10px;
+  }
+
+  .opponent-name {
+    font-size: 1rem;
+  }
+
+  .opponent-count {
+    font-size: 0.8rem;
+  }
+
+  .table {
+    grid-area: table;
+    min-height: 0;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(70% 60% at 50% 45%, rgb(126 166 255 / 0.11), transparent 70%),
+      rgb(17 20 39 / 0.55);
+    padding: 12px 24px 16px;
+  }
+
+  .status-line {
+    max-width: 560px;
+  }
+
+  .card-xl,
+  .pile-empty {
+    height: clamp(150px, 30dvh, 280px);
+  }
+
+  .card-xl .card-value {
+    font-size: clamp(3rem, 9dvh, 5.6rem);
+  }
+
+  .hand {
+    grid-area: hand;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .hand-rest {
+    flex: 0 1 auto;
+    max-width: 520px;
+  }
+
+  /* La carta de tu mano, algo menor que la de la mesa para que la mesa sea lo principal. */
+  .hand .card-xl {
+    height: clamp(130px, 22dvh, 210px);
+  }
+
+  .hand .card-xl .card-value {
+    font-size: clamp(2.6rem, 7dvh, 4.2rem);
+  }
+
+  .hand-rest .card-sm {
+    width: 56px;
+    height: 78px;
+  }
+
+  .hand-rest .card-xs {
+    width: 44px;
+    height: 62px;
+  }
+
+  .hand-rest .card-xs .card-value {
+    font-size: 1.2rem;
+  }
+
+  .hand-rest .card-sm .card-value {
+    font-size: 1.5rem;
+  }
+
+  .game-footer {
+    grid-area: side;
+    flex-direction: column;
+    gap: 12px;
+    align-self: start;
+  }
+
+  .game-footer .game-side-label {
+    margin-bottom: -2px;
+  }
+
+  .comodin-bar {
+    flex: none;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .comodin-btn {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      'top name'
+      'desc desc';
+    align-items: center;
+    justify-items: start;
+    gap: 6px 10px;
+    padding: 12px 14px;
+    text-align: left;
+  }
+
+  .comodin-btn-top {
+    grid-area: top;
+    font-size: 1.1rem;
+  }
+
+  .comodin-btn-name {
+    grid-area: name;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .comodin-btn-desc {
+    grid-area: desc;
+    display: block;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    color: var(--muted);
+  }
+
+  .comodin-btn:not(:disabled):not(.is-passive):hover {
+    border-color: var(--cool);
+  }
+
+  .chat-btn {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  .chat-btn-label {
+    display: inline;
+  }
+}
