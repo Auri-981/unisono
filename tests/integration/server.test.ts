@@ -3,7 +3,7 @@
  * reconexión, anfitrión, votaciones, chat, historial y partidas completas.
  */
 import { beforeAll, describe, expect, it } from 'vitest';
-import { PLAYER_PRESETS } from '../../src/config/gameConfig';
+import { LIGHTNING_INTRO_SECONDS, PLAYER_PRESETS, lightningSeconds } from '../../src/config/gameConfig';
 import type { RoomSnapshot } from '../../src/game/types';
 import { createTestDb, errorOf, type TestDb } from './db';
 
@@ -617,5 +617,53 @@ describe('comodines a través de la API', () => {
     await t.rpc(ids[1]!, 'leave_room', { p_room: room });
     const snap: RoomSnapshot = await t.rpc(ids[0]!, 'rematch', { p_room: room });
     expect(snap.room).toMatchObject({ rewinds: 0, shields: 0, shieldActive: false, offer: null });
+  });
+});
+
+describe('ronda relámpago a través de la API', () => {
+  it('se sortea al empezar en un nivel que nunca es el último, y la revancha la quita', async () => {
+    const seen = new Set<number>();
+    for (let i = 0; i < 25; i++) {
+      const { ids, room } = await started(4); // 8 niveles
+      const snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+      expect(snap.room.lightningLevel).toBeGreaterThanOrEqual(1);
+      expect(snap.room.lightningLevel).toBeLessThan(PLAYER_PRESETS[4]!.levels);
+      seen.add(snap.room.lightningLevel!);
+      if (i === 0) {
+        await t.admin(`update public.rooms set status = 'lost' where id = $1`, [room]);
+        const again: RoomSnapshot = await t.rpc(ids[0]!, 'rematch', { p_room: room });
+        expect(again.room).toMatchObject({ lightningLevel: 0, lightningEndsAt: null });
+      }
+    }
+    expect(seen.size).toBeGreaterThan(2);
+    const { ids, room } = await started(2, { levels: 1 });
+    const one: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(one.room).toMatchObject({ lightningLevel: 0, lightningEndsAt: null });
+  });
+
+  it('el reloj dura lo mismo que en la app (aviso + 60 s … 90 s según el nivel)', async () => {
+    const { ids, room } = await started(2);
+    await t.admin(`update public.rooms set lightning_level = 5, lightning_ends_at = null where id = $1`, [room]);
+    await setHands(room, ids, [[10], [20]], 4);
+    await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 });
+    await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 20 });
+    await t.rpc(ids[0]!, 'ready_next_level', { p_room: room, p_level: 4 });
+    const snap: RoomSnapshot = await t.rpc(ids[1]!, 'ready_next_level', { p_room: room, p_level: 4 });
+    expect(snap.room.level).toBe(5);
+    const seconds = (Date.parse(snap.room.lightningEndsAt!) - Date.parse(snap.serverTime)) / 1000;
+    expect(seconds).toBeCloseTo(LIGHTNING_INTRO_SECONDS + lightningSeconds(5), 0);
+  });
+
+  it('al agotarse el tiempo la partida queda perdida y en el historial', async () => {
+    const { ids, room } = await started(2);
+    await t.admin(
+      `update public.rooms set lightning_level = level, lightning_ends_at = now() - interval '1 second' where id = $1`,
+      [room],
+    );
+    const snap: RoomSnapshot = await t.rpc(ids[1]!, 'expire_shuriken_vote', { p_room: room });
+    expect(snap.room).toMatchObject({ status: 'lost', lives: 0, lightningEndsAt: null });
+    expect(snap.recentEvents!.map((e) => e.kind).slice(-2)).toEqual(['lightning_timeout', 'lost']);
+    const results = await t.admin<{ result: string }>(`select result from public.game_results where room_id = $1`, [room]);
+    expect(results.map((r) => r.result)).toEqual(['lost']);
   });
 });

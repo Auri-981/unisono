@@ -4,6 +4,7 @@
  * más baja y la última carta jugada, con algo de imprecisión humana.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LIGHTNING_ALERT_SECONDS } from '../config/gameConfig';
 import { cryptoRng } from '../game/deck';
 import * as E from '../game/engine';
 import type { RoomActions, RoomController, ExitReason } from '../game/controller';
@@ -15,6 +16,11 @@ export const COUNTDOWN_MS = 3000;
 
 const BOT_BASE_MS = 500;
 const BOT_MS_PER_STEP = 115;
+
+/** Pausa al empezar un nivel antes de que los bots empiecen a contar (aviso relámpago + cuenta atrás). */
+function startPause(s: E.EngineState) {
+  return (s.config.countdown ? COUNTDOWN_MS : 0) + (s.level === s.lightningLevel ? LIGHTNING_ALERT_SECONDS * 1000 : 0);
+}
 
 function newGame(bots: number, config: RoomConfig, myName: string): E.EngineState {
   const now = Date.now();
@@ -35,9 +41,8 @@ export function usePracticeRoom(
   const [state, setState] = useState<E.EngineState>(() => newGame(opts.bots, opts.config, opts.myName));
   const [notice, setNotice] = useState<RoomController['notice']>(null);
   const stateRef = useRef(state);
-  const startPause = () => (opts.config.countdown ? COUNTDOWN_MS : 0);
   /** Momento desde el que los bots empiezan a «contar». */
-  const clockRef = useRef(Date.now() + startPause());
+  const clockRef = useRef(Date.now() + startPause(state));
   const jitter = useRef(new Map<string, number>());
 
   const commit = useCallback(
@@ -49,7 +54,7 @@ export function usePracticeRoom(
       if (r.state === stateRef.current) return; // sin cambios (p. ej. petición repetida)
       for (const ev of r.events) {
         if (ev.kind === 'level_start' || ev.kind === 'game_start') {
-          clockRef.current = Date.now() + (r.state.config.countdown ? COUNTDOWN_MS : 0);
+          clockRef.current = Date.now() + startPause(r.state);
         } else if (['play', 'mistake', 'shuriken_used', 'shuriken_cancelled', 'shield_used', 'rewind_used'].includes(ev.kind)) {
           clockRef.current = Date.now();
         }
@@ -84,6 +89,11 @@ export function usePracticeRoom(
         const { id, card } = best;
         later(best.at - Date.now(), () => commit(E.playCard(stateRef.current, id, card, Date.now())));
       }
+    }
+
+    // Ronda relámpago: al agotarse el tiempo se pierde la partida.
+    if (s.status === 'playing' && s.lightningEndsAt) {
+      later(Date.parse(s.lightningEndsAt) - Date.now() + 50, () => commit(E.expireVote(stateRef.current, Date.now())));
     }
 
     if (s.status === 'playing' && s.vote) {
@@ -140,7 +150,7 @@ export function usePracticeRoom(
       rematch: async () => {
         jitter.current.clear();
         const fresh = newGame(opts.bots, stateRef.current.config, opts.myName);
-        clockRef.current = Date.now() + startPause();
+        clockRef.current = Date.now() + startPause(fresh);
         stateRef.current = fresh;
         setState(fresh);
       },

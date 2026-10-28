@@ -1,6 +1,7 @@
 /**
  * Solo en desarrollo (`npm run dev`): muestra pantallas con estados de ejemplo sin servidor.
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
+ *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -25,6 +26,9 @@ function build(kind: string): E.EngineState {
   for (const p of s.players) p.ready = true;
   const started = E.startGame(s, 'me', seededRng(3), NOW - 10000);
   if (started.ok) s = started.state;
+  // Sin ronda relámpago salvo en sus propios ejemplos.
+  s.lightningLevel = 0;
+  s.lightningEndsAt = null;
   s.level = 4;
   s.hands = { me: [18, 52, 77, 90], a: [25, 61, 70], b: [40, 44, 99], c: [9, 66, 81] };
   const step = (r: E.EngineResult) => {
@@ -91,6 +95,32 @@ function build(kind: string): E.EngineState {
     if (kind === 'picked') {
       for (const p of ['me', 'b', 'c']) step(E.pickComodin(s, p, 2, s.offer!.choices[1]!, seededRng(5), NOW - 4000));
       s.players.find((p) => p.id === 'a')!.ready = true;
+    }
+  }
+  if (kind.startsWith('lightning')) {
+    // lightning: reloj en marcha · lightninglow: últimos segundos · lightningalert: el aviso al empezar
+    // lightningnext: «nivel superado» antes de la ronda · lightninglost: se acabó el tiempo
+    s.lightningLevel = 4;
+    const left = kind === 'lightninglow' ? 8 : kind === 'lightningalert' ? 75 : 47;
+    s.lightningEndsAt = new Date(NOW + left * 1000).toISOString();
+    if (kind === 'lightningalert') {
+      s.pile = [];
+      s.hands = { me: [18, 52, 77, 90], a: [9, 25, 61, 70], b: [40, 44, 99, 100], c: [3, 66, 81, 85] };
+      s.eventSeq += 1;
+      s.lastEvent = { seq: s.eventSeq, kind: 'level_start', actor: null, payload: { level: 4 }, at: new Date(NOW).toISOString() };
+      s.recentEvents = [s.lastEvent];
+    }
+    if (kind === 'lightningnext') {
+      s.level = 3;
+      s.hands = { me: [], a: [], b: [], c: [] };
+      s.status = 'level_complete';
+      s.lightningEndsAt = null;
+      s.lastReward = { level: 3, lives: 1, shurikens: 0 };
+      s.lastEvent = null;
+    }
+    if (kind === 'lightninglost') {
+      s.lightningEndsAt = new Date(NOW - 5000).toISOString();
+      step(E.expireVote(s, NOW - 4000));
     }
   }
   if (kind === 'won') {

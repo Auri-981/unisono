@@ -86,6 +86,7 @@ export type GameEventKind =
   | 'rewind_offered'
   | 'rewind_used'
   | 'comodin_chosen'
+  | 'lightning_timeout'
   | 'level_complete'
   | 'won'
   | 'lost'
@@ -161,6 +162,12 @@ export interface PublicRoom {
   shieldActive?: boolean;
   /** Elección de comodín pendiente (solo en «nivel superado»). */
   offer?: ComodinOffer | null;
+  /**
+   * Ronda relámpago: nivel en que toca (0 = ninguno) y hora límite para terminarlo
+   * (solo mientras se juega ese nivel). Opcionales: servidores antiguos.
+   */
+  lightningLevel?: number;
+  lightningEndsAt?: string | null;
   version: number;
   /** Quién no puede proponer shuriken hasta que se juegue una carta (opcional: servidores antiguos). */
   shurikenBlocked?: PlayerId[];

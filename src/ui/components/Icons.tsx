@@ -114,6 +114,13 @@ export const BackIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Ronda relámpago: un rayo. */
+export const LightningIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M13.5 2.5 5 13.5h6l-1.5 8 8.5-11h-6l1.5-8Z" fill="currentColor" strokeLinejoin="round" />
+  </svg>
+);
+
 export const MinusIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
     <path d="M6 12h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />

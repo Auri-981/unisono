@@ -148,6 +148,9 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
           sfx.lost();
           vibrate([120, 80, 200]);
           break;
+        case 'lightning_timeout':
+          show('danger', t('event.lightningTimeout'), t('event.lightningTimeoutDetail'));
+          break;
         case 'game_start':
         case 'level_start':
           setCountdownSeq(ev.seq);

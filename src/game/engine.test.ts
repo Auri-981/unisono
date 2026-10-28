@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   CLASSIC_REWARDS,
   DEFAULT_CONFIG,
+  LIGHTNING_INTRO_SECONDS,
   PLAYER_PRESETS,
   REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
+  lightningSeconds,
   normalizeConfig,
   rewardFor,
   rewardTable,
@@ -532,5 +534,68 @@ describe('comodines: rebobinar, escudo y elección', () => {
     // Solo quedaba Rebobinar por debajo del máximo: se da directamente.
     expect(snap.room).toMatchObject({ rewinds: 1, shields: 1, shieldActive: false, offer: null });
     expect(snap.lastReward).toMatchObject({ rewinds: 1, shields: 0, shurikens: 0 });
+  });
+});
+
+describe('ronda relámpago', () => {
+  it('sale siempre una vez, en un nivel al azar que nunca es el último', () => {
+    for (const players of [2, 3, 4]) {
+      const seen = new Set<number>();
+      const maxLevel = PLAYER_PRESETS[players]!.levels;
+      for (let seed = 1; seed <= 200; seed++) {
+        const { s } = room(players);
+        const started = ok(E.startGame(s, 'p0', seededRng(seed), NOW));
+        expect(started.lightningLevel).toBeGreaterThanOrEqual(1);
+        expect(started.lightningLevel).toBeLessThan(maxLevel);
+        seen.add(started.lightningLevel);
+      }
+      // Con suficientes partidas sale en todos los niveles posibles.
+      expect(seen.size).toBe(maxLevel - 1);
+    }
+  });
+
+  it('en una partida de un solo nivel no hay ronda relámpago', () => {
+    const { s } = room(2, { levels: 1 });
+    const started = ok(E.startGame(s, 'p0', seededRng(1), NOW));
+    expect(started.lightningLevel).toBe(0);
+    expect(started.lightningEndsAt).toBeNull();
+  });
+
+  it('dura de 60 a 90 segundos según el nivel, después del aviso', () => {
+    expect([1, 2, 5, 8, 11, 12].map(lightningSeconds)).toEqual([60, 63, 72, 81, 90, 90]);
+    for (let seed = 1; seed <= 50; seed++) {
+      const { s } = room(2);
+      const started = ok(E.startGame(s, 'p0', seededRng(seed), NOW));
+      if (started.lightningLevel !== 1) continue;
+      expect(Date.parse(started.lightningEndsAt!)).toBe(NOW + (LIGHTNING_INTRO_SECONDS + 60) * 1000);
+      return;
+    }
+    throw new Error('ninguna semilla dio la ronda relámpago en el nivel 1');
+  });
+
+  it('el reloj manda aunque se esté votando Rebobinar', () => {
+    let { s } = room(2);
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    s.level = 3;
+    s.lightningLevel = 3;
+    s.lightningEndsAt = new Date(NOW + 10_000).toISOString();
+    s.rewinds = 1;
+    s.hands = { p0: [30, 80], p1: [50, 90] };
+    s = ok(E.playCard(s, 'p1', 50, NOW));
+    expect(s.vote?.kind).toBe('rewind');
+    s = ok(E.expireVote(s, NOW + 10_000));
+    expect(s.status).toBe('lost');
+    expect(s.lives).toBe(0);
+    expect(s.recentEvents.map((e) => e.kind).slice(-2)).toEqual(['lightning_timeout', 'lost']);
+  });
+
+  it('la foto lo incluye y la revancha sortea de nuevo', () => {
+    let { s } = room(2);
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    expect(E.toSnapshot(s, 'p0', NOW).room.lightningLevel).toBe(s.lightningLevel);
+    s.status = 'lost';
+    s = ok(E.rematch(s, 'p0', NOW));
+    expect(s.lightningLevel).toBe(0);
+    expect(s.lightningEndsAt).toBeNull();
   });
 });

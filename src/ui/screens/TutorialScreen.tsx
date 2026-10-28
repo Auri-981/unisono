@@ -10,11 +10,8 @@ import { Card } from '../components/Card';
 import { ComodinIcon, ComodinKindIcon, LifeIcon, LogoMark } from '../components/Icons';
 import { Page } from '../components/Layout';
 import { COMODIN_SYMBOL, LIFE_SYMBOL } from '../rewards';
-
-/** Convierte «**texto**» en negrita (los textos del tutorial lo usan para destacar). */
-function rich(text: string): ReactNode {
-  return text.split('**').map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : <Fragment key={i}>{part}</Fragment>));
-}
+import { rich } from '../rich';
+import { LightningBar } from './game/Lightning';
 
 /** Texto que cambia según el orden (`clave.asc` / `clave.desc`). */
 const byOrder = (key: string, order: CardOrder) => t(`${key}.${order}` as MessageKey);
@@ -278,6 +275,19 @@ const STEPS: Step[] = [
           ))}
         </div>
         <p className="muted small">{t('tutorial.rewards.announce')}</p>
+      </>
+    ),
+  },
+  {
+    title: 'tutorial.lightning.title',
+    body: () => (
+      <>
+        <div className="tut-visual tut-lightning">
+          <LightningBar seconds={47} total={72} />
+        </div>
+        <p>{rich(t('tutorial.lightning.text'))}</p>
+        <p>{rich(t('tutorial.lightning.text2'))}</p>
+        <p className="muted small">{t('tutorial.lightning.note')}</p>
       </>
     ),
   },

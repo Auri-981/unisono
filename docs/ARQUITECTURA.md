@@ -66,7 +66,7 @@ escribir en tablas y llamar a funciones internas; todo debe fallar.
 
 | Tabla | Contenido | Quién puede leer | Quién escribe |
 |---|---|---|---|
-| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, comodines (`shurikens`, `rewinds`, `shields`), escudo activo, elección de comodín pendiente (`offer`), pila, votación, último evento, `version` | Miembros de la sala | Solo funciones |
+| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, comodines (`shurikens`, `rewinds`, `shields`), escudo activo, elección de comodín pendiente (`offer`), ronda relámpago (`lightning_level`, `lightning_ends_at`), pila, votación, último evento, `version` | Miembros de la sala | Solo funciones |
 | `room_players` | Jugador, alias, asiento, «listo», última señal de vida | Miembros | Solo funciones |
 | `hands` | Una fila por carta: sala, jugador, valor (clave única sala+carta) | **Solo el dueño** | Solo funciones |
 | `room_events` | Registro de lo ocurrido (jugadas, errores, recompensas) | Miembros | Solo funciones |
@@ -138,6 +138,13 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
 - Si te rechazan (o caduca) un vistazo o un escudo, no puedes proponer otro comodín hasta que se
   juegue una carta.
 - Si las manos quedan vacías tras un error o un shuriken, el nivel también se supera.
+- **Ronda relámpago**: al empezar la partida se sortea un nivel (nunca el último; ninguno si la
+  partida tiene un solo nivel). Al repartirlo se fija `lightning_ends_at` = ahora + 6 s (aviso
+  «¡Alerta! Ronda relámpago» y cuenta atrás) + `least(90, 57 + 3·nivel)` s (60 s en el nivel 1,
+  90 s del 11 en adelante). Si llega la hora con cartas en la mesa, vidas a 0 y partida perdida
+  (evento `lightning_timeout` + `lost`), aunque haya una votación en curso. El reloj no se para
+  en las votaciones. No hay temporizador en el servidor: lo aplica cualquier acción posterior o
+  `expire_shuriken_vote`, que los móviles llaman cuando su reloj llega a cero.
 - Configuración clásica (centralizada en `src/config/gameConfig.ts` y su espejo SQL):
   2 jugadores → 12 niveles, 2 vidas, 1 shuriken · 3 → 10, 3, 1 · 4 → 8, 4, 1.
 - **Recompensas clásicas**: nivel 2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥; máximo 5 vidas y 3 de cada comodín.

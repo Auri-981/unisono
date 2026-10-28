@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { RoomController } from '../../../game/controller';
 import type { ComodinKind } from '../../../game/types';
 import { errorMessage, t } from '../../../i18n';
@@ -8,6 +8,7 @@ import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
 import { ConnectionDot, Lives, ShieldOn } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
+import { LightningAlert, LightningTimer } from './Lightning';
 import { Countdown, EndScreen, LevelComplete, RewindVote, VoteBanner } from './Overlays';
 import { useAfterPause } from './useAfterPause';
 import { useEventFeed } from './useEventFeed';
@@ -86,6 +87,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   // Premio que se obtendrá al superar el nivel actual (se anuncia durante la ronda).
   const reward = upcomingReward(room, players.length);
 
+  // Ronda relámpago: reloj del equipo y, al empezar el nivel, el aviso antes de la cuenta atrás.
+  const lightning = playing && Boolean(room.lightningEndsAt);
+  const [alertSeenSeq, setAlertSeenSeq] = useState<number | null>(null);
+  const showLightningAlert = lightning && feed.countdownSeq !== null && alertSeenSeq !== feed.countdownSeq;
+  const closeLightningAlert = useCallback(() => setAlertSeenSeq(feed.countdownSeq), [feed.countdownSeq]);
+
   // Tras la última carta, unos segundos para verla antes de «nivel superado» / fin de partida.
   const ended = room.status === 'won' || room.status === 'lost' || room.status === 'abandoned';
   // (Tras «nivel superado» puede llegar otro evento, p. ej. el comodín dado directamente.)
@@ -95,7 +102,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const showEnd = useAfterPause(ended, room.status === 'abandoned' ? undefined : resultAt, ctl.clockOffset);
 
   return (
-    <div className={`game ${feed.shake ? 'game-shake' : ''}`}>
+    <div className={`game ${feed.shake ? 'game-shake' : ''} ${lightning ? 'game-lightning' : ''}`}>
       <header className="game-header">
         <button type="button" className="icon-btn" onClick={leave} aria-label={t('game.leave')}>
           <ExitIcon />
@@ -107,22 +114,28 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             <span className="muted">/{room.maxLevel}</span>
           </span>
         </div>
-        {playing && reward && (
-          <div className="level-reward" role="note" aria-label={t('reward.aria', { reward: rewardText(reward) })}>
-            <span className="game-level-label">{t('reward.label')}</span>
-            <span className="level-reward-value">
-              {reward.lives > 0 && (
-                <span className={`resource resource-life ${reward.livesFull ? 'is-full' : ''}`}>
-                  <LifeIcon size={15} />+{reward.lives}
-                </span>
-              )}
-              {reward.shurikens > 0 && (
-                <span className={`resource resource-comodin ${reward.shurikensFull ? 'is-full' : ''}`}>
-                  <ComodinIcon size={15} />+{reward.shurikens}
-                </span>
-              )}
-            </span>
-          </div>
+        {/* En la ronda relámpago, el reloj ocupa el sitio del premio (que ya se anunció al empezar). */}
+        {lightning ? (
+          <LightningTimer ctl={ctl} snap={snap} />
+        ) : (
+          playing &&
+          reward && (
+            <div className="level-reward" role="note" aria-label={t('reward.aria', { reward: rewardText(reward) })}>
+              <span className="game-level-label">{t('reward.label')}</span>
+              <span className="level-reward-value">
+                {reward.lives > 0 && (
+                  <span className={`resource resource-life ${reward.livesFull ? 'is-full' : ''}`}>
+                    <LifeIcon size={15} />+{reward.lives}
+                  </span>
+                )}
+                {reward.shurikens > 0 && (
+                  <span className={`resource resource-comodin ${reward.shurikensFull ? 'is-full' : ''}`}>
+                    <ComodinIcon size={15} />+{reward.shurikens}
+                  </span>
+                )}
+              </span>
+            </div>
+          )
         )}
         <div className="game-resources">
           <Lives count={room.lives} />
@@ -252,7 +265,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       </footer>
 
       {chatEnabled && chatOpen && <ChatSheet ctl={ctl} onClose={() => setChatOpen(false)} />}
-      {playing && room.config.countdown && feed.countdownSeq !== null && (
+      {showLightningAlert && <LightningAlert level={room.level} onDone={closeLightningAlert} />}
+      {playing && room.config.countdown && feed.countdownSeq !== null && !showLightningAlert && (
         <Countdown
           level={room.level}
           reward={reward ? t('reward.ifPass', { reward: rewardText(reward) }) : null}

@@ -9,10 +9,12 @@
  * Todas las funciones son puras: reciben un estado y devuelven uno nuevo (o un error).
  */
 import {
+  LIGHTNING_INTRO_SECONDS,
   NAME_MAX_LENGTH,
   MIN_PLAYERS,
   REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
+  lightningSeconds,
   normalizeConfig,
   rewardFor,
   startingResources,
@@ -70,6 +72,9 @@ export interface EngineState {
   vote: ShurikenVote | null;
   /** Elección de comodín pendiente tras superar un nivel. */
   offer: ComodinOffer | null;
+  /** Nivel de la ronda relámpago (0 = ninguno) y hora límite mientras se juega. */
+  lightningLevel: number;
+  lightningEndsAt: string | null;
   /**
    * Jugadores a los que se les rechazó (o caducó) un vistazo o escudo: no pueden volver a
    * proponer comodines hasta que se juegue una carta (evita insistir en bucle).
@@ -152,7 +157,15 @@ function dealLevel(d: Draft, rng: Rng) {
   d.s.shieldActive = false; // el escudo solo dura el nivel en que se activa
   d.s.shurikenBlocked = [];
   d.s.lastReward = null;
+  // Si es la ronda relámpago, el reloj empieza a contar tras el aviso y la cuenta atrás.
+  d.s.lightningEndsAt =
+    d.s.level === d.s.lightningLevel ? iso(d.now + (LIGHTNING_INTRO_SECONDS + lightningSeconds(d.s.level)) * 1000) : null;
   for (const p of d.s.players) p.ready = false;
+}
+
+/** Ronda relámpago: un nivel al azar de la partida, nunca el último (sin ronda si solo hay uno). */
+function pickLightningLevel(maxLevel: number, rng: Rng) {
+  return maxLevel >= 2 ? 1 + Math.floor(rng() * (maxLevel - 1)) : 0;
 }
 
 function endGame(d: Draft, status: 'won' | 'lost' | 'abandoned') {
@@ -160,6 +173,7 @@ function endGame(d: Draft, status: 'won' | 'lost' | 'abandoned') {
   d.s.hands = {};
   d.s.vote = null;
   d.s.offer = null;
+  d.s.lightningEndsAt = null;
   d.emit(status, null, { level: d.s.level });
 }
 
@@ -224,6 +238,7 @@ function checkLevelEnd(d: Draft, rng: Rng) {
   d.s.status = 'level_complete';
   d.s.vote = null;
   d.s.shieldActive = false;
+  d.s.lightningEndsAt = null;
   for (const p of d.s.players) p.ready = false;
   d.emit('level_complete', null, { level: gained.level, reward: { lives: gained.lives, comodines: reward.shurikens } });
   makeOffer(d, rng, reward.shurikens);
@@ -264,8 +279,19 @@ function cancelVote(d: Draft, actor: PlayerId | null, reason: 'rejected' | 'expi
   }
 }
 
-/** Cancela una votación caducada. Devuelve true si la ha cancelado. */
+/**
+ * Aplica los plazos vencidos. Devuelve true si ha cambiado algo.
+ * - Ronda relámpago sin terminar a tiempo: se pierden todas las vidas y la partida
+ *   (aunque hubiera una votación en curso, incluida la de Rebobinar).
+ * - Votación caducada: se cancela.
+ */
 function expireIfDue(d: Draft, rng: Rng): boolean {
+  if (d.s.status === 'playing' && d.s.lightningEndsAt && d.now >= Date.parse(d.s.lightningEndsAt)) {
+    d.s.lives = 0;
+    d.emit('lightning_timeout', null, { level: d.s.level });
+    endGame(d, 'lost');
+    return true;
+  }
   if (d.s.vote && d.now >= Date.parse(d.s.vote.expiresAt)) {
     cancelVote(d, null, 'expired', rng);
     return true;
@@ -351,6 +377,8 @@ export function createRoom(params: {
     revealed: [],
     vote: null,
     offer: null,
+    lightningLevel: 0,
+    lightningEndsAt: null,
     shurikenBlocked: [],
     lastEvent: null,
     recentEvents: [],
@@ -410,6 +438,8 @@ export function startGame(state: EngineState, actor: PlayerId, rng: Rng, now: nu
   d.s.livesCap = res.livesCap;
   d.s.shurikensCap = res.shurikensCap;
   d.s.status = 'playing';
+  // Se sortea antes de repartir: el reparto pone en marcha el reloj si el nivel 1 es el relámpago.
+  d.s.lightningLevel = pickLightningLevel(res.maxLevel, rng);
   dealLevel(d, rng);
   d.emit('game_start', actor, { level: 1, maxLevel: res.maxLevel });
   return d.commit();
@@ -478,6 +508,7 @@ function propose(state: EngineState, actor: PlayerId, kind: 'shuriken' | 'shield
   if (state.status !== 'playing') return fail('NOT_PLAYING');
   const d = new Draft(state, now);
   expireIfDue(d, rng);
+  if (d.s.status !== 'playing') return fail('NOT_PLAYING');
   if (d.s.vote) return fail('VOTE_IN_PROGRESS');
   if (kind === 'shuriken' && d.s.shurikens <= 0) return fail('NO_SHURIKENS');
   if (kind === 'shield' && d.s.shields <= 0) return fail('NO_SHIELDS');
@@ -519,6 +550,7 @@ export function voteShuriken(state: EngineState, actor: PlayerId, accept: boolea
   return d.commit();
 }
 
+/** Aplica los plazos vencidos: votación caducada o tiempo agotado en la ronda relámpago. */
 export function expireVote(state: EngineState, now: number, rng: Rng = cryptoRng): EngineResult {
   const d = new Draft(state, now);
   return expireIfDue(d, rng) ? d.commit() : unchanged(state);
@@ -642,6 +674,8 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
     revealed: [],
     vote: null,
     offer: null,
+    lightningLevel: 0,
+    lightningEndsAt: null,
     shurikenBlocked: [],
     lastReward: null,
   } satisfies Partial<EngineState>);
@@ -670,6 +704,8 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
       shields: state.shields,
       shieldActive: state.shieldActive,
       offer: structuredClone(state.offer),
+      lightningLevel: state.lightningLevel,
+      lightningEndsAt: state.lightningEndsAt,
       version: state.version,
       shurikenBlocked: [...state.shurikenBlocked],
     },

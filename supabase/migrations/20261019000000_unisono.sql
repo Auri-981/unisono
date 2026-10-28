@@ -55,6 +55,9 @@ alter table public.rooms add column if not exists rewinds int not null default 0
 alter table public.rooms add column if not exists shields int not null default 0;
 alter table public.rooms add column if not exists shield_active boolean not null default false;
 alter table public.rooms add column if not exists offer jsonb;
+-- Añadidas después: ronda relámpago (nivel en que toca, 0 = ninguno, y hora límite mientras se juega).
+alter table public.rooms add column if not exists lightning_level int not null default 0;
+alter table public.rooms add column if not exists lightning_ends_at timestamptz;
 
 create table if not exists public.room_players (
   room_id      uuid not null references public.rooms (id) on delete cascade,
@@ -408,7 +411,8 @@ as $$
       'id', r.id, 'code', r.code, 'status', r.status, 'hostId', r.host_id, 'config', r.config,
       'gameNo', r.game_no, 'level', r.level, 'maxLevel', r.max_level, 'lives', r.lives,
       'shurikens', r.shurikens, 'rewinds', r.rewinds, 'shields', r.shields, 'shieldActive', r.shield_active,
-      'offer', r.offer, 'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
+      'offer', r.offer, 'lightningLevel', r.lightning_level, 'lightningEndsAt', r.lightning_ends_at,
+      'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
     'players', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
@@ -454,9 +458,14 @@ begin
     from public.room_players where room_id = p_room
   ) s on d.i % s.n = s.idx
   where d.i < s.n * v_level;
-  -- El escudo solo dura el nivel en que se activa.
+  -- El escudo solo dura el nivel en que se activa. Si es la ronda relámpago, el reloj empieza a
+  -- contar tras el aviso y la cuenta atrás (6 s): 60 s en el nivel 1, +3 s por nivel, hasta 90 s.
   update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, offer = null, last_reward = null,
-                          shield_active = false, shuriken_blocked = '[]'::jsonb where id = p_room;
+                          shield_active = false, shuriken_blocked = '[]'::jsonb,
+                          lightning_ends_at = case when level = lightning_level
+                                                   then now() + make_interval(secs => 6 + least(90, 57 + 3 * level))
+                                              end
+   where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
 end;
 $$;
@@ -466,7 +475,8 @@ returns void language plpgsql set search_path = ''
 as $$
 declare r public.rooms;
 begin
-  update public.rooms set status = p_status, vote = null, offer = null where id = p_room returning * into r;
+  update public.rooms set status = p_status, vote = null, offer = null, lightning_ends_at = null
+   where id = p_room returning * into r;
   delete from public.hands where room_id = p_room;
   perform game_private.emit(p_room, p_status, null, jsonb_build_object('level', r.level));
   insert into public.game_results (room_id, game_no, result, level, max_level, player_ids, player_names)
@@ -578,7 +588,7 @@ begin
   v_reward := game_private.reward_for(r.config, r.level);
   v_lives := least(r.lives + (v_reward ->> 'lives')::int, greatest(r.lives_cap, r.lives));
   update public.rooms
-     set lives = v_lives, status = 'level_complete', vote = null, shield_active = false,
+     set lives = v_lives, status = 'level_complete', vote = null, shield_active = false, lightning_ends_at = null,
          last_reward = jsonb_build_object('level', r.level, 'lives', v_lives - r.lives,
                                           'shurikens', 0, 'rewinds', 0, 'shields', 0)
    where id = p_room;
@@ -650,10 +660,23 @@ begin
 end;
 $$;
 
+-- Aplica los plazos vencidos. Devuelve true si ha cambiado algo.
+-- · Ronda relámpago sin terminar a tiempo: se pierden todas las vidas y la partida
+--   (aunque hubiera una votación en curso, incluida la de Rebobinar).
+-- · Votación caducada: se cancela.
 create or replace function game_private.expire_if_due(p_room uuid)
 returns boolean language plpgsql set search_path = ''
 as $$
+declare v_level int;
 begin
+  update public.rooms set lives = 0
+   where id = p_room and status = 'playing' and lightning_ends_at is not null and lightning_ends_at <= now()
+  returning level into v_level;
+  if found then
+    perform game_private.emit(p_room, 'lightning_timeout', null, jsonb_build_object('level', v_level));
+    perform game_private.end_game(p_room, 'lost');
+    return true;
+  end if;
   if exists (select 1 from public.rooms
              where id = p_room and vote is not null and (vote ->> 'expiresAt')::timestamptz <= now()) then
     perform game_private.cancel_vote(p_room, null, 'expired');
@@ -976,7 +999,12 @@ begin
          shurikens = (v_res ->> 'shurikens')::int,
          rewinds = 0, shields = 0, shield_active = false, offer = null,
          lives_cap = (v_res ->> 'livesCap')::int,
-         shurikens_cap = (v_res ->> 'shurikensCap')::int
+         shurikens_cap = (v_res ->> 'shurikensCap')::int,
+         -- Ronda relámpago: un nivel al azar, nunca el último (sin ronda si solo hay uno).
+         -- Se sortea antes de repartir: el reparto pone en marcha el reloj si toca en el nivel 1.
+         lightning_level = case when (v_res ->> 'maxLevel')::int >= 2
+                                then 1 + floor(random() * ((v_res ->> 'maxLevel')::int - 1))::int
+                                else 0 end
    where id = p_room;
   perform game_private.deal(p_room);
   perform game_private.emit(p_room, 'game_start', v_uid,
@@ -1148,6 +1176,8 @@ begin
 end;
 $$;
 
+-- Aplica los plazos vencidos: votación caducada o tiempo agotado en la ronda relámpago.
+-- (Lo piden los móviles cuando su reloj llega a cero.)
 create or replace function public.expire_shuriken_vote(p_room uuid)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -1155,7 +1185,7 @@ declare
   v_uid uuid := game_private.require_uid();
   r public.rooms := game_private.lock_room(p_room, v_uid);
 begin
-  if r.vote is not null and game_private.expire_if_due(p_room) then
+  if r.status = 'playing' and game_private.expire_if_due(p_room) then
     perform game_private.touch(p_room);
   end if;
   return game_private.snapshot(p_room, v_uid);
@@ -1253,7 +1283,7 @@ begin
   delete from public.hands where room_id = p_room;
   update public.rooms
      set status = 'lobby', level = 0, max_level = 0, lives = 0, shurikens = 0, lives_cap = 0, shurikens_cap = 0,
-         rewinds = 0, shields = 0, shield_active = false, offer = null,
+         rewinds = 0, shields = 0, shield_active = false, offer = null, lightning_level = 0, lightning_ends_at = null,
          pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null, shuriken_blocked = '[]'::jsonb
    where id = p_room;
   update public.room_players set ready = false where room_id = p_room;

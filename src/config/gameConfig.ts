@@ -18,6 +18,16 @@ export const CHAT_MAX_LENGTH = 200;
 export const SHURIKEN_VOTE_SECONDS = 15;
 /** Segundos para decidir si se usa Rebobinar tras perder una vida. */
 export const REWIND_VOTE_SECONDS = 20;
+/**
+ * Ronda relámpago (una por partida, en un nivel al azar que nunca es el último):
+ * hay que jugar todas las cartas antes de que acabe el tiempo o se pierde la partida.
+ * Más nivel = más cartas = más tiempo: 60 s en el nivel 1, +3 s por nivel, hasta 90 s.
+ */
+export const lightningSeconds = (level: number) => Math.min(90, 57 + 3 * level);
+/** Lo que dura en pantalla el aviso «¡Alerta! Ronda relámpago» (antes de la cuenta atrás de 3 s). */
+export const LIGHTNING_ALERT_SECONDS = 3;
+/** El reloj empieza a contar tras el aviso y la cuenta atrás. */
+export const LIGHTNING_INTRO_SECONDS = LIGHTNING_ALERT_SECONDS + 3;
 /** Cada cuántos segundos un móvil avisa de que sigue conectado. */
 export const HEARTBEAT_SECONDS = 15;
 /** Si el anfitrión no da señales en este tiempo, el rol pasa a otro jugador. */

@@ -28,9 +28,21 @@ async function setup(sc: Scenario) {
   await t.rpc(ids[0]!, 'start_game', { p_room: room });
   await t.admin(
     `update public.rooms set level = $2, lives = coalesce($3, lives), shurikens = coalesce($4, shurikens),
-       rewinds = coalesce($5, rewinds), shields = coalesce($6, shields), shield_active = coalesce($7, shield_active)
+       rewinds = coalesce($5, rewinds), shields = coalesce($6, shields), shield_active = coalesce($7, shield_active),
+       lightning_level = $8,
+       lightning_ends_at = case when $9::int is null then null else now() + make_interval(secs => $9::int) end
      where id = $1`,
-    [room, sc.level, sc.lives ?? null, sc.shurikens ?? null, sc.rewinds ?? null, sc.shields ?? null, sc.shieldActive ?? null],
+    [
+      room,
+      sc.level,
+      sc.lives ?? null,
+      sc.shurikens ?? null,
+      sc.rewinds ?? null,
+      sc.shields ?? null,
+      sc.shieldActive ?? null,
+      sc.lightningLevel ?? 0,
+      sc.lightningEndsIn ?? null,
+    ],
   );
   await t.admin(`delete from public.hands where room_id = $1`, [room]);
   for (let i = 0; i < sc.players; i++) {
@@ -54,6 +66,7 @@ describe('escenarios compartidos (servidor SQL)', () => {
         else if ('shield' in step) p = t.rpc(ids[step.shield]!, 'propose_shield', { p_room: room });
         else if ('pick' in step) p = t.rpc(ids[step.pick[0]]!, 'pick_comodin', { p_room: room, p_level: await levelOf(room), p_kind: step.pick[1] });
         else if ('ready' in step) p = t.rpc(ids[step.ready]!, 'ready_next_level', { p_room: room, p_level: await levelOf(room) });
+        else if ('expire' in step) p = t.rpc(ids[0]!, 'expire_shuriken_vote', { p_room: room });
         else {
           p = t.rpc(ids[step.leave]!, 'leave_room', { p_room: room });
           present.splice(present.indexOf(ids[step.leave]!), 1);
@@ -71,6 +84,7 @@ describe('escenarios compartidos (servidor SQL)', () => {
       if (ex.rewinds !== undefined) expect(r.rewinds).toBe(ex.rewinds);
       if (ex.shields !== undefined) expect(r.shields).toBe(ex.shields);
       if (ex.shieldActive !== undefined) expect(r.shield_active).toBe(ex.shieldActive);
+      if (ex.lightning !== undefined) expect(r.lightning_ends_at !== null).toBe(ex.lightning);
       if (ex.vote !== undefined) expect(r.vote ? (r.vote.kind ?? 'shuriken') : null).toBe(ex.vote);
       if (ex.offer !== undefined) expect(r.offer ? [...r.offer.choices].sort() : null).toEqual(ex.offer);
       if (ex.hands) {

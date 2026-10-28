@@ -26,6 +26,8 @@ function setup(sc: Scenario) {
   if (sc.rewinds !== undefined) s.rewinds = sc.rewinds;
   if (sc.shields !== undefined) s.shields = sc.shields;
   if (sc.shieldActive !== undefined) s.shieldActive = sc.shieldActive;
+  s.lightningLevel = sc.lightningLevel ?? 0;
+  s.lightningEndsAt = sc.lightningEndsIn === undefined ? null : new Date(NOW + sc.lightningEndsIn * 1000).toISOString();
   // Las manos del motor van en orden de juego (de mayor a menor en descendente).
   const desc = sc.config?.order === 'desc';
   s.hands = Object.fromEntries(ids.map((id, i) => [id, [...sc.hands[i]!].sort((a, b) => (desc ? b - a : a - b))]));
@@ -45,6 +47,7 @@ describe('escenarios compartidos (motor TypeScript)', () => {
         else if ('shield' in step) r = E.proposeShield(s, ids[step.shield]!, NOW);
         else if ('pick' in step) r = E.pickComodin(s, ids[step.pick[0]]!, s.level, step.pick[1], seededRng(3), NOW);
         else if ('ready' in step) r = E.readyNextLevel(s, ids[step.ready]!, s.level, false, seededRng(4), NOW);
+        else if ('expire' in step) r = E.expireVote(s, NOW);
         else {
           r = E.removePlayer(s, ids[step.leave]!, 'left', seededRng(2), NOW);
           present.splice(present.indexOf(ids[step.leave]!), 1);
@@ -65,6 +68,7 @@ describe('escenarios compartidos (motor TypeScript)', () => {
       if (ex.rewinds !== undefined) expect(s.rewinds).toBe(ex.rewinds);
       if (ex.shields !== undefined) expect(s.shields).toBe(ex.shields);
       if (ex.shieldActive !== undefined) expect(s.shieldActive).toBe(ex.shieldActive);
+      if (ex.lightning !== undefined) expect(s.lightningEndsAt !== null).toBe(ex.lightning);
       if (ex.vote !== undefined) expect(s.vote ? (s.vote.kind ?? 'shuriken') : null).toBe(ex.vote);
       if (ex.offer !== undefined) expect(s.offer ? [...s.offer.choices].sort() : null).toEqual(ex.offer);
       if (ex.hands) expect(present.map((id) => [...(s.hands[id] ?? [])].sort((a, b) => a - b))).toEqual(ex.hands);

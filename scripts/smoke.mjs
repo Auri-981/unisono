@@ -122,11 +122,22 @@ async function main() {
   const shieldErr = await a.rpc('propose_shield', { p_room: room, p_action: crypto.randomUUID() }).then(() => 'OK', (e) => e.message);
   ok(shieldErr === 'NO_SHIELDS', `proponer escudo sin tener ninguno → NO_SHIELDS (recibido: ${shieldErr})`);
 
+  // Ronda relámpago: sorteada al empezar, en un nivel que no es el último.
+  const lightningLevel = started.room.lightningLevel;
+  ok(
+    lightningLevel >= 1 && lightningLevel < started.room.maxLevel,
+    `ronda relámpago sorteada en el nivel ${lightningLevel} de ${started.room.maxLevel}`,
+  );
+
   // Partida completa: en cada nivel, se juegan las cartas en el orden correcto.
   const players = [a, b, c];
   for (let guard = 0; guard < 20; guard++) {
     const state = await a.rpc('get_room_state', { p_room: room });
     if (state.room.status === 'won' || state.room.status === 'lost') break;
+    if (state.room.status === 'playing') {
+      const timed = Boolean(state.room.lightningEndsAt);
+      ok(timed === (state.room.level === lightningLevel), `nivel ${state.room.level}: ${timed ? 'con' : 'sin'} reloj relámpago`);
+    }
     if (state.room.status === 'level_complete') {
       // Si hay que elegir comodín, Ana y Beto votan el primero y Carla el segundo: gana el primero.
       const offer = state.room.offer;

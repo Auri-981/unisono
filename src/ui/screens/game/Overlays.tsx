@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { lightningSeconds } from '../../../config/gameConfig';
 import type { RoomController } from '../../../game/controller';
 import { COMODIN_KINDS, type MistakePayload, type RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
-import { CheckIcon, ComodinKindIcon, CrownIcon, LifeIcon, RewindIcon } from '../../components/Icons';
+import { CheckIcon, ComodinKindIcon, CrownIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
 import { LIFE_SYMBOL, rewardText, upcomingReward } from '../../rewards';
 
 /** Cuenta atrás visual al empezar un nivel. No bloquea: se puede cerrar tocando. */
@@ -250,6 +251,12 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
         )}
         {offer && <ComodinChoice ctl={ctl} snap={snap} />}
         <p className="muted">{t('level.next', { level: room.level + 1 })}</p>
+        {room.lightningLevel === room.level + 1 && (
+          <p className="next-lightning" role="note">
+            <LightningIcon size={18} />
+            {t('lightning.next', { level: room.level + 1, s: lightningSeconds(room.level + 1) })}
+          </p>
+        )}
         {nextReward && (
           <p className="next-reward">{t('reward.next', { level: room.level + 1, reward: rewardText(nextReward) })}</p>
         )}
@@ -287,16 +294,21 @@ export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: Ro
   const { room, me } = snap;
   const status = room.status as 'won' | 'lost' | 'abandoned';
   const isHost = room.hostId === me;
+  const events = snap.recentEvents?.length ? snap.recentEvents : snap.lastEvent ? [snap.lastEvent] : [];
+  const outOfTime = status === 'lost' && events.some((e) => e.kind === 'lightning_timeout');
   const text =
     status === 'won'
       ? t('end.wonText', { levels: room.maxLevel })
-      : status === 'lost'
-        ? t('end.lostText', { level: room.level })
-        : t('end.abandonedText');
+      : outOfTime
+        ? t('end.lightningText', { level: room.level })
+        : status === 'lost'
+          ? t('end.lostText', { level: room.level })
+          : t('end.abandonedText');
   return (
     <div className={`overlay overlay-end end-${status}`} role="dialog" aria-modal="true" aria-labelledby="end-title">
       <div className="overlay-card">
         {status === 'won' && <div className="burst burst-big" aria-hidden />}
+        {outOfTime && <LightningIcon size={44} className="end-lightning-icon" />}
         <h2 id="end-title" className="overlay-title end-title">
           {t(status === 'won' ? 'end.won' : status === 'lost' ? 'end.lost' : 'end.abandoned')}
         </h2>

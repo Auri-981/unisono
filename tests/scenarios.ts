@@ -13,6 +13,8 @@ export type Step =
   | { shield: number; error?: GameErrorCode }
   | { pick: [player: number, kind: ComodinKind]; error?: GameErrorCode }
   | { ready: number }
+  /** Pide aplicar los plazos vencidos (votación o reloj de la ronda relámpago). */
+  | { expire: true }
   | { leave: number };
 
 export interface Scenario {
@@ -26,6 +28,10 @@ export interface Scenario {
   rewinds?: number;
   shields?: number;
   shieldActive?: boolean;
+  /** Nivel de la ronda relámpago (por defecto 0: ninguno, para que el sorteo no influya). */
+  lightningLevel?: number;
+  /** Segundos que le quedan al reloj del nivel actual (negativo = ya vencido; sin valor = sin reloj). */
+  lightningEndsIn?: number;
   hands: number[][];
   steps: Step[];
   expect: {
@@ -36,6 +42,8 @@ export interface Scenario {
     rewinds?: number;
     shields?: number;
     shieldActive?: boolean;
+    /** ¿Corre el reloj de la ronda relámpago? */
+    lightning?: boolean;
     /** Votación en curso (su tipo) o null. */
     vote?: ComodinKind | null;
     /** Comodines ofrecidos para elegir (en orden alfabético) o null. */
@@ -476,5 +484,66 @@ export const SCENARIOS: Scenario[] = [
     hands: [[30], [70]],
     steps: [{ play: [1, 70] }, { play: [0, 30] }],
     expect: { status: 'won', lives: 2, pile: [70, 30] },
+  },
+
+  // ───── Ronda relámpago ─────
+  {
+    name: 'relámpago: al empezar el nivel se pone en marcha el reloj',
+    players: 2,
+    level: 1,
+    lightningLevel: 2,
+    hands: [[10], [20]],
+    steps: [{ play: [0, 10] }, { play: [1, 20] }, { ready: 0 }, { ready: 1 }],
+    expect: { status: 'playing', level: 2, lightning: true },
+  },
+  {
+    name: 'relámpago: superar el nivel a tiempo para el reloj',
+    players: 2,
+    level: 2,
+    lightningLevel: 2,
+    lightningEndsIn: 60,
+    hands: [[10, 30], [20, 40]],
+    steps: [{ play: [0, 10] }, { play: [1, 20] }, { play: [0, 30] }, { play: [1, 40] }],
+    expect: { status: 'level_complete', lives: 2, lightning: false },
+  },
+  {
+    name: 'relámpago: los demás niveles no tienen reloj',
+    players: 2,
+    level: 1,
+    lightningLevel: 3,
+    hands: [[10], [20]],
+    steps: [{ play: [0, 10] }, { play: [1, 20] }, { ready: 0 }, { ready: 1 }],
+    expect: { status: 'playing', level: 2, lightning: false },
+  },
+  {
+    name: 'relámpago: si se acaba el tiempo se pierden todas las vidas y la partida',
+    players: 3,
+    level: 4,
+    lives: 3,
+    lightningLevel: 4,
+    lightningEndsIn: -1,
+    hands: [[10], [20], [30]],
+    steps: [{ expire: true }],
+    expect: { status: 'lost', lives: 0, lightning: false },
+  },
+  {
+    name: 'relámpago: con el tiempo agotado ya no se puede jugar',
+    players: 2,
+    level: 3,
+    lightningLevel: 3,
+    lightningEndsIn: -1,
+    hands: [[10], [20]],
+    steps: [{ play: [0, 10], error: 'NOT_PLAYING' }, { propose: 0, error: 'NOT_PLAYING' }, { expire: true }],
+    expect: { status: 'lost', lives: 0 },
+  },
+  {
+    name: 'relámpago: pedir que caduque antes de tiempo no hace nada',
+    players: 2,
+    level: 3,
+    lightningLevel: 3,
+    lightningEndsIn: 60,
+    hands: [[10], [20]],
+    steps: [{ expire: true }, { play: [0, 10] }],
+    expect: { status: 'playing', lives: 2, lightning: true, pile: [10] },
   },
 ];
