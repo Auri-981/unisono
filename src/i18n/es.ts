@@ -242,6 +242,11 @@ export const es = {
   'history.levelOf': 'Nivel {level}/{max}',
 
   'home.tutorial': 'Tutorial',
+  'home.showcase': 'Qué es Unísono',
+  'home.feature.rooms': 'Salas privadas: comparte el código o el enlace y jugad de 2 a 4, cada uno con su móvil.',
+  'home.feature.lives': 'Las vidas son de todo el equipo: un error os cuesta a todos.',
+  'home.feature.comodines': 'Comodines para salir de apuros: Vistazo, Escudo y Rebobinar.',
+  'home.firstTime': '¿Primera vez? Mira el tutorial',
 
   'tutorial.title': 'Tutorial',
   'tutorial.order': 'Orden de las cartas',

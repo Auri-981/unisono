@@ -495,6 +495,135 @@ select.input {
   color: var(--muted);
 }
 
+/* En el móvil: una sola columna (el contenedor no cuenta) y sin presentación. */
+.home-main {
+  display: contents;
+}
+
+.home-showcase {
+  display: none;
+}
+
+/* Ordenador: dos columnas, a la izquierda el menú y a la derecha una presentación del juego. */
+@media (min-width: 960px) and (min-height: 560px) {
+  .home {
+    max-width: 1080px;
+    min-height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+    align-items: center;
+    column-gap: clamp(40px, 6vw, 96px);
+    padding-top: calc(var(--safe-top) + 32px);
+    padding-bottom: calc(var(--safe-bottom) + 32px);
+  }
+
+  .home-main {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .home-hero {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .home-title {
+    font-size: 4rem;
+  }
+
+  .home-tagline {
+    font-size: 1.15rem;
+  }
+
+  .home-footer {
+    justify-content: flex-start;
+  }
+
+  .home-showcase {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    padding: 40px 36px 36px;
+    border-radius: 32px;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(120% 80% at 50% 0%, rgb(126 166 255 / 0.12), transparent 60%),
+      radial-gradient(90% 70% at 50% 100%, rgb(245 185 113 / 0.1), transparent 60%),
+      var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .home-showcase-table {
+    display: flex;
+    justify-content: center;
+    padding: 18px 0 8px;
+  }
+
+  .home-showcase-table .card {
+    flex: none;
+    width: 118px;
+    height: 165px;
+    margin: 0 -8px;
+    box-shadow: 0 14px 30px rgb(0 0 0 / 0.45);
+    animation: card-float 6s ease-in-out infinite;
+  }
+
+  .home-showcase-table .card .card-value {
+    font-size: 3.2rem;
+  }
+
+  .home-showcase-table .card:nth-child(1) {
+    rotate: -9deg;
+    margin-top: 20px;
+  }
+
+  .home-showcase-table .card:nth-child(2) {
+    z-index: 1;
+    animation-delay: -2s;
+  }
+
+  .home-showcase-table .card:nth-child(3) {
+    rotate: 9deg;
+    margin-top: 20px;
+    animation-delay: -4s;
+  }
+
+  .home-features {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .home-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    color: #d7dbea;
+    line-height: 1.45;
+  }
+
+  .home-feature-icon {
+    flex: none;
+    margin-top: 1px;
+    color: var(--cool);
+  }
+
+  .home-feature-life {
+    color: var(--life);
+  }
+
+  .home-feature-comodin {
+    color: var(--comodin);
+  }
+}
+
 /* ───────────── Sala de espera ───────────── */
 
 .invite {
@@ -1902,6 +2031,16 @@ select.input {
   }
   50% {
     transform: scale(1.05);
+  }
+}
+
+@keyframes card-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -8px;
   }
 }
 
