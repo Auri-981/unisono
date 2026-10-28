@@ -114,6 +114,24 @@ export const BackIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+export const MinusIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M6 12h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </svg>
+);
+
+export const PlusIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 6v12M6 12h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+  </svg>
+);
+
+export const CloseIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 /** Marca del juego: dos ondas que se encuentran en un mismo punto. */
 export const LogoMark = ({ size = 56, ...p }: P) => (
   <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden focusable={false} {...p}>

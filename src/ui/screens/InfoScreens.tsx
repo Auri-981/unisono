@@ -3,7 +3,7 @@ import { DEFAULT_CONFIG } from '../../config/gameConfig';
 import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { api, ApiError } from '../../net/api';
-import { ConfigEditor } from '../components/ConfigEditor';
+import { ConfigEditor, Switch } from '../components/ConfigEditor';
 import { Page } from '../components/Layout';
 import { setPrefs, usePrefs } from '../prefs';
 
@@ -22,18 +22,9 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
             autoComplete="nickname"
           />
         </label>
-        <label className="toggle">
-          <input type="checkbox" checked={prefs.sound} onChange={(e) => setPrefs({ sound: e.target.checked })} />
-          <span>{t('settings.sound')}</span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={prefs.vibration} onChange={(e) => setPrefs({ vibration: e.target.checked })} />
-          <span>{t('settings.vibration')}</span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={prefs.reducedMotion} onChange={(e) => setPrefs({ reducedMotion: e.target.checked })} />
-          <span>{t('settings.reducedMotion')}</span>
-        </label>
+        <Switch label={t('settings.sound')} checked={prefs.sound} onChange={(sound) => setPrefs({ sound })} />
+        <Switch label={t('settings.vibration')} checked={prefs.vibration} onChange={(vibration) => setPrefs({ vibration })} />
+        <Switch label={t('settings.reducedMotion')} checked={prefs.reducedMotion} onChange={(reducedMotion) => setPrefs({ reducedMotion })} />
         <p className="muted small">{t('settings.version', { v: __APP_VERSION__ })}</p>
       </div>
     </Page>
