@@ -135,6 +135,7 @@ export const es = {
   'game.chat': 'Chat',
   'game.chatPlaceholder': 'Escribe un mensaje…',
   'game.send': 'Enviar',
+  'game.chatNoNumbers': 'Sin números: quita las cifras para poder enviarlo.',
   'game.countdownSkip': 'Toca para empezar ya',
   'game.concentrate': 'Concentraos…',
 
@@ -376,6 +377,7 @@ export const es = {
   'error.INVALID_NAME': 'Escribe un alias de 1 a 20 caracteres.',
   'error.INVALID_MESSAGE': 'El mensaje debe tener entre 1 y 200 caracteres.',
   'error.CHAT_DISABLED': 'El chat está desactivado en modo concentración.',
+  'error.NO_NUMBERS': 'En el chat no se pueden enviar números.',
   'error.TOO_FAST': 'Vas muy rápido, espera un momento.',
   'error.TOO_MANY_ROOMS': 'Has creado muchas salas seguidas. Espera unos minutos.',
   'error.TOO_MANY_ATTEMPTS': 'Demasiados códigos incorrectos. Espera unos minutos.',

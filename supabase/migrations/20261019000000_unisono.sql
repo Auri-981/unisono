@@ -1343,6 +1343,10 @@ begin
     raise exception 'CHAT_DISABLED';
   end if;
   if char_length(v_body) < 1 or char_length(v_body) > 200 then raise exception 'INVALID_MESSAGE'; end if;
+  -- Sin números: ninguna cifra (7, ７, ①, Ⅶ, ½, ²…), que sería decir las cartas.
+  if v_body ~ '[0-9０-９²³¹¼-¾⁰⁴-⁹₀-₉⅐-↉①-⒛⓪-⓿❶-➓٠-٩۰-۹]' then
+    raise exception 'NO_NUMBERS';
+  end if;
   if exists (select 1 from public.chat_messages
              where room_id = p_room and user_id = v_uid and created_at > now() - interval '1 second') then
     raise exception 'TOO_FAST';

@@ -13,6 +13,11 @@ export const MAX_PLAYERS = 4;
 
 export const NAME_MAX_LENGTH = 20;
 export const CHAT_MAX_LENGTH = 200;
+/**
+ * En el chat no se pueden decir números (sería hacer trampa). Cualquier cifra cuenta: 7, ７, ①, Ⅶ, ½…
+ * El servidor (`send_chat`) lo comprueba igual; aquí solo se avisa antes de enviar.
+ */
+export const hasNumber = (text: string) => /\p{N}/u.test(text);
 
 /** Segundos que dura una votación de vistazo o escudo. */
 export const SHURIKEN_VOTE_SECONDS = 15;

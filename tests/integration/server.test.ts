@@ -541,6 +541,16 @@ describe('chat (modo amigos)', () => {
     const rows = await t.as<{ name: string; body: string }>(ids[1]!, `select name, body from public.chat_messages where room_id = $1`, [room]);
     expect(rows).toEqual([{ name: 'Ana', body: '¡vamos!' }]);
   });
+
+  it('no deja enviar números, en ninguna forma', async () => {
+    const { ids, room } = await started(2, { mode: 'friends' });
+    for (const body of ['42', 'tengo el 7', 'casi 100!', '７', 'el ① y el Ⅻ', '½', 'x²', '٣']) {
+      expect(await errorOf(t.rpc(ids[0]!, 'send_chat', { p_room: room, p_body: body })), body).toBe('NO_NUMBERS');
+    }
+    expect(await t.rpc(ids[0]!, 'send_chat', { p_room: room, p_body: 'Ⓐ ¡ya casi, sin prisa! ¿Tienes alguna baja?' })).toEqual({ ok: true });
+    const rows = await t.as<{ body: string }>(ids[0]!, `select body from public.chat_messages where room_id = $1`, [room]);
+    expect(rows).toEqual([{ body: 'Ⓐ ¡ya casi, sin prisa! ¿Tienes alguna baja?' }]);
+  });
 });
 
 describe('comodines a través de la API', () => {

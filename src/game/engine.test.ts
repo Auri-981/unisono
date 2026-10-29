@@ -6,6 +6,7 @@ import {
   PLAYER_PRESETS,
   REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
+  hasNumber,
   lightningSeconds,
   normalizeConfig,
   rewardFor,
@@ -597,5 +598,12 @@ describe('ronda relámpago', () => {
     s = ok(E.rematch(s, 'p0', NOW));
     expect(s.lightningLevel).toBe(0);
     expect(s.lightningEndsAt).toBeNull();
+  });
+});
+
+describe('chat sin números', () => {
+  it('detecta cualquier cifra y deja pasar el resto', () => {
+    for (const s of ['42', 'tengo el 7', '７', '①', 'Ⅻ', '½', 'x²', '٣']) expect(hasNumber(s), s).toBe(true);
+    for (const s of ['', '¡vamos!', 'Ⓐ ¿alguna baja?', 'esperad un poco 😅']) expect(hasNumber(s), s).toBe(false);
   });
 });

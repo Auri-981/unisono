@@ -2054,6 +2054,17 @@ h3 {
   gap: 8px;
 }
 
+.chat-form .input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.chat-warning {
+  margin: 0 0 8px;
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 /* ───────────── Textos e historial ───────────── */
 
 .stats {
