@@ -73,18 +73,17 @@ export function BlindPile({ snap, clockOffset }: { snap: RoomSnapshot; clockOffs
   const { room, pile, players } = snap;
   const top = pile.at(-1);
   const hideAt = room.pileAt ? Date.parse(room.pileAt) + FINAL_PEEK_SECONDS * 1000 : 0;
-  const [now, setNow] = useState(() => Date.now() + clockOffset);
-  const peeking = Boolean(top) && now < hideAt;
+  // Siempre con la hora actual (no una guardada de antes: con una carta nueva saldría de más).
+  const left = hideAt - (Date.now() + clockOffset);
+  const peeking = Boolean(top) && left > 0;
+  // Al llegar la hora, se vuelve a pintar para taparla.
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (!top) return;
-    const wait = hideAt - (Date.now() + clockOffset);
-    if (wait <= 0) return;
-    const id = window.setTimeout(() => setNow(Date.now() + clockOffset), wait + 20);
+    if (!top || left <= 0) return;
+    const id = window.setTimeout(() => setTick((n) => n + 1), left + 20);
     return () => window.clearTimeout(id);
-  }, [top, hideAt, clockOffset]);
-  // Cada carta nueva vuelve a contar desde ahora.
-  useEffect(() => setNow(Date.now() + clockOffset), [room.pileAt, clockOffset]);
+  }, [top, hideAt, peeking]);
 
   const hidden = (room.pileHidden ?? 0) + (top && !peeking ? 1 : 0);
   const played = hidden === 1 ? t('final.playedOne') : t('final.played', { n: hidden });
@@ -105,7 +104,7 @@ export function BlindPile({ snap, clockOffset }: { snap: RoomSnapshot; clockOffs
       {peeking && top && (
         <div className="pile-top blind-peek" key={room.pileAt}>
           <Card value={top.c} size="xl" />
-          <PeekTimer ms={hideAt - now} />
+          <PeekTimer ms={left} />
           <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
         </div>
       )}
