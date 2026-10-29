@@ -3,6 +3,7 @@ import type { RoomController } from '../../../game/controller';
 import type { ComodinKind } from '../../../game/types';
 import { errorMessage, t } from '../../../i18n';
 import { Card, CardBacks } from '../../components/Card';
+import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ChatIcon, ComodinIcon, ComodinKindIcon, CrownIcon, ExitIcon, LifeIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
@@ -25,8 +26,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const [infoToast, setInfoToast] = useState<string | null>(null);
 
   const playing = room.status === 'playing';
-  // Orden descendente (100 → 1): la mano ya llega ordenada «en orden de juego» desde el servidor.
-  const desc = room.config.order === 'desc';
+  // La mano ya llega ordenada «en orden de juego» desde el servidor (también en 100 → 1).
+  const order = room.config.order;
   const lowest = myHand[0];
   const top = pile.at(-1);
   const previous = pile.at(-2);
@@ -67,11 +68,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
     return () => window.clearTimeout(id);
   }, [infoToast]);
 
+  // En mitad de la partida se pide confirmación (con la ventana propia del juego).
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const closeConfirmLeave = useCallback(() => setConfirmLeave(false), []);
   const leave = () => {
-    if (room.status === 'playing' || room.status === 'level_complete') {
-      if (!window.confirm(t('game.leaveConfirm'))) return;
-    }
-    void ctl.actions.leave();
+    if (room.status === 'playing' || room.status === 'level_complete') setConfirmLeave(true);
+    else void ctl.actions.leave();
   };
 
   // Si te rechazaron (o caducó) un comodín, no puedes proponer otro hasta que se juegue una carta.
@@ -183,7 +185,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             playing &&
             !vote && (
               <p className={`table-hint ${shieldActive ? 'table-hint-shield' : ''}`}>
-                {blocked ? t('comodin.blocked') : shieldActive ? t('comodin.shieldOnHint') : t(desc ? 'game.hintDesc' : 'game.hint')}
+                {blocked ? t('comodin.blocked') : shieldActive ? t('comodin.shieldOnHint') : t(`game.hint.${order}`)}
               </p>
             )
           )}
@@ -196,7 +198,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
               <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
             </div>
           ) : (
-            <div className="pile-empty">{t(desc ? 'game.tableEmptyDesc' : 'game.tableEmpty')}</div>
+            <div className="pile-empty">{t(`game.tableEmpty.${order}`)}</div>
           )}
         </div>
         {revealed.length > 0 && (
@@ -270,13 +272,26 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         <Countdown
           level={room.level}
           reward={reward ? t('reward.ifPass', { reward: rewardText(reward) }) : null}
-          orderNote={desc ? t('game.orderDesc') : null}
+          orderNote={t(`game.order.${order}`)}
           onDone={feed.clearCountdown}
         />
       )}
       {rewindVote && <RewindVote ctl={ctl} snap={snap} />}
       {room.status === 'level_complete' && showLevelComplete && <LevelComplete ctl={ctl} snap={snap} />}
       {ended && showEnd && <EndScreen ctl={ctl} snap={snap} onExit={onExit} />}
+      {confirmLeave && !ended && (
+        <ConfirmDialog
+          icon={<ExitIcon size={30} />}
+          title={t('game.leaveTitle')}
+          text={t('game.leaveText')}
+          confirmLabel={t('game.leaveConfirm')}
+          onConfirm={() => {
+            setConfirmLeave(false);
+            void ctl.actions.leave();
+          }}
+          onCancel={closeConfirmLeave}
+        />
+      )}
     </div>
   );
 }

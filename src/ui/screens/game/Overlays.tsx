@@ -15,7 +15,7 @@ export function Countdown({
 }: {
   level: number;
   reward: string | null;
-  orderNote: string | null;
+  orderNote: string;
   onDone: () => void;
 }) {
   const [n, setN] = useState(3);
@@ -34,7 +34,7 @@ export function Countdown({
         {n > 0 ? n : ''}
       </span>
       <span className="countdown-hint">{t('game.concentrate')}</span>
-      {orderNote && <span className="countdown-order">{orderNote}</span>}
+      <span className="countdown-order">{orderNote}</span>
       {reward && <span className="countdown-reward">{reward}</span>}
       <span className="muted small">{t('game.countdownSkip')}</span>
     </button>

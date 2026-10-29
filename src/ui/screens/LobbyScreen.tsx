@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { startingResources } from '../../config/gameConfig';
 import type { RoomController } from '../../game/controller';
 import type { RoomConfig } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import { ConfigEditor, ConfigSummary } from '../components/ConfigEditor';
-import { CheckIcon, CopyIcon, CrownIcon, LinkIcon, ShareIcon } from '../components/Icons';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { CheckIcon, CloseIcon, CopyIcon, CrownIcon, LinkIcon, ShareIcon } from '../components/Icons';
 import { Page, Toast } from '../components/Layout';
 import { ConnectionDot } from '../components/Resources';
 
@@ -46,6 +47,8 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [draft, setDraft] = useState<RoomConfig>(room.config);
   const [noticeVisible, setNoticeVisible] = useState(false);
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
+  const closeKick = useCallback(() => setKickTarget(null), []);
 
   // La configuración del servidor manda: si cambia (o la normaliza), se refleja aquí.
   useEffect(() => setDraft(room.config), [room.config]);
@@ -131,9 +134,7 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
                   <button
                     type="button"
                     className="btn btn-ghost btn-small"
-                    onClick={() => {
-                      if (window.confirm(t('lobby.kickConfirm', { name: p.name }))) void ctl.actions.kick(p.id);
-                    }}
+                    onClick={() => setKickTarget({ id: p.id, name: p.name })}
                   >
                     {t('lobby.kick')}
                   </button>
@@ -194,6 +195,19 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
         <div className="toast-layer">
           <Toast tone="danger" title={errorMessage(ctl.notice.code)} />
         </div>
+      )}
+      {kickTarget && (
+        <ConfirmDialog
+          icon={<CloseIcon size={30} />}
+          title={t('lobby.kickTitle', { name: kickTarget.name })}
+          text={t('lobby.kickText')}
+          confirmLabel={t('lobby.kick')}
+          onConfirm={() => {
+            setKickTarget(null);
+            void ctl.actions.kick(kickTarget.id);
+          }}
+          onCancel={closeKick}
+        />
       )}
     </Page>
   );

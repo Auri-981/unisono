@@ -145,6 +145,12 @@ h3 {
   border-color: var(--line);
 }
 
+.btn-danger {
+  background: rgb(255 122 122 / 0.16);
+  border-color: rgb(255 122 122 / 0.55);
+  color: var(--danger);
+}
+
 .btn-ghost {
   background: transparent;
   border-color: var(--line);
@@ -1568,6 +1574,42 @@ h3 {
 
 .vote-shield .vote-head {
   color: var(--shield);
+}
+
+/* Confirmación (salir de la partida, expulsar): sustituye al aviso del navegador. */
+.overlay.overlay-confirm {
+  z-index: 40;
+}
+
+.confirm-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--danger);
+  background: rgb(255 122 122 / 0.12);
+  border: 1px solid rgb(255 122 122 / 0.45);
+  animation: pop 0.45s ease;
+}
+
+.confirm-title {
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.confirm-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+@media (max-width: 300px) {
+  .confirm-actions {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Rebobinar: ventana propia al perder una vida. */
