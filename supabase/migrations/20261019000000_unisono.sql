@@ -58,6 +58,8 @@ alter table public.rooms add column if not exists offer jsonb;
 -- Añadidas después: ronda relámpago (nivel en que toca, 0 = ninguno, y hora límite mientras se juega).
 alter table public.rooms add column if not exists lightning_level int not null default 0;
 alter table public.rooms add column if not exists lightning_ends_at timestamptz;
+-- Quitada después: la opción de vistazo «clásico» (descartes ocultos); ahora siempre se muestran.
+update public.rooms set config = config - 'shurikenVariant' where config ? 'shurikenVariant';
 
 create table if not exists public.room_players (
   room_id      uuid not null references public.rooms (id) on delete cascade,
@@ -274,7 +276,6 @@ begin
     'levels',          game_private.jint(p, 'levels', 0, 0, 12),
     'order',           game_private.jenum(p, 'order', array['asc', 'desc'], 'asc'),
     'mode',            game_private.jenum(p, 'mode', array['concentration', 'friends'], 'concentration'),
-    'shurikenVariant', game_private.jenum(p, 'shurikenVariant', array['classic', 'reveal'], 'classic'),
     'rewardPreset',    game_private.jenum(p, 'rewardPreset', array['classic', 'custom', 'none'], 'classic'),
     'customRewards',   v_rewards,
     'maxLives',        game_private.jint(p, 'maxLives', 5, 1, 10),
@@ -700,12 +701,10 @@ create or replace function game_private.execute_shuriken(p_room uuid)
 returns void language plpgsql set search_path = ''
 as $$
 declare
-  v_reveal boolean;
   v_desc boolean;
   v_discarded jsonb;
 begin
-  select (config ->> 'shurikenVariant') = 'reveal', (config ->> 'order') = 'desc'
-    into v_reveal, v_desc from public.rooms where id = p_room;
+  select (config ->> 'order') = 'desc' into v_desc from public.rooms where id = p_room;
 
   with lowest as (
     select distinct on (h.user_id) h.user_id, h.card, p.seat
@@ -719,20 +718,16 @@ begin
     where h.room_id = p_room and h.card = l.card
     returning h.card
   )
-  select coalesce(jsonb_agg(
-           case when v_reveal then jsonb_build_object('p', l.user_id, 'c', l.card)
-                else jsonb_build_object('p', l.user_id) end
-           order by l.seat), '[]'::jsonb)
+  select coalesce(jsonb_agg(jsonb_build_object('p', l.user_id, 'c', l.card) order by l.seat), '[]'::jsonb)
     into v_discarded
   from lowest l;
 
-  if v_reveal then
-    update public.rooms
-       set revealed = revealed || (
-         select coalesce(jsonb_agg(jsonb_build_object('c', e -> 'c', 'p', e -> 'p', 'r', 'shuriken') order by ord), '[]'::jsonb)
-         from jsonb_array_elements(v_discarded) with ordinality as t (e, ord))
-     where id = p_room;
-  end if;
+  -- Las cartas descartadas se muestran siempre a todos.
+  update public.rooms
+     set revealed = revealed || (
+       select coalesce(jsonb_agg(jsonb_build_object('c', e -> 'c', 'p', e -> 'p', 'r', 'shuriken') order by ord), '[]'::jsonb)
+       from jsonb_array_elements(v_discarded) with ordinality as t (e, ord))
+   where id = p_room;
   update public.rooms set shurikens = shurikens - 1, vote = null, shuriken_blocked = '[]'::jsonb where id = p_room;
   perform game_private.emit(p_room, 'shuriken_used', null, jsonb_build_object('discarded', v_discarded));
   perform game_private.check_level_end(p_room);

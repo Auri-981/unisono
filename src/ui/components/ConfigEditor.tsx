@@ -211,13 +211,6 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
         onChange={(difficulty) => set({ difficulty })}
       />
       <Choice
-        label={t('config.shurikenVariant')}
-        value={config.shurikenVariant}
-        disabled={disabled}
-        options={(['classic', 'reveal'] as const).map((v) => ({ value: v, ...splitHint(t(`config.shurikenVariant.${v}`)) }))}
-        onChange={(shurikenVariant) => set({ shurikenVariant })}
-      />
-      <Choice
         label={t('config.rewards')}
         value={config.rewardPreset}
         disabled={disabled}
@@ -341,8 +334,6 @@ export function ConfigSummary({ config, playerCount }: { config: RoomConfig; pla
       <dd>{t(`config.mode.${config.mode}`)}</dd>
       <dt>{t('config.difficulty')}</dt>
       <dd>{t(`config.difficulty.${config.difficulty}`)}</dd>
-      <dt>{t('config.shurikenVariant')}</dt>
-      <dd>{t(`config.shurikenVariant.${config.shurikenVariant}`)}</dd>
       <dt>{t('config.rewards')}</dt>
       <dd>{rewards}</dd>
       <dt>{t('config.maxLives')} / {t('config.maxShurikens')}</dt>

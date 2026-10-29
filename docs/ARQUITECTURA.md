@@ -56,8 +56,8 @@ y el enlace de invitación es `.../?sala=CODIGO`: no hacen falta redirecciones.
    sala (`rooms`: nivel, vidas, pila de cartas jugadas, versión…). Al ver un cambio, cada móvil pide
    su "foto" de la partida (`get_room_state`), que incluye solo *su* mano y cuántas cartas tienen los
    demás (como en la mesa real), nunca sus valores.
-5. Solo se revelan cartas cuando las reglas lo hacen: las descartadas por un error y, si se activa la
-   variante «revelación», las descartadas por un shuriken.
+5. Solo se revelan cartas cuando las reglas lo hacen: las descartadas por un error y las
+   descartadas por un vistazo (shuriken).
 
 Las pruebas de integración (`tests/integration`) ejecutan el SQL real e intentan leer cartas ajenas,
 escribir en tablas y llamar a funciones internas; todo debe fallar.
@@ -128,7 +128,7 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
   **exactamente una vida** y **todas** esas cartas menores se descartan boca arriba.
 - **Shuriken**: cualquiera propone; todos los jugadores deben aceptar en 15 s; cualquiera puede
   rechazar. Mientras hay votación no se pueden jugar cartas. Cada jugador descarta su carta más baja
-  (variante clásica: ocultas; variante revelación: se muestran).
+  y la muestra a todos.
 - **Escudo**: se propone y vota igual que el vistazo. Aceptado, el siguiente error del nivel no
   cuesta vida (las cartas sí se descartan). Caduca al terminar el nivel.
 - **Rebobinar**: no se propone. Si se pierde una vida y el equipo tiene alguno, la partida se
@@ -159,9 +159,8 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
 - **Recompensas personalizadas** (por defecto): 2 ★, 3 ♥, 5 ★, 6 ♥, editable en una tabla.
 - **Dificultad**: fácil (+1 vida, +1 shuriken), clásica, difícil (−1 vida, sin shuriken).
 
-**Supuesto documentado**: en el juego publicado las cartas de un shuriken se descartan boca arriba.
-Siguiendo tu especificación, la variante «clásica» de la app las oculta y la «revelación» las
-muestra; puedes elegir cualquiera en la sala.
+**Vistazo**: como en el juego publicado, las cartas descartadas se muestran siempre boca arriba
+(antes había una opción «clásica» que las ocultaba; se quitó).
 
 ## 8. Conexión, desconexión y anfitrión
 

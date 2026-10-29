@@ -300,18 +300,14 @@ function expireIfDue(d: Draft, rng: Rng): boolean {
 }
 
 function executeShuriken(d: Draft, rng: Rng) {
-  const reveal = d.s.config.shurikenVariant === 'reveal';
-  const discarded: { p: PlayerId; c?: number }[] = [];
+  // Las cartas descartadas se muestran siempre a todos.
+  const discarded: { p: PlayerId; c: number }[] = [];
   for (const p of playersBySeat(d.s)) {
     const hand = d.s.hands[p.id];
     if (!hand || hand.length === 0) continue;
     const c = hand.shift()!;
-    if (reveal) {
-      discarded.push({ p: p.id, c });
-      d.s.revealed.push({ c, p: p.id, r: 'shuriken' });
-    } else {
-      discarded.push({ p: p.id });
-    }
+    discarded.push({ p: p.id, c });
+    d.s.revealed.push({ c, p: p.id, r: 'shuriken' });
   }
   d.s.shurikens -= 1;
   d.s.vote = null;

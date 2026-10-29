@@ -49,7 +49,7 @@ penalización del SQL (−2 vidas), fallaron 5 escenarios; se restauró el códi
 | 7 | Error con una carta inferior | ✅ | escenario (TS y SQL) |
 | 8 | Error con varias cartas inferiores | ✅ | escenarios 18/25/40 y «varias del mismo jugador» |
 | 9 | Consumo de vidas | ✅ | `las vidas se consumen de una en una…`; `un error no puede descontar dos vidas…` |
-| 10 | Shurikens | ✅ | escenarios clásico, revelación, rechazado, sin shurikens, vacía las manos |
+| 10 | Shurikens | ✅ | escenarios: descarta y muestra, rechazado, sin shurikens, vacía las manos |
 | 11 | Descarte correcto | ✅ | escenarios de error y shuriken comprueban manos y descartes |
 | 12 | Recompensas por nivel | ✅ | escenarios clásica y personalizada; partidas completas |
 | 13 | Límites de vidas y shurikens | ✅ | escenario «no superan el máximo»; partidas completas (≤5, ≤3) |

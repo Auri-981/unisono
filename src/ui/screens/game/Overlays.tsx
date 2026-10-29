@@ -114,7 +114,7 @@ export function VoteBanner({ ctl, snap }: { ctl: RoomController; snap: RoomSnaps
     explain = (mine ? '' : `${t('vote.shieldBy', { name: proposer })}. `) + t('vote.explainShield');
   } else {
     title = mine ? t('vote.proposedByMe') : t('vote.proposed', { name: proposer });
-    explain = t(snap.room.config.shurikenVariant === 'reveal' ? 'vote.explainReveal' : 'vote.explainClassic');
+    explain = t('vote.explainShuriken');
   }
   return (
     <div className={`vote-banner vote-${kind}`} role="alertdialog" aria-live="assertive">

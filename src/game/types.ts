@@ -9,7 +9,6 @@ export type PlayerId = string;
 export type RoomStatus = 'lobby' | 'playing' | 'level_complete' | 'won' | 'lost' | 'abandoned';
 
 export type GameMode = 'concentration' | 'friends';
-export type ShurikenVariant = 'classic' | 'reveal';
 export type RewardPreset = 'classic' | 'custom' | 'none';
 export type Difficulty = 'easy' | 'classic' | 'hard';
 /** Orden en que se juegan las cartas: de 1 a 100 (clásico) o de 100 a 1. */
@@ -38,7 +37,6 @@ export interface RoomConfig {
   levels: number;
   order: CardOrder;
   mode: GameMode;
-  shurikenVariant: ShurikenVariant;
   rewardPreset: RewardPreset;
   customRewards: Reward[];
   maxLives: number;
@@ -111,8 +109,8 @@ export interface MistakePayload {
 }
 
 export interface ShurikenUsedPayload {
-  /** En la variante clásica `c` no se incluye: las cartas no se revelan. */
-  discarded: { p: PlayerId; c?: number }[];
+  /** Las cartas descartadas se muestran siempre a todos. */
+  discarded: { p: PlayerId; c: number }[];
 }
 
 export interface LevelReward {

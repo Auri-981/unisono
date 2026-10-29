@@ -236,16 +236,17 @@ describe('privacidad', () => {
     }
   });
 
-  it('el shuriken clásico no revela las cartas descartadas en el evento', () => {
+  it('el shuriken muestra a todos las cartas descartadas, pero no el resto de la mano ajena', () => {
     let { s } = room(2);
     s = ok(E.startGame(s, 'p0', seededRng(9), NOW));
     s.level = 2;
     s.hands = { p0: [7, 70], p1: [9, 90] };
     s = ok(E.proposeShuriken(s, 'p0', NOW));
     s = ok(E.voteShuriken(s, 'p1', true, NOW));
-    const json = JSON.stringify(E.toSnapshot(s, 'p0', NOW));
-    expect(json).not.toMatch(/"c":7\b/);
-    expect(json).not.toMatch(/"c":9\b/);
+    const snap = E.toSnapshot(s, 'p0', NOW);
+    expect(snap.revealed.map((r) => r.c)).toEqual([7, 9]);
+    expect(snap.lastEvent?.payload).toEqual({ discarded: [{ p: 'p0', c: 7 }, { p: 'p1', c: 9 }] });
+    expect(JSON.stringify(snap)).not.toMatch(/[^0-9]90[^0-9]/);
   });
 });
 

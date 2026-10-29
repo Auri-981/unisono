@@ -113,8 +113,7 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
         case 'shuriken_used': {
           const s = p as unknown as ShurikenUsedPayload;
           sfx.shuriken();
-          const cards = s.discarded.filter((d) => d.c !== undefined).map((d) => d.c);
-          show('info', cards.length ? t('event.shurikenRevealed', { cards: cards.join(', ') }) : t('event.shurikenUsed'));
+          show('info', t('event.shurikenRevealed', { cards: s.discarded.map((d) => d.c).join(', ') }));
           break;
         }
         case 'shuriken_cancelled': {

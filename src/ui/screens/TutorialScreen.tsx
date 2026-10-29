@@ -297,7 +297,7 @@ const STEPS: Step[] = [
       <>
         <p>{t('tutorial.options.text')}</p>
         <ul className="tut-options">
-          {(['order', 'difficulty', 'mode', 'variant', 'levels'] as const).map((k) => (
+          {(['order', 'difficulty', 'mode', 'levels'] as const).map((k) => (
             <li key={k}>{rich(t(`tutorial.options.${k}`))}</li>
           ))}
         </ul>
