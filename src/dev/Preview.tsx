@@ -2,6 +2,7 @@
  * Solo en desarrollo (`npm run dev`): muestra pantallas con estados de ejemplo sin servidor.
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
+ *      | final | finalpeek | finalalert | finalnext | finallost
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -121,6 +122,34 @@ function build(kind: string): E.EngineState {
     if (kind === 'lightninglost') {
       s.lightningEndsAt = new Date(NOW - 5000).toISOString();
       step(E.expireVote(s, NOW - 4000));
+    }
+  }
+  if (kind.startsWith('final')) {
+    // final: mesa a ciegas con las cartas ya tapadas · finalpeek: la última carta aún a la vista
+    // finalalert: el aviso al empezar · finalnext: «nivel superado» justo antes · finallost: derrota en la final
+    s.level = s.maxLevel;
+    s.hands = { me: [18, 52, 77, 90], a: [25, 61, 70], b: [40, 44, 99], c: [9, 66, 81] };
+    s.pile = [];
+    s.pileAt = null;
+    s.revealed = [];
+    s.recentEvents = [];
+    s.lastEvent = null;
+    if (kind === 'finalalert') {
+      s.eventSeq += 1;
+      s.lastEvent = { seq: s.eventSeq, kind: 'level_start', actor: null, payload: { level: s.level }, at: new Date(NOW).toISOString() };
+      s.recentEvents = [s.lastEvent];
+    } else if (kind === 'finalnext') {
+      s.level = s.maxLevel - 1;
+      s.hands = { me: [], a: [], b: [], c: [] };
+      s.status = 'level_complete';
+      s.lastReward = { level: s.level, lives: 1, shurikens: 0 };
+    } else {
+      step(E.playCard(s, 'c', 9, NOW - 9000));
+      step(E.playCard(s, 'me', 18, kind === 'finalpeek' ? NOW : NOW - 6000));
+      if (kind === 'finallost') {
+        s.lives = 1;
+        step(E.playCard(s, 'b', 40, NOW - 4000));
+      }
     }
   }
   if (kind === 'won') {

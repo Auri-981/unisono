@@ -137,6 +137,13 @@ async function main() {
     if (state.room.status === 'playing') {
       const timed = Boolean(state.room.lightningEndsAt);
       ok(timed === (state.room.level === lightningLevel), `nivel ${state.room.level}: ${timed ? 'con' : 'sin'} reloj relámpago`);
+      if (state.room.level === state.room.maxLevel) {
+        // Ronda final: sin comodines y sin ver cuántas cartas les quedan a los demás.
+        const err = await a.rpc('propose_shuriken', { p_room: room, p_action: crypto.randomUUID() }).then(() => 'OK', (e) => e.message);
+        ok(err === 'FINAL_ROUND', `ronda final: los comodines están bloqueados (recibido: ${err})`);
+        const hidden = state.players.filter((p) => p.id !== a.id).every((p) => p.cardsLeft === null);
+        ok(hidden && state.players.find((p) => p.id === a.id).cardsLeft > 0, 'ronda final: manos ajenas ocultas, la propia visible');
+      }
     }
     if (state.room.status === 'level_complete') {
       // Si hay que elegir comodín, Ana y Beto votan el primero y Carla el segundo: gana el primero.

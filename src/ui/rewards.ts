@@ -1,5 +1,5 @@
 /** Recompensa que se obtendrá al superar un nivel (para anunciarla antes de jugarlo). */
-import { rewardFor, rewardTable, startingResources } from '../config/gameConfig';
+import { levelReward, rewardTable, startingResources } from '../config/gameConfig';
 import { COMODIN_KINDS, type ComodinKind, type PublicRoom, type Reward, type RoomConfig } from '../game/types';
 import { t } from '../i18n';
 
@@ -21,11 +21,12 @@ export function comodinCount(room: PublicRoom, kind: ComodinKind): number {
 
 /**
  * Premio por superar `level` (por defecto, el nivel actual), o null si no hay.
- * El último nivel no da premio útil (la partida termina), así que tampoco se anuncia.
+ * El último nivel no da premio útil (la partida termina), así que tampoco se anuncia; y antes de
+ * la ronda final (sin comodines) solo cuentan las vidas.
  */
 export function upcomingReward(room: PublicRoom, players: number, level = room.level): UpcomingReward | null {
   if (level < 1 || level >= room.maxLevel) return null;
-  const r = rewardFor(room.config, level);
+  const r = levelReward(room.config, level, room.maxLevel);
   if (r.lives === 0 && r.shurikens === 0) return null;
   // Mismo tope que el servidor: nunca por debajo de los recursos iniciales.
   const start = startingResources(room.config, Math.max(2, players));

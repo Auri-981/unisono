@@ -677,3 +677,43 @@ describe('ronda relámpago a través de la API', () => {
     expect(results.map((r) => r.result)).toEqual(['lost']);
   });
 });
+
+describe('ronda final a través de la API', () => {
+  it('manos ocultas y mesa a ciegas: el servidor no envía lo que no se puede ver', async () => {
+    const { ids, room } = await started(2, { levels: 2 });
+    await setHands(room, ids, [[10, 40], [20, 50]], 2);
+    let snap: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap.players.map((p) => p.cardsLeft)).toEqual([2, null]);
+
+    await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 });
+    snap = await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 20 });
+    expect(snap.pile).toEqual([{ c: 20, p: ids[1] }]);
+    expect(snap.room.pileHidden).toBe(1);
+    expect(snap.players.map((p) => p.cardsLeft)).toEqual([null, 1]);
+
+    // Pasados unos segundos, la última carta también queda boca abajo.
+    await t.admin(`update public.rooms set pile_at = now() - interval '4 seconds' where id = $1`, [room]);
+    snap = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
+    expect(snap.pile).toEqual([]);
+    expect(snap.room.pileHidden).toBe(2);
+    expect(snap.recentEvents!.filter((e) => e.kind === 'play').map((e) => e.payload)).toEqual([{}, {}]);
+    expect(JSON.stringify(snap)).not.toMatch(/"c": ?(10|20)\b/);
+
+    // Al ganar, se ve toda la mesa.
+    await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 40 });
+    snap = await t.rpc(ids[1]!, 'play_card', { p_room: room, p_card: 50 });
+    expect(snap.room.status).toBe('won');
+    expect(snap.pile.map((x) => x.c)).toEqual([10, 20, 40, 50]);
+  });
+
+  it('en los demás niveles todo se ve como siempre', async () => {
+    const { ids, room } = await started(2, { levels: 3 });
+    await setHands(room, ids, [[10, 40], [20, 50]], 2);
+    await t.rpc(ids[0]!, 'play_card', { p_room: room, p_card: 10 });
+    await t.admin(`update public.rooms set pile_at = now() - interval '1 minute' where id = $1`, [room]);
+    const snap: RoomSnapshot = await t.rpc(ids[1]!, 'get_room_state', { p_room: room });
+    expect(snap.pile).toEqual([{ c: 10, p: ids[0] }]);
+    expect(snap.room.pileHidden).toBe(0);
+    expect(snap.players.map((p) => p.cardsLeft)).toEqual([1, 2]);
+  });
+});

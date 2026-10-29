@@ -33,6 +33,18 @@ export const lightningSeconds = (level: number) => Math.min(90, 57 + 3 * level);
 export const LIGHTNING_ALERT_SECONDS = 3;
 /** El reloj empieza a contar tras el aviso y la cuenta atrás. */
 export const LIGHTNING_INTRO_SECONDS = LIGHTNING_ALERT_SECONDS + 3;
+
+/**
+ * Ronda final: el último nivel de la partida es más difícil.
+ * - Sin comodines: no se puede proponer vistazo ni escudo, y Rebobinar no se ofrece.
+ * - Mesa a ciegas: la carta jugada solo se ve FINAL_PEEK_SECONDS; luego queda boca abajo.
+ * - Manos ocultas: no se ve cuántas cartas le quedan a cada compañero.
+ * (Por eso los comodines ganados justo antes de la ronda final no se reparten: no servirían.)
+ */
+export const isFinalLevel = (level: number, maxLevel: number) => level >= 1 && level === maxLevel;
+export const FINAL_PEEK_SECONDS = 3;
+/** Lo que dura en pantalla el aviso «Ronda final» (antes de la cuenta atrás). */
+export const FINAL_ALERT_SECONDS = 4;
 /** Cada cuántos segundos un móvil avisa de que sigue conectado. */
 export const HEARTBEAT_SECONDS = 15;
 /** Si el anfitrión no da señales en este tiempo, el rol pasa a otro jugador. */
@@ -218,4 +230,13 @@ export function rewardTable(config: RoomConfig): Reward[] {
 export function rewardFor(config: RoomConfig, level: number): { lives: number; shurikens: number } {
   const row = rewardTable(config).find((r) => r.level === level);
   return { lives: row?.lives ?? 0, shurikens: row?.shurikens ?? 0 };
+}
+
+/**
+ * Lo que se recibe de verdad al superar `level` en una partida de `maxLevel` niveles: si el
+ * siguiente es la ronda final (sin comodines), los comodines no se reparten.
+ */
+export function levelReward(config: RoomConfig, level: number, maxLevel: number): { lives: number; shurikens: number } {
+  const r = rewardFor(config, level);
+  return isFinalLevel(level + 1, maxLevel) ? { ...r, shurikens: 0 } : r;
 }

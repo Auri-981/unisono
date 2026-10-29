@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
+import { isFinalLevel } from '../../../config/gameConfig';
 import type { RoomController } from '../../../game/controller';
 import type { ComodinKind } from '../../../game/types';
 import { errorMessage, t } from '../../../i18n';
 import { Card, CardBacks } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
-import { ChatIcon, ComodinIcon, ComodinKindIcon, CrownIcon, ExitIcon, LifeIcon } from '../../components/Icons';
+import { ChatIcon, ComodinIcon, ComodinKindIcon, CrownIcon, ExitIcon, HiddenHandIcon, LifeIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
 import { Toast } from '../../components/Layout';
 import { ConnectionDot, Lives, ShieldOn } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
+import { BlindPile, FinalAlert, FinalBadge } from './FinalRound';
 import { LightningAlert, LightningTimer } from './Lightning';
 import { Countdown, EndScreen, LevelComplete, RewindVote, VoteBanner } from './Overlays';
 import { useAfterPause } from './useAfterPause';
@@ -26,6 +28,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const [infoToast, setInfoToast] = useState<string | null>(null);
 
   const playing = room.status === 'playing';
+  // Ronda final (el último nivel): sin comodines, mesa a ciegas y manos ocultas.
+  const final = playing && isFinalLevel(room.level, room.maxLevel);
   // La mano ya llega ordenada «en orden de juego» desde el servidor (también en 100 → 1).
   const order = room.config.order;
   const lowest = myHand[0];
@@ -78,8 +82,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
 
   // Si te rechazaron (o caducó) un comodín, no puedes proponer otro hasta que se juegue una carta.
   const blocked = room.shurikenBlocked?.includes(me) ?? false;
-  const cardsOnTable = myHand.length + others.reduce((n, p) => n + p.cardsLeft, 0);
-  const canPropose = playing && !vote && !blocked && cardsOnTable > 0 && !ctl.busy;
+  const cardsOnTable = myHand.length + others.reduce((n, p) => n + (p.cardsLeft ?? 0), 0);
+  const canPropose = playing && !final && !vote && !blocked && cardsOnTable > 0 && !ctl.busy;
   const shields = room.shields ?? 0;
   const rewinds = room.rewinds ?? 0;
   const shieldActive = room.shieldActive ?? false;
@@ -89,11 +93,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   // Premio que se obtendrá al superar el nivel actual (se anuncia durante la ronda).
   const reward = upcomingReward(room, players.length);
 
-  // Ronda relámpago: reloj del equipo y, al empezar el nivel, el aviso antes de la cuenta atrás.
+  // Ronda relámpago: reloj del equipo. Al empezar ese nivel o la ronda final, un aviso antes de la
+  // cuenta atrás (una sola vez por inicio de nivel).
   const lightning = playing && Boolean(room.lightningEndsAt);
   const [alertSeenSeq, setAlertSeenSeq] = useState<number | null>(null);
-  const showLightningAlert = lightning && feed.countdownSeq !== null && alertSeenSeq !== feed.countdownSeq;
-  const closeLightningAlert = useCallback(() => setAlertSeenSeq(feed.countdownSeq), [feed.countdownSeq]);
+  const showIntroAlert = (lightning || final) && feed.countdownSeq !== null && alertSeenSeq !== feed.countdownSeq;
+  const closeIntroAlert = useCallback(() => setAlertSeenSeq(feed.countdownSeq), [feed.countdownSeq]);
 
   // Tras la última carta, unos segundos para verla antes de «nivel superado» / fin de partida.
   const ended = room.status === 'won' || room.status === 'lost' || room.status === 'abandoned';
@@ -104,7 +109,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const showEnd = useAfterPause(ended, room.status === 'abandoned' ? undefined : resultAt, ctl.clockOffset);
 
   return (
-    <div className={`game ${feed.shake ? 'game-shake' : ''} ${lightning ? 'game-lightning' : ''}`}>
+    <div className={`game ${feed.shake ? 'game-shake' : ''} ${lightning ? 'game-lightning' : ''} ${final ? 'game-final' : ''}`}>
       <header className="game-header">
         <button type="button" className="icon-btn" onClick={leave} aria-label={t('game.leave')}>
           <ExitIcon />
@@ -117,7 +122,9 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
           </span>
         </div>
         {/* En la ronda relámpago, el reloj ocupa el sitio del premio (que ya se anunció al empezar). */}
-        {lightning ? (
+        {final ? (
+          <FinalBadge />
+        ) : lightning ? (
           <LightningTimer ctl={ctl} snap={snap} />
         ) : (
           playing &&
@@ -159,9 +166,19 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
                   <span className="truncate">{p.name}</span>
                   {p.id === room.hostId && <CrownIcon size={13} className="host-crown" />}
                 </div>
-                <CardBacks count={p.cardsLeft} />
+                {p.cardsLeft === null ? (
+                  <span className="card-backs card-backs-hidden" aria-hidden>
+                    <HiddenHandIcon size={20} />
+                  </span>
+                ) : (
+                  <CardBacks count={p.cardsLeft} />
+                )}
                 <span className="opponent-count">
-                  {p.cardsLeft === 1 ? t('game.cardsLeftOne') : t('game.cardsLeft', { count: p.cardsLeft })}
+                  {p.cardsLeft === null
+                    ? t('final.hiddenCards')
+                    : p.cardsLeft === 1
+                      ? t('game.cardsLeftOne')
+                      : t('game.cardsLeft', { count: p.cardsLeft })}
                   {!online && ` · ${t('game.offline')}`}
                 </span>
               </li>
@@ -185,20 +202,26 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             playing &&
             !vote && (
               <p className={`table-hint ${shieldActive ? 'table-hint-shield' : ''}`}>
-                {blocked ? t('comodin.blocked') : shieldActive ? t('comodin.shieldOnHint') : t(`game.hint.${order}`)}
+                {blocked ? t('comodin.blocked') : shieldActive ? t('comodin.shieldOnHint') : t(final ? `final.hint.${order}` : `game.hint.${order}`)}
               </p>
             )
           )}
         </div>
         <div className="pile">
-          {previous && <Card value={previous.c} size="xl" className="pile-previous" muted />}
-          {top ? (
-            <div className="pile-top" key={`${room.level}-${pile.length}`}>
-              <Card value={top.c} size="xl" />
-              <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
-            </div>
+          {final ? (
+            <BlindPile snap={snap} clockOffset={ctl.clockOffset} />
           ) : (
-            <div className="pile-empty">{t(`game.tableEmpty.${order}`)}</div>
+            <>
+              {previous && <Card value={previous.c} size="xl" className="pile-previous" muted />}
+              {top ? (
+                <div className="pile-top" key={`${room.level}-${pile.length}`}>
+                  <Card value={top.c} size="xl" />
+                  <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
+                </div>
+              ) : (
+                <div className="pile-empty">{t(`game.tableEmpty.${order}`)}</div>
+              )}
+            </>
           )}
         </div>
         {revealed.length > 0 && (
@@ -240,7 +263,13 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
 
       <footer className="game-footer">
         <p className="game-side-label">{t('common.comodines')}</p>
-        <div className="comodin-bar" role="group" aria-label={t('common.comodines')}>
+        {/* Ronda final: los comodines se ven (con su número) pero bloqueados, con el aviso encima. */}
+        <div
+          className={`comodin-bar ${final ? 'is-locked' : ''}`}
+          role="group"
+          aria-label={final ? t('final.noComodines') : t('common.comodines')}
+          data-locked={final ? t('final.noComodines') : undefined}
+        >
           <ComodinButton
             kind="shuriken"
             count={room.shurikens}
@@ -255,7 +284,13 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             onClick={() => void ctl.actions.proposeShield()}
           />
           {/* Rebobinar no se propone: se ofrece solo al perder una vida. Al tocarlo se explica. */}
-          <ComodinButton kind="rewind" count={rewinds} passive onClick={() => setInfoToast(t('comodin.rewindInfo'))} />
+          <ComodinButton
+            kind="rewind"
+            count={rewinds}
+            passive
+            disabled={final}
+            onClick={() => setInfoToast(t('comodin.rewindInfo'))}
+          />
         </div>
         {chatEnabled && (
           <button type="button" className="btn btn-secondary chat-btn" onClick={() => setChatOpen(true)} aria-label={t('game.chat')}>
@@ -267,8 +302,9 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
       </footer>
 
       {chatEnabled && chatOpen && <ChatSheet ctl={ctl} onClose={() => setChatOpen(false)} />}
-      {showLightningAlert && <LightningAlert level={room.level} onDone={closeLightningAlert} />}
-      {playing && room.config.countdown && feed.countdownSeq !== null && !showLightningAlert && (
+      {showIntroAlert &&
+        (final ? <FinalAlert onDone={closeIntroAlert} /> : <LightningAlert level={room.level} onDone={closeIntroAlert} />)}
+      {playing && room.config.countdown && feed.countdownSeq !== null && !showIntroAlert && (
         <Countdown
           level={room.level}
           reward={reward ? t('reward.ifPass', { reward: rewardText(reward) }) : null}

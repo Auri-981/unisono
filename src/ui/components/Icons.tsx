@@ -121,6 +121,41 @@ export const LightningIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Ronda final: dos espadas cruzadas (el «jefe final»). */
+export const FinalIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M4 3.5h3.2l9.3 9.3-2.2 2.2L5 5.7V3.5Z" fill="currentColor" />
+    <path d="M20 3.5h-3.2l-9.3 9.3 2.2 2.2L19 5.7V3.5Z" fill="currentColor" opacity="0.8" />
+    <path d="m6.5 14 3.5 3.5M17.5 14 14 17.5M4.5 19.5l3-3M19.5 19.5l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+/** Mesa a ciegas: un ojo tachado. */
+export const BlindIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M3 12c1.6-3 4.9-6 9-6 1.4 0 2.7.3 3.9.9M21 12c-1.6 3-4.9 6-9 6-1.4 0-2.7-.3-3.9-.9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M9.6 14.4a3.4 3.4 0 0 1 4.8-4.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="m4.5 19.5 15-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+/** Sin comodines: la estrella del comodín, tachada. */
+export const NoComodinIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M12 3.5c.6 4 2.5 5.9 6.5 6.5v.1c-4 .6-5.9 2.5-6.5 6.5h-.1c-.6-4-2.5-5.9-6.5-6.5V10c4-.6 5.9-2.5 6.5-6.5h.1Z" fill="currentColor" opacity="0.85" />
+    <path d="m4.5 19.5 15-15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+/** Manos ocultas: una carta boca abajo con una interrogación. */
+export const HiddenHandIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="5.5" y="3" width="13" height="18" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M10 9.6a2 2 0 1 1 2.9 1.8c-.6.3-.9.8-.9 1.4v.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="12" cy="16.3" r="1.1" fill="currentColor" />
+  </svg>
+);
+
 export const MinusIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
     <path d="M6 12h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />

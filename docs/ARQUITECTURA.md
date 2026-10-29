@@ -66,7 +66,7 @@ escribir en tablas y llamar a funciones internas; todo debe fallar.
 
 | Tabla | Contenido | Quién puede leer | Quién escribe |
 |---|---|---|---|
-| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, comodines (`shurikens`, `rewinds`, `shields`), escudo activo, elección de comodín pendiente (`offer`), ronda relámpago (`lightning_level`, `lightning_ends_at`), pila, votación, último evento, `version` | Miembros de la sala | Solo funciones |
+| `rooms` | Código, anfitrión, estado, configuración, nivel, vidas, comodines (`shurikens`, `rewinds`, `shields`), escudo activo, elección de comodín pendiente (`offer`), ronda relámpago (`lightning_level`, `lightning_ends_at`), pila y hora de la última carta (`pile_at`), votación, último evento, `version` | Miembros de la sala | Solo funciones |
 | `room_players` | Jugador, alias, asiento, «listo», última señal de vida | Miembros | Solo funciones |
 | `hands` | Una fila por carta: sala, jugador, valor (clave única sala+carta) | **Solo el dueño** | Solo funciones |
 | `room_events` | Registro de lo ocurrido (jugadas, errores, recompensas) | Miembros | Solo funciones |
@@ -145,6 +145,14 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
   (evento `lightning_timeout` + `lost`), aunque haya una votación en curso. El reloj no se para
   en las votaciones. No hay temporizador en el servidor: lo aplica cualquier acción posterior o
   `expire_shuriken_vote`, que los móviles llaman cuando su reloj llega a cero.
+- **Ronda final**: el último nivel (también si la partida tiene uno solo) es más difícil:
+  - *Sin comodines*: `propose_shuriken` y `propose_shield` devuelven `FINAL_ROUND`, y un error no
+    ofrece Rebobinar. Por eso, al superar el nivel anterior no se reparten comodines (sí vidas).
+  - *Mesa a ciegas*: `pile_at` guarda cuándo se jugó la última carta. Durante el nivel, la foto
+    (`get_room_state`) solo incluye esa carta los 3 primeros segundos; las demás no se envían
+    (`pileHidden` dice cuántas hay boca abajo) y el evento `play` no lleva el número.
+  - *Manos ocultas*: `cardsLeft` de los demás jugadores llega como `null` (el propio, sí).
+  Al terminar la partida la mesa vuelve a verse entera.
 - Configuración clásica (centralizada en `src/config/gameConfig.ts` y su espejo SQL):
   2 jugadores → 12 niveles, 2 vidas, 1 shuriken · 3 → 10, 3, 1 · 4 → 8, 4, 1.
 - **Recompensas clásicas**: nivel 2 ★, 3 ♥, 5 ★, 6 ♥, 8 ★, 9 ♥; máximo 5 vidas y 3 de cada comodín.

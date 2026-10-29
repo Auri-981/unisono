@@ -58,6 +58,8 @@ alter table public.rooms add column if not exists offer jsonb;
 -- Añadidas después: ronda relámpago (nivel en que toca, 0 = ninguno, y hora límite mientras se juega).
 alter table public.rooms add column if not exists lightning_level int not null default 0;
 alter table public.rooms add column if not exists lightning_ends_at timestamptz;
+-- Añadida después: cuándo se jugó la última carta (la ronda final solo deja verla unos segundos).
+alter table public.rooms add column if not exists pile_at timestamptz;
 -- Quitada después: la opción de vistazo «clásico» (descartes ocultos); ahora siempre se muestran.
 update public.rooms set config = config - 'shurikenVariant' where config ? 'shurikenVariant';
 
@@ -402,6 +404,8 @@ end;
 $$;
 
 -- Lo que puede ver el jugador p_uid. Nunca incluye cartas ajenas.
+-- En la ronda final, además: la mesa solo enseña la última carta durante 3 s (las demás quedan
+-- boca abajo) y no se sabe cuántas cartas le quedan a cada compañero.
 create or replace function game_private.snapshot(p_room uuid, p_uid uuid)
 returns jsonb language sql stable set search_path = ''
 as $$
@@ -413,15 +417,17 @@ as $$
       'gameNo', r.game_no, 'level', r.level, 'maxLevel', r.max_level, 'lives', r.lives,
       'shurikens', r.shurikens, 'rewinds', r.rewinds, 'shields', r.shields, 'shieldActive', r.shield_active,
       'offer', r.offer, 'lightningLevel', r.lightning_level, 'lightningEndsAt', r.lightning_ends_at,
+      'pileAt', r.pile_at, 'pileHidden', jsonb_array_length(r.pile) - jsonb_array_length(v.pile),
       'version', r.version, 'shurikenBlocked', r.shuriken_blocked),
     'players', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
                'lastSeenAt', p.last_seen_at,
-               'cardsLeft', (select count(*) from public.hands h where h.room_id = p.room_id and h.user_id = p.user_id)
+               'cardsLeft', case when v.blind and p.user_id <> p_uid then null else
+                 (select count(*) from public.hands h where h.room_id = p.room_id and h.user_id = p.user_id) end
              ) order by p.seat), '[]'::jsonb)
       from public.room_players p where p.room_id = r.id),
-    'pile', r.pile,
+    'pile', v.pile,
     'revealed', r.revealed,
     'vote', r.vote,
     'lastEvent', r.last_event,
@@ -437,7 +443,16 @@ as $$
       select coalesce(jsonb_agg(h.card order by case when r.config ->> 'order' = 'desc' then -h.card else h.card end), '[]'::jsonb)
       from public.hands h where h.room_id = r.id and h.user_id = p_uid)
   )
-  from public.rooms r where r.id = p_room;
+  from public.rooms r
+  cross join lateral (select r.status = 'playing' and r.level >= 1 and r.level = r.max_level as blind) f
+  cross join lateral (
+    select f.blind,
+           case when not f.blind then r.pile
+                when r.pile_at > now() - interval '3 seconds' and jsonb_array_length(r.pile) > 0
+                  then jsonb_build_array(r.pile -> -1)
+                else '[]'::jsonb end as pile
+  ) v
+  where r.id = p_room;
 $$;
 
 -- Baraja 1..100 con aleatoriedad criptográfica y reparte `level` cartas en rueda.
@@ -461,7 +476,7 @@ begin
   where d.i < s.n * v_level;
   -- El escudo solo dura el nivel en que se activa. Si es la ronda relámpago, el reloj empieza a
   -- contar tras el aviso y la cuenta atrás (6 s): 60 s en el nivel 1, +3 s por nivel, hasta 90 s.
-  update public.rooms set pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, offer = null, last_reward = null,
+  update public.rooms set pile = '[]'::jsonb, pile_at = null, revealed = '[]'::jsonb, vote = null, offer = null, last_reward = null,
                           shield_active = false, shuriken_blocked = '[]'::jsonb,
                           lightning_ends_at = case when level = lightning_level
                                                    then now() + make_interval(secs => 6 + least(90, 57 + 3 * level))
@@ -587,6 +602,8 @@ begin
     return;
   end if;
   v_reward := game_private.reward_for(r.config, r.level);
+  -- Si el siguiente nivel es la ronda final (sin comodines), los comodines no se reparten.
+  if r.level + 1 = r.max_level then v_reward := v_reward || '{"shurikens":0}'::jsonb; end if;
   v_lives := least(r.lives + (v_reward ->> 'lives')::int, greatest(r.lives_cap, r.lives));
   update public.rooms
      set lives = v_lives, status = 'level_complete', vote = null, shield_active = false, lightning_ends_at = null,
@@ -770,6 +787,8 @@ begin
   select * into r from public.rooms where id = p_room;
   if r.status <> 'playing' then raise exception 'NOT_PLAYING'; end if;
   if r.vote is not null then raise exception 'VOTE_IN_PROGRESS'; end if;
+  -- Ronda final: sin comodines.
+  if r.level = r.max_level then raise exception 'FINAL_ROUND'; end if;
   if p_kind = 'shuriken' and r.shurikens <= 0 then raise exception 'NO_SHURIKENS'; end if;
   if p_kind = 'shield' and r.shields <= 0 then raise exception 'NO_SHIELDS'; end if;
   if p_kind = 'shield' and r.shield_active then raise exception 'SHIELD_ACTIVE'; end if;
@@ -1047,7 +1066,7 @@ begin
   delete from public.hands where room_id = p_room and card = p_card;
   -- Se ha jugado una carta: todos pueden volver a proponer shuriken.
   update public.rooms set pile = pile || jsonb_build_array(jsonb_build_object('c', p_card, 'p', v_uid)),
-                          shuriken_blocked = '[]'::jsonb
+                          pile_at = now(), shuriken_blocked = '[]'::jsonb
    where id = p_room;
 
   -- ¿Alguien tenía cartas que debían ir antes (menores; mayores en descendente)?
@@ -1075,9 +1094,9 @@ begin
       update public.rooms set lives = lives - 1 where id = p_room returning lives into v_lives;
       perform game_private.emit(p_room, 'mistake', v_uid,
         jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives));
-      if r.rewinds > 0 then
-        -- Se pregunta a todos si quieren usar Rebobinar. Hasta decidirlo, la partida espera
-        -- (incluso si era la última vida o el nivel se ha quedado sin cartas).
+      if r.rewinds > 0 and r.level <> r.max_level then
+        -- Se pregunta a todos si quieren usar Rebobinar (nunca en la ronda final). Hasta decidirlo,
+        -- la partida espera (incluso si era la última vida o el nivel se ha quedado sin cartas).
         update public.rooms
            set vote = jsonb_build_object('kind', 'rewind', 'proposer', null, 'votes', '[]'::jsonb,
                                          'expiresAt', now() + interval '20 seconds')
@@ -1093,7 +1112,9 @@ begin
       end if;
     end if;
   else
-    perform game_private.emit(p_room, 'play', v_uid, jsonb_build_object('card', p_card));
+    -- En la ronda final (mesa a ciegas) el aviso de jugada no lleva el número.
+    perform game_private.emit(p_room, 'play', v_uid,
+      case when r.level = r.max_level then '{}'::jsonb else jsonb_build_object('card', p_card) end);
   end if;
 
   perform game_private.check_level_end(p_room);
@@ -1279,7 +1300,7 @@ begin
   update public.rooms
      set status = 'lobby', level = 0, max_level = 0, lives = 0, shurikens = 0, lives_cap = 0, shurikens_cap = 0,
          rewinds = 0, shields = 0, shield_active = false, offer = null, lightning_level = 0, lightning_ends_at = null,
-         pile = '[]'::jsonb, revealed = '[]'::jsonb, vote = null, last_reward = null, shuriken_blocked = '[]'::jsonb
+         pile = '[]'::jsonb, pile_at = null, revealed = '[]'::jsonb, vote = null, last_reward = null, shuriken_blocked = '[]'::jsonb
    where id = p_room;
   update public.room_players set ready = false where room_id = p_room;
   perform game_private.emit(p_room, 'rematch', v_uid, '{}'::jsonb);

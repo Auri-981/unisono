@@ -9,14 +9,16 @@
  * Todas las funciones son puras: reciben un estado y devuelven uno nuevo (o un error).
  */
 import {
+  FINAL_PEEK_SECONDS,
   LIGHTNING_INTRO_SECONDS,
   NAME_MAX_LENGTH,
   MIN_PLAYERS,
   REWIND_VOTE_SECONDS,
   SHURIKEN_VOTE_SECONDS,
+  isFinalLevel,
   lightningSeconds,
   normalizeConfig,
-  rewardFor,
+  levelReward,
   startingResources,
 } from '../config/gameConfig';
 import { cryptoRng, deal, shuffle, type Rng } from './deck';
@@ -75,6 +77,8 @@ export interface EngineState {
   /** Nivel de la ronda relámpago (0 = ninguno) y hora límite mientras se juega. */
   lightningLevel: number;
   lightningEndsAt: string | null;
+  /** Cuándo se jugó la última carta (la ronda final solo la deja ver unos segundos). */
+  pileAt: string | null;
   /**
    * Jugadores a los que se les rechazó (o caducó) un vistazo o escudo: no pueden volver a
    * proponer comodines hasta que se juegue una carta (evita insistir en bucle).
@@ -151,6 +155,7 @@ function dealLevel(d: Draft, rng: Rng) {
   d.s.hands = deal(ids, d.s.level, rng);
   if (isDesc(d.s)) for (const h of Object.values(d.s.hands)) h.reverse();
   d.s.pile = [];
+  d.s.pileAt = null;
   d.s.revealed = [];
   d.s.vote = null;
   d.s.offer = null;
@@ -230,7 +235,7 @@ function checkLevelEnd(d: Draft, rng: Rng) {
     endGame(d, 'won');
     return;
   }
-  const reward = rewardFor(d.s.config, d.s.level);
+  const reward = levelReward(d.s.config, d.s.level, d.s.maxLevel);
   const newLives = Math.min(d.s.lives + reward.lives, Math.max(d.s.livesCap, d.s.lives));
   const gained: LevelReward = { level: d.s.level, lives: newLives - d.s.lives, shurikens: 0, rewinds: 0, shields: 0 };
   d.s.lives = newLives;
@@ -375,6 +380,7 @@ export function createRoom(params: {
     offer: null,
     lightningLevel: 0,
     lightningEndsAt: null,
+    pileAt: null,
     shurikenBlocked: [],
     lastEvent: null,
     recentEvents: [],
@@ -460,6 +466,8 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
 
   hand.shift();
   d.s.pile.push({ c: card, p: actor });
+  d.s.pileAt = iso(now);
+  const final = isFinalLevel(d.s.level, d.s.maxLevel);
   d.s.shurikenBlocked = []; // se ha jugado una carta: todos pueden volver a proponer
 
   const lower: PlayedCard[] = [];
@@ -479,9 +487,9 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
     } else {
       d.s.lives -= 1;
       d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives });
-      if (d.s.rewinds > 0) {
-        // Se pregunta a todos si quieren usar Rebobinar. Hasta decidirlo, la partida espera
-        // (incluso si era la última vida o el nivel se ha quedado sin cartas).
+      if (d.s.rewinds > 0 && !final) {
+        // Se pregunta a todos si quieren usar Rebobinar (nunca en la ronda final). Hasta decidirlo,
+        // la partida espera (incluso si era la última vida o el nivel se ha quedado sin cartas).
         d.s.vote = { kind: 'rewind', proposer: null, votes: [], expiresAt: iso(now + REWIND_VOTE_SECONDS * 1000) };
         d.emit('rewind_offered', null, { lives: d.s.lives });
         return d.commit();
@@ -492,7 +500,8 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
       }
     }
   } else {
-    d.emit('play', actor, { card });
+    // En la ronda final (mesa a ciegas) el aviso de jugada no lleva el número.
+    d.emit('play', actor, final ? {} : { card });
   }
   checkLevelEnd(d, rng);
   return d.commit();
@@ -506,6 +515,7 @@ function propose(state: EngineState, actor: PlayerId, kind: 'shuriken' | 'shield
   expireIfDue(d, rng);
   if (d.s.status !== 'playing') return fail('NOT_PLAYING');
   if (d.s.vote) return fail('VOTE_IN_PROGRESS');
+  if (isFinalLevel(d.s.level, d.s.maxLevel)) return fail('FINAL_ROUND');
   if (kind === 'shuriken' && d.s.shurikens <= 0) return fail('NO_SHURIKENS');
   if (kind === 'shield' && d.s.shields <= 0) return fail('NO_SHIELDS');
   if (kind === 'shield' && d.s.shieldActive) return fail('SHIELD_ACTIVE');
@@ -672,6 +682,7 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
     offer: null,
     lightningLevel: 0,
     lightningEndsAt: null,
+    pileAt: null,
     shurikenBlocked: [],
     lastReward: null,
   } satisfies Partial<EngineState>);
@@ -680,8 +691,15 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
   return d.commit();
 }
 
-/** Lo que `viewer` puede ver. Nunca incluye las cartas de otros jugadores. */
+/**
+ * Lo que `viewer` puede ver. Nunca incluye las cartas de otros jugadores.
+ * En la ronda final, además: la mesa solo enseña la última carta durante FINAL_PEEK_SECONDS
+ * (las demás quedan boca abajo) y no se sabe cuántas cartas le quedan a cada compañero.
+ */
 export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): RoomSnapshot {
+  const blind = state.status === 'playing' && isFinalLevel(state.level, state.maxLevel);
+  const peek = state.pileAt !== null && now - Date.parse(state.pileAt) < FINAL_PEEK_SECONDS * 1000;
+  const pile = blind ? (peek ? state.pile.slice(-1) : []) : state.pile;
   return {
     serverTime: iso(now),
     me: viewer,
@@ -702,6 +720,8 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
       offer: structuredClone(state.offer),
       lightningLevel: state.lightningLevel,
       lightningEndsAt: state.lightningEndsAt,
+      pileAt: state.pileAt,
+      pileHidden: state.pile.length - pile.length,
       version: state.version,
       shurikenBlocked: [...state.shurikenBlocked],
     },
@@ -711,9 +731,9 @@ export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): R
       seat: p.seat,
       ready: p.ready,
       lastSeenAt: p.lastSeenAt,
-      cardsLeft: state.hands[p.id]?.length ?? 0,
+      cardsLeft: blind && p.id !== viewer ? null : (state.hands[p.id]?.length ?? 0),
     })),
-    pile: structuredClone(state.pile),
+    pile: structuredClone(pile),
     revealed: structuredClone(state.revealed),
     vote: structuredClone(state.vote),
     lastEvent: structuredClone(state.lastEvent),

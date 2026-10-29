@@ -51,7 +51,7 @@ export interface PlayedCard {
   p: PlayerId;
 }
 
-/** Carta descartada y visible para todos (por error o por shuriken en variante revelación). */
+/** Carta descartada y visible para todos (por un error o por un vistazo). */
 export interface RevealedCard {
   c: number;
   p: PlayerId;
@@ -140,7 +140,8 @@ export interface PublicPlayer {
   seat: number;
   ready: boolean;
   lastSeenAt: string;
-  cardsLeft: number;
+  /** Cartas que le quedan. null = oculto (manos ocultas de la ronda final; nunca las tuyas). */
+  cardsLeft: number | null;
 }
 
 export interface PublicRoom {
@@ -166,6 +167,12 @@ export interface PublicRoom {
    */
   lightningLevel?: number;
   lightningEndsAt?: string | null;
+  /**
+   * Cuándo se jugó la última carta y cuántas cartas de la mesa no se envían (mesa a ciegas de la
+   * ronda final: solo se ve la última durante unos segundos). Opcionales: servidores antiguos.
+   */
+  pileAt?: string | null;
+  pileHidden?: number;
   version: number;
   /** Quién no puede proponer shuriken hasta que se juegue una carta (opcional: servidores antiguos). */
   shurikenBlocked?: PlayerId[];
@@ -218,6 +225,8 @@ export const GAME_ERROR_CODES = [
   'INVALID_MESSAGE',
   'CHAT_DISABLED',
   'TOO_FAST',
+  'NO_NUMBERS',
+  'FINAL_ROUND',
   'TOO_MANY_ROOMS',
   'TOO_MANY_ATTEMPTS',
   'CANNOT_KICK_SELF',

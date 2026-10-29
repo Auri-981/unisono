@@ -24,6 +24,7 @@
   --shield: #7fe3b8;
   --comodin: #f5b971;
   --lightning: #ffd84d;
+  --final: #ff5c8a;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 10px 30px rgb(0 0 0 / 0.35);
@@ -3428,4 +3429,257 @@ html {
 
 .tut-lightning {
   padding: 4px 0;
+}
+
+/* ───────────── Ronda final ───────────── */
+
+/* Durante la ronda final, un marco carmesí alrededor de la partida. */
+.game-final {
+  box-shadow:
+    inset 0 0 0 2px rgb(255 92 138 / 0.3),
+    inset 0 0 70px rgb(255 92 138 / 0.08);
+}
+
+/* En la cabecera, en el sitio del premio (que en el último nivel no hay). */
+.final-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 auto;
+  padding: 6px 12px;
+  border-radius: 12px;
+  border: 1px solid rgb(255 92 138 / 0.45);
+  background: rgb(255 92 138 / 0.1);
+  color: var(--final);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) and (min-height: 620px) {
+  .final-badge {
+    padding: 8px 18px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Manos ocultas: en lugar de los dorsos, una carta con interrogación. */
+.card-backs-hidden {
+  color: var(--final);
+  opacity: 0.85;
+}
+
+/* Comodines bloqueados: se ven atenuados con el aviso encima. */
+.comodin-bar.is-locked {
+  position: relative;
+}
+
+.comodin-bar.is-locked .comodin-btn {
+  opacity: 0.3;
+  filter: grayscale(0.8);
+}
+
+.comodin-bar.is-locked::after {
+  content: attr(data-locked);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 0 10px;
+  border-radius: 16px;
+  border: 1px dashed rgb(255 92 138 / 0.55);
+  background: rgb(10 6 14 / 0.45);
+  color: var(--final);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Mesa a ciegas: montón boca abajo y la última carta a la vista unos segundos. */
+.blind-pile {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.blind-stack {
+  position: relative;
+  height: clamp(118px, 21dvh, 210px);
+  aspect-ratio: 5 / 7;
+  display: grid;
+  place-items: center;
+}
+
+/* Mientras se ve la última carta, el montón queda detrás, un poco girado. */
+.blind-stack.is-under {
+  position: absolute;
+  top: 0;
+  transform: translateX(-28%) rotate(-8deg);
+  opacity: 0.55;
+}
+
+.blind-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(255 92 138 / 0.85) 0 5px, transparent 6px),
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.04) 0 6px, transparent 6px 12px),
+    linear-gradient(135deg, #2b3366, #1a1f40);
+  border: 2px solid #47508a;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 0.4);
+}
+
+.blind-back-2 {
+  transform: translate(5px, 5px);
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.blind-count {
+  position: absolute;
+  bottom: -26px;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.blind-peek {
+  position: relative;
+}
+
+/* Barra que se vacía mientras la carta sigue a la vista. */
+.blind-timer {
+  width: 70%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--final);
+  transform-origin: left center;
+  animation: blind-timer linear forwards;
+}
+
+@keyframes blind-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Aviso «¡Último nivel! Ronda final». */
+.overlay-final {
+  border: none;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  overflow: hidden;
+  background: rgb(14 4 10 / 0.9);
+}
+
+.final-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgb(255 92 138 / 0.32), transparent 62%);
+  animation: final-glow 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes final-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.final-alert-icon {
+  color: var(--final);
+  filter: drop-shadow(0 0 18px rgb(255 92 138 / 0.6));
+  animation: pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.4);
+}
+
+.final-alert-kicker {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--warm);
+}
+
+.final-alert-title {
+  font-family: var(--font-num);
+  font-size: clamp(2.2rem, 11vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.05;
+  text-transform: uppercase;
+  color: var(--final);
+  text-shadow: 0 0 24px rgb(255 92 138 / 0.45);
+  animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+/* Las tres reglas (aviso y tutorial). */
+.final-rules {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 360px;
+  text-align: left;
+}
+
+.final-rules li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  line-height: 1.35;
+}
+
+.final-rules svg {
+  color: var(--final);
+  margin-top: 1px;
+}
+
+.final-rules strong {
+  color: var(--final);
+}
+
+/* «El nivel N es la ronda final» en la pantalla de nivel superado. */
+.next-final {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgb(255 92 138 / 0.45);
+  background: rgb(255 92 138 / 0.1);
+  text-align: left;
+}
+
+.next-final svg {
+  flex: none;
+  color: var(--final);
+}
+
+.next-final strong {
+  color: var(--final);
+}
+
+.tut-final {
+  display: grid;
+  place-items: center;
+  padding: 6px 0;
+  color: var(--final);
 }

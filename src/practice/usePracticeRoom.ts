@@ -4,7 +4,7 @@
  * más baja y la última carta jugada, con algo de imprecisión humana.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LIGHTNING_ALERT_SECONDS } from '../config/gameConfig';
+import { FINAL_ALERT_SECONDS, LIGHTNING_ALERT_SECONDS, isFinalLevel } from '../config/gameConfig';
 import { cryptoRng } from '../game/deck';
 import * as E from '../game/engine';
 import type { RoomActions, RoomController, ExitReason } from '../game/controller';
@@ -17,9 +17,13 @@ export const COUNTDOWN_MS = 3000;
 const BOT_BASE_MS = 500;
 const BOT_MS_PER_STEP = 115;
 
-/** Pausa al empezar un nivel antes de que los bots empiecen a contar (aviso relámpago + cuenta atrás). */
+/**
+ * Pausa al empezar un nivel antes de que los bots empiecen a contar: cuenta atrás y, si toca,
+ * el aviso de la ronda relámpago o de la ronda final.
+ */
 function startPause(s: E.EngineState) {
-  return (s.config.countdown ? COUNTDOWN_MS : 0) + (s.level === s.lightningLevel ? LIGHTNING_ALERT_SECONDS * 1000 : 0);
+  const alert = isFinalLevel(s.level, s.maxLevel) ? FINAL_ALERT_SECONDS : s.level === s.lightningLevel ? LIGHTNING_ALERT_SECONDS : 0;
+  return (s.config.countdown ? COUNTDOWN_MS : 0) + alert * 1000;
 }
 
 function newGame(bots: number, config: RoomConfig, myName: string): E.EngineState {

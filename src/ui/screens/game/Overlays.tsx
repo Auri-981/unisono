@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { lightningSeconds } from '../../../config/gameConfig';
+import { isFinalLevel, lightningSeconds } from '../../../config/gameConfig';
 import type { RoomController } from '../../../game/controller';
 import { COMODIN_KINDS, type MistakePayload, type RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
-import { CheckIcon, ComodinKindIcon, CrownIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
+import { CheckIcon, ComodinKindIcon, CrownIcon, FinalIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
+import { rich } from '../../rich';
 import { LIFE_SYMBOL, rewardText, upcomingReward } from '../../rewards';
 
 /** Cuenta atrás visual al empezar un nivel. No bloquea: se puede cerrar tocando. */
@@ -257,6 +258,12 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
             {t('lightning.next', { level: room.level + 1, s: lightningSeconds(room.level + 1) })}
           </p>
         )}
+        {isFinalLevel(room.level + 1, room.maxLevel) && (
+          <p className="next-final" role="note">
+            <FinalIcon size={20} />
+            <span>{rich(t('final.next', { level: room.level + 1 }))}</span>
+          </p>
+        )}
         {nextReward && (
           <p className="next-reward">{t('reward.next', { level: room.level + 1, reward: rewardText(nextReward) })}</p>
         )}
@@ -298,11 +305,11 @@ export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: Ro
   const outOfTime = status === 'lost' && events.some((e) => e.kind === 'lightning_timeout');
   const text =
     status === 'won'
-      ? t('end.wonText', { levels: room.maxLevel })
+      ? t(room.maxLevel === 1 ? 'end.wonTextOne' : 'end.wonText', { levels: room.maxLevel })
       : outOfTime
         ? t('end.lightningText', { level: room.level })
         : status === 'lost'
-          ? t('end.lostText', { level: room.level })
+          ? t(isFinalLevel(room.level, room.maxLevel) && room.maxLevel > 1 ? 'end.finalLostText' : 'end.lostText', { level: room.level })
           : t('end.abandonedText');
   return (
     <div className={`overlay overlay-end end-${status}`} role="dialog" aria-modal="true" aria-labelledby="end-title">

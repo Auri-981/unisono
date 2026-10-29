@@ -7,10 +7,11 @@ import { CLASSIC_REWARDS, PLAYER_PRESETS } from '../../config/gameConfig';
 import type { CardOrder, ComodinKind } from '../../game/types';
 import { t, type MessageKey } from '../../i18n';
 import { Card } from '../components/Card';
-import { ComodinIcon, ComodinKindIcon, LifeIcon, LogoMark } from '../components/Icons';
+import { ComodinIcon, ComodinKindIcon, FinalIcon, LifeIcon, LogoMark } from '../components/Icons';
 import { Page } from '../components/Layout';
 import { COMODIN_SYMBOL, LIFE_SYMBOL } from '../rewards';
 import { rich } from '../rich';
+import { FinalRules } from './game/FinalRound';
 import { LightningBar } from './game/Lightning';
 
 /** Texto que cambia según el orden (`clave.asc` / `clave.desc`). */
@@ -288,6 +289,19 @@ const STEPS: Step[] = [
         <p>{rich(t('tutorial.lightning.text'))}</p>
         <p>{rich(t('tutorial.lightning.text2'))}</p>
         <p className="muted small">{t('tutorial.lightning.note')}</p>
+      </>
+    ),
+  },
+  {
+    title: 'tutorial.final.title',
+    body: () => (
+      <>
+        <div className="tut-visual tut-final">
+          <FinalIcon size={44} />
+        </div>
+        <p>{rich(t('tutorial.final.text'))}</p>
+        <FinalRules />
+        <p className="muted small">{t('tutorial.final.note')}</p>
       </>
     ),
   },

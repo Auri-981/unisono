@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLASSIC_REWARDS,
+  FINAL_PEEK_SECONDS,
   DEFAULT_CONFIG,
   LIGHTNING_INTRO_SECONDS,
   PLAYER_PRESETS,
@@ -606,5 +607,70 @@ describe('chat sin números', () => {
   it('detecta cualquier cifra y deja pasar el resto', () => {
     for (const s of ['42', 'tengo el 7', '７', '①', 'Ⅻ', '½', 'x²', '٣']) expect(hasNumber(s), s).toBe(true);
     for (const s of ['', '¡vamos!', 'Ⓐ ¿alguna baja?', 'esperad un poco 😅']) expect(hasNumber(s), s).toBe(false);
+  });
+});
+
+describe('ronda final', () => {
+  /** Partida de 2 jugadores y 2 niveles, ya en el último (la ronda final). */
+  function finalRound(hands: Record<string, number[]>) {
+    let { s } = room(2, { levels: 2 });
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    s.level = 2;
+    s.hands = hands;
+    return s;
+  }
+
+  it('el último nivel es la ronda final (también si la partida tiene un solo nivel)', () => {
+    let { s } = room(2, { levels: 1 });
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    expect(s.maxLevel).toBe(1);
+    expect(E.proposeShuriken(s, 'p0', NOW)).toEqual({ ok: false, error: 'FINAL_ROUND' });
+    const normal = ok(E.startGame(room(2, { levels: 3 }).s, 'p0', seededRng(5), NOW));
+    expect(E.proposeShuriken(normal, 'p0', NOW).ok).toBe(true);
+  });
+
+  it('manos ocultas: cada uno ve sus cartas, pero no cuántas les quedan a los demás', () => {
+    const s = finalRound({ p0: [10, 40], p1: [20, 50] });
+    const snap = E.toSnapshot(s, 'p0', NOW);
+    expect(snap.players.map((p) => p.cardsLeft)).toEqual([2, null]);
+    expect(snap.myHand).toEqual([10, 40]);
+  });
+
+  it('mesa a ciegas: la última carta se ve unos segundos y luego queda boca abajo', () => {
+    let s = finalRound({ p0: [10, 40], p1: [20, 50] });
+    s = ok(E.playCard(s, 'p0', 10, NOW));
+    s = ok(E.playCard(s, 'p1', 20, NOW + 1000));
+    // Nada más jugarla: solo se envía la última.
+    let snap = E.toSnapshot(s, 'p0', NOW + 1500);
+    expect(snap.pile).toEqual([{ c: 20, p: 'p1' }]);
+    expect(snap.room).toMatchObject({ pileHidden: 1, pileAt: new Date(NOW + 1000).toISOString() });
+    // Pasado el tiempo: todas boca abajo.
+    snap = E.toSnapshot(s, 'p1', NOW + 1000 + FINAL_PEEK_SECONDS * 1000);
+    expect(snap.pile).toEqual([]);
+    expect(snap.room.pileHidden).toBe(2);
+    // Los avisos de jugada no llevan el número (en los demás niveles sí).
+    expect(snap.recentEvents!.filter((e) => e.kind === 'play').map((e) => e.payload)).toEqual([{}, {}]);
+    expect(JSON.stringify(snap)).not.toMatch(/"c":10\b/);
+  });
+
+  it('al terminar la partida se ve toda la mesa', () => {
+    let s = finalRound({ p0: [10], p1: [20] });
+    s = ok(E.playCard(s, 'p0', 10, NOW));
+    s = ok(E.playCard(s, 'p1', 20, NOW));
+    expect(s.status).toBe('won');
+    const snap = E.toSnapshot(s, 'p0', NOW + 60_000);
+    expect(snap.pile.map((x) => x.c)).toEqual([10, 20]);
+    expect(snap.room.pileHidden).toBe(0);
+  });
+
+  it('en los demás niveles la mesa y las manos se ven como siempre', () => {
+    let { s } = room(2, { levels: 3 });
+    s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+    s.hands = { p0: [10], p1: [20] };
+    s = ok(E.playCard(s, 'p0', 10, NOW));
+    const snap = E.toSnapshot(s, 'p1', NOW + 60_000);
+    expect(snap.pile).toEqual([{ c: 10, p: 'p0' }]);
+    expect(snap.players.map((p) => p.cardsLeft)).toEqual([0, 1]);
+    expect(snap.lastEvent?.payload).toEqual({ card: 10 });
   });
 });
