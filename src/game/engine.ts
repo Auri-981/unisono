@@ -9,7 +9,7 @@
  * Todas las funciones son puras: reciben un estado y devuelven uno nuevo (o un error).
  */
 import {
-  FINAL_PEEK_SECONDS,
+  FINAL_PEEK_SERVER_SECONDS,
   LIGHTNING_INTRO_SECONDS,
   NAME_MAX_LENGTH,
   MIN_PLAYERS,
@@ -693,12 +693,12 @@ export function rematch(state: EngineState, actor: PlayerId, now: number): Engin
 
 /**
  * Lo que `viewer` puede ver. Nunca incluye las cartas de otros jugadores.
- * En la ronda final, además: la mesa solo enseña la última carta durante FINAL_PEEK_SECONDS
+ * En la ronda final, además: la mesa solo envía la última carta durante FINAL_PEEK_SERVER_SECONDS
  * (las demás quedan boca abajo) y no se sabe cuántas cartas le quedan a cada compañero.
  */
 export function toSnapshot(state: EngineState, viewer: PlayerId, now: number): RoomSnapshot {
   const blind = state.status === 'playing' && isFinalLevel(state.level, state.maxLevel);
-  const peek = state.pileAt !== null && now - Date.parse(state.pileAt) < FINAL_PEEK_SECONDS * 1000;
+  const peek = state.pileAt !== null && now - Date.parse(state.pileAt) < FINAL_PEEK_SERVER_SECONDS * 1000;
   const pile = blind ? (peek ? state.pile.slice(-1) : []) : state.pile;
   return {
     serverTime: iso(now),

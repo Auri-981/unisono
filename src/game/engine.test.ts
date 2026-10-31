@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLASSIC_REWARDS,
-  FINAL_PEEK_SECONDS,
+  FINAL_PEEK_SERVER_SECONDS,
   DEFAULT_CONFIG,
   LIGHTNING_INTRO_SECONDS,
   PLAYER_PRESETS,
@@ -644,8 +644,8 @@ describe('ronda final', () => {
     let snap = E.toSnapshot(s, 'p0', NOW + 1500);
     expect(snap.pile).toEqual([{ c: 20, p: 'p1' }]);
     expect(snap.room).toMatchObject({ pileHidden: 1, pileAt: new Date(NOW + 1000).toISOString() });
-    // Pasado el tiempo: todas boca abajo.
-    snap = E.toSnapshot(s, 'p1', NOW + 1000 + FINAL_PEEK_SECONDS * 1000);
+    // Pasado el margen del servidor, ya no se envía: todas boca abajo.
+    snap = E.toSnapshot(s, 'p1', NOW + 1000 + FINAL_PEEK_SERVER_SECONDS * 1000);
     expect(snap.pile).toEqual([]);
     expect(snap.room.pileHidden).toBe(2);
     // Los avisos de jugada no llevan el número (en los demás niveles sí).

@@ -1,10 +1,10 @@
 /**
  * Ronda final (el último nivel): sin comodines, mesa a ciegas y manos ocultas.
  * El servidor ya no envía lo que no se puede ver; aquí solo se muestra (y la última carta
- * se tapa en pantalla al pasar FINAL_PEEK_SECONDS, sin esperar a otra foto del servidor).
+ * se tapa en pantalla al pasar FINAL_PEEK_SECONDS desde que llega, sin esperar a otra foto).
  */
-import { useEffect, useState } from 'react';
-import { FINAL_ALERT_SECONDS, FINAL_PEEK_SECONDS } from '../../../config/gameConfig';
+import { useEffect, useRef, useState } from 'react';
+import { FINAL_ALERT_SECONDS, FINAL_PEEK_SECONDS, FINAL_PEEK_SERVER_SECONDS } from '../../../config/gameConfig';
 import type { RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
 import { Card } from '../../components/Card';
@@ -21,7 +21,7 @@ export function FinalRules() {
       </li>
       <li>
         <BlindIcon size={22} />
-        <span>{rich(t('final.rule.blind', { s: FINAL_PEEK_SECONDS }))}</span>
+        <span>{rich(t('final.rule.blind', { time: FINAL_PEEK_SECONDS === 1 ? t('final.oneSecond') : t('final.seconds', { s: FINAL_PEEK_SECONDS }) }))}</span>
       </li>
       <li>
         <HiddenHandIcon size={22} />
@@ -66,15 +66,20 @@ function PeekTimer({ ms }: { ms: number }) {
 }
 
 /**
- * Mesa a ciegas: la última carta se ve unos segundos y después queda boca abajo con las demás.
+ * Mesa a ciegas: la última carta se ve un momento y después queda boca abajo con las demás.
  * `pile` solo trae la última carta si aún se puede ver; `pileHidden` cuenta las que están tapadas.
  */
 export function BlindPile({ snap, clockOffset }: { snap: RoomSnapshot; clockOffset: number }) {
   const { room, pile, players } = snap;
   const top = pile.at(-1);
-  const hideAt = room.pileAt ? Date.parse(room.pileAt) + FINAL_PEEK_SECONDS * 1000 : 0;
+  // La carta se ve FINAL_PEEK_SECONDS desde que llega a ESTE móvil (así todos la ven el mismo rato
+  // aunque la conexión tarde), y nunca más allá de lo que el servidor la sigue enviando.
+  const arrived = useRef<{ pileAt: string | null; at: number }>({ pileAt: null, at: 0 });
+  if (top && arrived.current.pileAt !== room.pileAt) arrived.current = { pileAt: room.pileAt ?? null, at: Date.now() };
+  const serverEnd = room.pileAt ? Date.parse(room.pileAt) - clockOffset + FINAL_PEEK_SERVER_SECONDS * 1000 : 0;
+  const hideAt = Math.min(arrived.current.at + FINAL_PEEK_SECONDS * 1000, serverEnd);
   // Siempre con la hora actual (no una guardada de antes: con una carta nueva saldría de más).
-  const left = hideAt - (Date.now() + clockOffset);
+  const left = hideAt - Date.now();
   const peeking = Boolean(top) && left > 0;
   // Al llegar la hora, se vuelve a pintar para taparla.
   const [, setTick] = useState(0);

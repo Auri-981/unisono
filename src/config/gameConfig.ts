@@ -37,12 +37,18 @@ export const LIGHTNING_INTRO_SECONDS = LIGHTNING_ALERT_SECONDS + 3;
 /**
  * Ronda final: el último nivel de la partida es más difícil.
  * - Sin comodines: no se puede proponer vistazo ni escudo, y Rebobinar no se ofrece.
- * - Mesa a ciegas: la carta jugada solo se ve FINAL_PEEK_SECONDS; luego queda boca abajo.
+ * - Mesa a ciegas: la carta jugada solo se ve un momento (FINAL_PEEK_SECONDS); luego queda boca abajo.
  * - Manos ocultas: no se ve cuántas cartas le quedan a cada compañero.
  * (Por eso los comodines ganados justo antes de la ronda final no se reparten: no servirían.)
  */
 export const isFinalLevel = (level: number, maxLevel: number) => level >= 1 && level === maxLevel;
-export const FINAL_PEEK_SECONDS = 2;
+/** Lo que se ve en pantalla la carta jugada, contado desde que llega a cada móvil. */
+export const FINAL_PEEK_SECONDS = 1;
+/**
+ * Lo que el servidor sigue enviando la última carta tras jugarla: margen para que llegue a todos
+ * los móviles aunque la conexión vaya lenta (pasado este tiempo ya no se envía nunca).
+ */
+export const FINAL_PEEK_SERVER_SECONDS = 3;
 /** Lo que dura en pantalla el aviso «Ronda final» (antes de la cuenta atrás). */
 export const FINAL_ALERT_SECONDS = 4;
 /** Cada cuántos segundos un móvil avisa de que sigue conectado. */

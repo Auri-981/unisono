@@ -404,7 +404,7 @@ end;
 $$;
 
 -- Lo que puede ver el jugador p_uid. Nunca incluye cartas ajenas.
--- En la ronda final, además: la mesa solo enseña la última carta durante 2 s (las demás quedan
+-- En la ronda final, además: la mesa solo envía la última carta durante 3 s (las demás quedan
 -- boca abajo) y no se sabe cuántas cartas le quedan a cada compañero.
 create or replace function game_private.snapshot(p_room uuid, p_uid uuid)
 returns jsonb language sql stable set search_path = ''
@@ -448,7 +448,7 @@ as $$
   cross join lateral (
     select f.blind,
            case when not f.blind then r.pile
-                when r.pile_at > now() - interval '2 seconds' and jsonb_array_length(r.pile) > 0
+                when r.pile_at > now() - interval '3 seconds' and jsonb_array_length(r.pile) > 0
                   then jsonb_build_array(r.pile -> -1)
                 else '[]'::jsonb end as pile
   ) v
