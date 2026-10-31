@@ -692,7 +692,7 @@ describe('ronda final a través de la API', () => {
     expect(snap.players.map((p) => p.cardsLeft)).toEqual([null, 1]);
 
     // Pasados unos segundos, la última carta también queda boca abajo.
-    await t.admin(`update public.rooms set pile_at = now() - interval '4 seconds' where id = $1`, [room]);
+    await t.admin(`update public.rooms set pile_at = now() - interval '2.5 seconds' where id = $1`, [room]);
     snap = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
     expect(snap.pile).toEqual([]);
     expect(snap.room.pileHidden).toBe(2);

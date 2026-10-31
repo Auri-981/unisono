@@ -42,7 +42,7 @@ export const LIGHTNING_INTRO_SECONDS = LIGHTNING_ALERT_SECONDS + 3;
  * (Por eso los comodines ganados justo antes de la ronda final no se reparten: no servirían.)
  */
 export const isFinalLevel = (level: number, maxLevel: number) => level >= 1 && level === maxLevel;
-export const FINAL_PEEK_SECONDS = 3;
+export const FINAL_PEEK_SECONDS = 2;
 /** Lo que dura en pantalla el aviso «Ronda final» (antes de la cuenta atrás). */
 export const FINAL_ALERT_SECONDS = 4;
 /** Cada cuántos segundos un móvil avisa de que sigue conectado. */

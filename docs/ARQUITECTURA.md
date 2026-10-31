@@ -149,7 +149,7 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
   - *Sin comodines*: `propose_shuriken` y `propose_shield` devuelven `FINAL_ROUND`, y un error no
     ofrece Rebobinar. Por eso, al superar el nivel anterior no se reparten comodines (sí vidas).
   - *Mesa a ciegas*: `pile_at` guarda cuándo se jugó la última carta. Durante el nivel, la foto
-    (`get_room_state`) solo incluye esa carta los 3 primeros segundos; las demás no se envían
+    (`get_room_state`) solo incluye esa carta los 2 primeros segundos; las demás no se envían
     (`pileHidden` dice cuántas hay boca abajo) y el evento `play` no lleva el número.
   - *Manos ocultas*: `cardsLeft` de los demás jugadores llega como `null` (el propio, sí).
   Al terminar la partida la mesa vuelve a verse entera.
