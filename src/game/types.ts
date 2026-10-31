@@ -113,6 +113,25 @@ export interface ShurikenUsedPayload {
   discarded: { p: PlayerId; c: number }[];
 }
 
+/** Desglose de la recompensa de una partida (lo calcula el servidor: game_private.match_reward). */
+export interface RewardBreakdown {
+  players: number;
+  maxLevel: number;
+  levelsCompleted: number;
+  won: boolean;
+  participation: number;
+  levels: number;
+  victory: number;
+  total: number;
+}
+
+export interface MatchReward {
+  coins: number;
+  breakdown: RewardBreakdown;
+  balanceBefore: number;
+  balanceAfter: number;
+}
+
 export interface LevelReward {
   level: number;
   lives: number;
@@ -142,6 +161,8 @@ export interface PublicPlayer {
   lastSeenAt: string;
   /** Cartas que le quedan. null = oculto (manos ocultas de la ronda final; nunca las tuyas). */
   cardsLeft: number | null;
+  /** Diseño de cartas con el que juega esta partida (se fija al empezar). Opcional: práctica y servidores antiguos. */
+  cardDesign?: string;
 }
 
 export interface PublicRoom {
@@ -195,6 +216,11 @@ export interface RoomSnapshot {
    */
   recentEvents?: GameEvent[];
   lastReward: LevelReward | null;
+  /**
+   * Al terminar la partida: monedas que ha recibido `me`, confirmadas por el servidor (null si no
+   * ha participado; ausente en práctica, que no da monedas).
+   */
+  myReward?: MatchReward | null;
   /** Solo las cartas de `me`, ordenadas de menor a mayor. */
   myHand: number[];
 }
@@ -227,6 +253,11 @@ export const GAME_ERROR_CODES = [
   'TOO_FAST',
   'NO_NUMBERS',
   'FINAL_ROUND',
+  'COSMETIC_NOT_FOUND',
+  'NOT_FOR_SALE',
+  'ALREADY_OWNED',
+  'NOT_ENOUGH_COINS',
+  'NOT_OWNED',
   'TOO_MANY_ROOMS',
   'TOO_MANY_ATTEMPTS',
   'CANNOT_KICK_SELF',

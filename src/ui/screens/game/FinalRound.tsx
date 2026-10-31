@@ -69,7 +69,15 @@ function PeekTimer({ ms }: { ms: number }) {
  * Mesa a ciegas: la última carta se ve un momento y después queda boca abajo con las demás.
  * `pile` solo trae la última carta si aún se puede ver; `pileHidden` cuenta las que están tapadas.
  */
-export function BlindPile({ snap, clockOffset }: { snap: RoomSnapshot; clockOffset: number }) {
+export function BlindPile({
+  snap,
+  clockOffset,
+  designOf,
+}: {
+  snap: RoomSnapshot;
+  clockOffset: number;
+  designOf: (playerId: string) => string;
+}) {
   const { room, pile, players } = snap;
   const top = pile.at(-1);
   // La carta se ve FINAL_PEEK_SECONDS desde que llega a ESTE móvil (así todos la ven el mismo rato
@@ -108,7 +116,7 @@ export function BlindPile({ snap, clockOffset }: { snap: RoomSnapshot; clockOffs
       )}
       {peeking && top && (
         <div className="pile-top blind-peek" key={room.pileAt}>
-          <Card value={top.c} size="xl" />
+          <Card value={top.c} size="xl" design={designOf(top.p)} />
           <PeekTimer ms={left} />
           <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
         </div>

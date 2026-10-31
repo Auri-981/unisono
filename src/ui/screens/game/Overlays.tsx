@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { isFinalLevel, lightningSeconds } from '../../../config/gameConfig';
 import type { RoomController } from '../../../game/controller';
 import { COMODIN_KINDS, type MistakePayload, type RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
-import { CheckIcon, ComodinKindIcon, CrownIcon, FinalIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
+import { CheckIcon, CoinIcon, ComodinKindIcon, CrownIcon, FinalIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
+import { getPrefs } from '../../prefs';
+import { refreshProfile } from '../../profile';
 import { rich } from '../../rich';
 import { LIFE_SYMBOL, rewardText, upcomingReward } from '../../rewards';
 
@@ -297,6 +299,94 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
   );
 }
 
+/** Monedas de la partida: llegan del servidor junto con el resultado (nunca se calculan aquí). */
+function EndRewards({ ctl, snap }: { ctl: RoomController; snap: RoomSnapshot }) {
+  const { room } = snap;
+  const reward = snap.myReward;
+  // El saldo de la cabecera de inicio y la tienda, al día.
+  useEffect(() => {
+    if (ctl.kind === 'online') void refreshProfile();
+  }, [ctl.kind, reward?.balanceAfter]);
+  const done = reward?.breakdown.levelsCompleted ?? (room.status === 'won' ? room.maxLevel : Math.max(0, room.level - 1));
+  return (
+    <div className="end-rewards">
+      <p className="end-levels">
+        <span className="field-label">{t('end.levelsDone')}</span>
+        <span className="end-levels-value">
+          {done}
+          <span className="muted">/{room.maxLevel}</span>
+        </span>
+      </p>
+      {ctl.kind === 'practice' ? (
+        <p className="muted small">{t('end.practiceNoCoins')}</p>
+      ) : reward === null ? (
+        <p className="muted small">{t('end.noReward')}</p>
+      ) : reward && reward.coins === 0 ? (
+        <p className="muted small">{t('end.zeroReward')}</p>
+      ) : (
+        reward && (
+          <div className={`coin-reward ${reward.coins >= 80 ? 'is-big' : ''}`}>
+            <div className="coin-reward-burst" aria-hidden>
+              {Array.from({ length: Math.min(8, 3 + Math.floor(reward.coins / 20)) }, (_, i) => (
+                <CoinIcon key={i} size={18} className="coin-spark" style={{ '--i': i } as CSSProperties} />
+              ))}
+            </div>
+            <p className="coin-reward-total" aria-label={t('end.coinsAria', { n: reward.coins })}>
+              <CoinIcon size={30} />+<CountUp to={reward.coins} />
+            </p>
+            <ul className="coin-reward-lines">
+              {reward.breakdown.levels > 0 && (
+                <li>
+                  <span>{t('end.rewardLevels', { n: reward.breakdown.levelsCompleted })}</span>
+                  <strong>+{reward.breakdown.levels}</strong>
+                </li>
+              )}
+              {reward.breakdown.participation > 0 && (
+                <li>
+                  <span>{t('end.rewardParticipation')}</span>
+                  <strong>+{reward.breakdown.participation}</strong>
+                </li>
+              )}
+              {reward.breakdown.victory > 0 && (
+                <li className="is-victory">
+                  <span>{t('end.rewardVictory')}</span>
+                  <strong>+{reward.breakdown.victory}</strong>
+                </li>
+              )}
+            </ul>
+            <p className="coin-reward-balance">
+              {t('end.balance')} <span className="muted">{reward.balanceBefore}</span> → <strong>{reward.balanceAfter}</strong>
+            </p>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+/** Cuenta de 0 a `to` en menos de un segundo (al instante si se reduce el movimiento). */
+function CountUp({ to }: { to: number }) {
+  const reduced = getPrefs().reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const [n, setN] = useState(reduced ? to : 0);
+  useEffect(() => {
+    if (reduced) {
+      setN(to);
+      return;
+    }
+    // Con un temporizador (no requestAnimationFrame): si la app está en segundo plano, al volver
+    // ya muestra la cifra final en lugar de quedarse a medias.
+    const start = performance.now();
+    const ms = Math.min(1100, 400 + to * 6);
+    const id = window.setInterval(() => {
+      const k = Math.min(1, (performance.now() - start) / ms);
+      setN(Math.round(to * (1 - (1 - k) ** 3)));
+      if (k >= 1) window.clearInterval(id);
+    }, 30);
+    return () => window.clearInterval(id);
+  }, [to, reduced]);
+  return <>{n}</>;
+}
+
 export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: RoomSnapshot; onExit: () => void }) {
   const { room, me } = snap;
   const status = room.status as 'won' | 'lost' | 'abandoned';
@@ -325,6 +415,7 @@ export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: Ro
             {t('game.discarded')}: {snap.revealed.map((r) => r.c).join(', ')}
           </p>
         )}
+        <EndRewards ctl={ctl} snap={snap} />
         {isHost || ctl.kind === 'practice' ? (
           <button type="button" className="btn btn-primary btn-large btn-block" disabled={ctl.busy} onClick={() => void ctl.actions.rematch()}>
             {t('end.rematch')}

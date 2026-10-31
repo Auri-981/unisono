@@ -10,6 +10,8 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
   elección de comodín, ronda relámpago con reloj (un nivel al azar por partida), ronda final
   (el último nivel: sin comodines, mesa a ciegas y manos ocultas), orden ascendente o descendente, revancha, historial, chat opcional.
   (En el código y la base de datos el vistazo se llama internamente «shuriken».)
+- Monedas por jugar online (más por cada nivel superado y mucho más por ganar partidas largas),
+  tienda con diseños de cartas (Galaxia, Neón, Esmeralda) y «Mis cartas» para equiparlos.
 - Modo práctica contra bots, sin conexión.
 - Web móvil instalable (PWA). Interfaz en español, preparada para otros idiomas.
 

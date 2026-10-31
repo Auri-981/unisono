@@ -74,6 +74,12 @@ escribir en tablas y llamar a funciones internas; todo debe fallar.
 | `processed_actions` | Ids de acciones ya aplicadas (anti-duplicados) | Nadie | Solo funciones |
 | `join_attempts` | Intentos fallidos de unión (anti-fuerza bruta) | Nadie | Solo funciones |
 | `game_results` | Historial de partidas terminadas | Nadie (vía función `get_my_history`) | Solo funciones |
+| `cosmetics` | Catálogo: id, tipo (`card_design`), nombre, descripción, precio, forma de desbloqueo (`default`, `coins`, `achievement`, `event`), si está a la venta | Todos los jugadores | Solo la migración |
+| `player_wallets` | Saldo de monedas de cada jugador (`>= 0`) | Solo el dueño | Solo funciones |
+| `player_cosmetics` | Cosméticos que posee cada jugador y cómo los consiguió | Solo el dueño | Solo funciones |
+| `player_equipped` | Cosmético equipado por tipo (clave ajena a `player_cosmetics`: no se puede equipar lo que no se tiene) | Solo el dueño | Solo funciones |
+| `coin_transactions` | Cada movimiento de monedas: cantidad, saldo resultante, motivo, partida o cosmético | Solo el dueño | Solo funciones |
+| `match_rewards` | Recompensa de cada jugador en cada partida (única por partida y jugador) con su desglose | Solo el dueño | Solo funciones |
 
 La clave primaria `(room_id, card)` de `hands` hace **imposible** que una carta esté en dos manos.
 
@@ -82,7 +88,8 @@ La clave primaria `(room_id, card)` de `hands` hace **imposible** que una carta 
 `create_room`, `join_room`, `get_room_state`, `update_config`, `set_lobby_ready`, `start_game`,
 `play_card`, `propose_shuriken`, `propose_shield`, `vote_shuriken` (vota cualquier comodín),
 `expire_shuriken_vote`, `pick_comodin`, `ready_next_level`,
-`leave_room`, `kick_player`, `rematch`, `heartbeat`, `send_chat`, `get_my_history`.
+`leave_room`, `kick_player`, `rematch`, `heartbeat`, `send_chat`, `get_my_history`,
+`get_my_profile`, `buy_cosmetic`, `equip_cosmetic`, `get_my_coin_history` (economía, sección 12).
 
 Todas las que modifican la partida:
 - empiezan con `SELECT … FOR UPDATE` sobre la sala → **las jugadas de una sala se procesan de una en
@@ -219,4 +226,76 @@ cambiar sus planes.
 - **Variantes**: la configuración de la sala es un objeto validado en servidor; añadir reglas nuevas no
   cambia el modelo de datos.
 - **Perfiles / emparejamiento**: la sesión anónima puede convertirse en cuenta permanente
-  (*identity linking* de Supabase) sin perder el historial.
+  (*identity linking* de Supabase) sin perder el historial. También conservaría monedas y diseños,
+  que están ligados al mismo `user_id`.
+
+
+## 12. Economía: monedas, tienda y cosméticos
+
+**Principio**: el servidor es la única autoridad. La app nunca calcula ni envía cantidades de
+monedas ni precios; solo pide «dame mi perfil», «compra este id» o «equipa este id».
+
+### Cómo se ganan las monedas
+
+Solo en partidas **online** (la práctica corre en el navegador y se podría falsear). Al terminar una
+partida, `end_game` guarda el resultado en `game_results` y, **en la misma transacción**, llama a
+`grant_match_rewards`, que paga a cada participante. Nadie puede llamar a esa función desde la app.
+
+Fórmula (`game_private.match_reward`; todos los números en `game_private.reward_settings`):
+
+| Parte | Valor |
+|---|---|
+| Cada nivel superado | `perLevel` (1) + 1 moneda por cada `cardsPerCoin` (2) cartas del nivel (jugadores × nivel) |
+| Participación | `participation` (2) si se supera al menos un nivel |
+| Victoria | 1 moneda por cada `victoryCardsPerCoin` (4) cartas de **toda** la partida |
+
+Por qué así: el esfuerzo de un nivel son sus cartas, así que los niveles altos valen más y el
+número de jugadores cuenta solo (más jugadores = más cartas por nivel, pero menos niveles). El
+premio de victoria crece con el tamaño de la partida: ganar 12 partidas de 1 nivel (2 jugadores)
+da 60 monedas; ganar una de 12 niveles, 131. Así no compensa crear partidas cortas para «granjear».
+
+| Partida (victoria) | Monedas |
+|---|---:|
+| 2 jugadores × 12 niveles | 131 |
+| 3 jugadores × 10 niveles | 139 |
+| 4 jugadores × 8 niveles | 118 |
+| 2 jugadores × 3 niveles | 14 |
+| 2 jugadores, derrota tras superar 5 de 12 | 22 |
+| Sin superar ningún nivel | 0 |
+
+Niveles superados: todos si se gana; si no, los anteriores al nivel en curso (o también el
+actual si la partida se abandonó en la pantalla de «nivel superado»).
+
+**Quién cobra**: quien sigue en la sala al terminar (quien abandona no cobra; quien solo se ha
+desconectado, sí) y ha jugado al menos una carta en esa partida (`room_players.cards_played`).
+Nadie puede entrar en una partida empezada, así que entrar y salir no da nada.
+
+### Antiabusos
+
+- `match_rewards` tiene clave única `(match_id, user_id)` y `grant_match_rewards` comprueba antes
+  de pagar: una partida no se cobra dos veces aunque se repitan peticiones.
+- El saldo solo cambia en `game_private.add_coins`, que apunta cada movimiento en
+  `coin_transactions`. `coins >= 0` está garantizado por la tabla: una compra que lo violara se
+  deshace entera.
+- `buy_cosmetic` bloquea el monedero (`FOR UPDATE`), lee el precio de la tabla, comprueba que no se
+  posee y que hay saldo, cobra, apunta y entrega, todo en una transacción. Una segunda pulsación
+  recibe `ALREADY_OWNED` (la app lo trata como éxito).
+- RLS: cada jugador solo puede **leer** lo suyo; ninguna tabla de la economía admite escrituras
+  desde la app (probado en `tests/integration/economy.test.ts` y en `npm run smoke`).
+
+### Diseños en la partida
+
+Al empezar cada partida, `start_game` copia el diseño equipado de cada jugador en
+`room_players.card_design`. Así, cambiarlo durante una partida se aplica en la siguiente. La foto
+de la partida incluye `cardDesign` de cada jugador: tus cartas se ven con tu diseño y las que
+juegan los demás en la mesa, con el suyo. El diseño nunca toca valores, reparto ni reglas.
+
+### Añadir cosméticos
+
+1. Una fila en el `insert into public.cosmetics` de la migración (id, nombre, descripción, precio).
+2. Su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.
+
+Un id que la app no conozca se ve como el clásico, así que el catálogo puede crecer antes que la
+app. `kind` (tipo) y `unlock` (forma de conseguirlo) ya admiten marcos, efectos, logros o eventos.
+
+**Deshacer**: `supabase/rollback/economia_down.sql` desactiva pagos y tienda sin borrar datos.

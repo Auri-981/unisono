@@ -45,6 +45,45 @@ async function rpc<T>(fn: string, args: Record<string, unknown>, retries = 0): P
   }
 }
 
+/** Cosmético del catálogo (lo que se vende y lo que ya se posee). */
+export interface CatalogItem {
+  id: string;
+  kind: 'card_design';
+  name: string;
+  description: string;
+  /** Precio en monedas (null: no se compra, p. ej. el clásico). */
+  price: number | null;
+  unlock: 'default' | 'coins' | 'achievement' | 'event';
+  available: boolean;
+}
+
+/** Números de las recompensas (los decide el servidor: game_private.reward_settings). */
+export interface RewardSettings {
+  perLevel: number;
+  cardsPerCoin: number;
+  participation: number;
+  victoryCardsPerCoin: number;
+  minCardsPlayed: number;
+}
+
+export interface Profile {
+  coins: number;
+  /** Equipado por tipo: { card_design: 'galaxy' }. */
+  equipped: Record<string, string>;
+  owned: string[];
+  catalog: CatalogItem[];
+  rewards: RewardSettings;
+}
+
+export interface CoinMovement {
+  amount: number;
+  balanceAfter: number;
+  kind: 'match_reward' | 'purchase' | 'adjustment';
+  reason: string;
+  cosmeticId: string | null;
+  at: string;
+}
+
 const newActionId = () => crypto.randomUUID();
 
 export const api = {
@@ -69,6 +108,12 @@ export const api = {
   rematch: (room: string) => rpc<RoomSnapshot>('rematch', { p_room: room }),
   heartbeat: (room: string) => rpc<{ version: number }>('heartbeat', { p_room: room }),
   sendChat: (room: string, body: string) => rpc<{ ok: boolean }>('send_chat', { p_room: room, p_body: body }),
+  /** Perfil de la economía: saldo, lo equipado, lo que se posee y el catálogo. */
+  getProfile: () => rpc<Profile>('get_my_profile', {}, 2),
+  /** Compra (todo o nada en el servidor). Sin reintentos automáticos: el usuario decide. */
+  buyCosmetic: (id: string) => rpc<Profile>('buy_cosmetic', { p_cosmetic: id }),
+  equipCosmetic: (id: string) => rpc<Profile>('equip_cosmetic', { p_cosmetic: id }, 1),
+  coinHistory: () => rpc<CoinMovement[]>('get_my_coin_history', {}, 1),
   history: () =>
     rpc<{
       stats: { played: number; won: number; bestLevel: number };

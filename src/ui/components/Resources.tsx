@@ -1,6 +1,6 @@
 import { t } from '../../i18n';
 import type { ConnectionState } from '../../game/controller';
-import { LifeIcon, ShieldIcon } from './Icons';
+import { CoinIcon, LifeIcon, ShieldIcon } from './Icons';
 
 export function Lives({ count }: { count: number }) {
   return (
@@ -27,6 +27,20 @@ export function ConnectionDot({ state }: { state: ConnectionState }) {
     <span className={`conn conn-${state}`} role="status" aria-live="polite">
       <span className="conn-dot" aria-hidden />
       <span className="conn-label">{t(`conn.${state}`)}</span>
+    </span>
+  );
+}
+
+/**
+ * Saldo de monedas (del servidor). Al cambiar, la cifra hace un pequeño «pop».
+ */
+export function CoinBadge({ coins, loading }: { coins: number | null; loading?: boolean }) {
+  return (
+    <span className="coin-badge" aria-label={t('coins.aria', { n: coins ?? 0 })} title={t('coins.title')}>
+      <CoinIcon size={20} />
+      <span className="coin-badge-value" key={coins ?? 'x'}>
+        {coins === null ? (loading ? '…' : '—') : coins}
+      </span>
     </span>
   );
 }

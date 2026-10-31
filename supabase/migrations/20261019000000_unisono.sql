@@ -60,6 +60,8 @@ alter table public.rooms add column if not exists lightning_level int not null d
 alter table public.rooms add column if not exists lightning_ends_at timestamptz;
 -- Añadida después: cuándo se jugó la última carta (la ronda final solo deja verla unos segundos).
 alter table public.rooms add column if not exists pile_at timestamptz;
+-- Añadida después: jugadores al empezar la partida (para calcular las monedas de la recompensa).
+alter table public.rooms add column if not exists start_players int not null default 0;
 -- Quitada después: la opción de vistazo «clásico» (descartes ocultos); ahora siempre se muestran.
 update public.rooms set config = config - 'shurikenVariant' where config ? 'shurikenVariant';
 
@@ -74,6 +76,10 @@ create table if not exists public.room_players (
   primary key (room_id, user_id)
 );
 create index if not exists room_players_user_idx on public.room_players (user_id);
+-- Añadidas después: cartas jugadas en la partida actual (para cobrar hay que haber participado) y
+-- diseño de cartas con el que juega (se fija al empezar la partida: cambiarlo afecta a la siguiente).
+alter table public.room_players add column if not exists cards_played int not null default 0;
+alter table public.room_players add column if not exists card_design text not null default 'classic';
 
 -- Una fila por carta. La clave (room_id, card) impide que una carta esté en dos manos.
 create table if not exists public.hands (
@@ -136,6 +142,7 @@ create table if not exists public.game_results (
   finished_at  timestamptz not null default now()
 );
 create index if not exists game_results_players_idx on public.game_results using gin (player_ids);
+create index if not exists game_results_room_idx on public.game_results (room_id, game_no);
 
 -- Señal de cambios para el tiempo real: UNA fila por sala que se actualiza UNA vez por acción
 -- (al final de la transacción) y solo contiene la versión. Así cada acción genera un único
@@ -145,6 +152,93 @@ create table if not exists public.room_signals (
   version    bigint not null,
   updated_at timestamptz not null default now()
 );
+
+-- ───────────────────────────── Economía: monedas y cosméticos ─────────────────────────────
+-- Todo es del servidor: el saldo, los precios, lo que posee cada jugador y las recompensas.
+-- Ninguna tabla se puede escribir desde la app; solo las funciones de más abajo, que cambian el
+-- saldo SIEMPRE a través de game_private.add_coins (que apunta cada movimiento).
+
+-- Catálogo. `kind` permite futuros tipos (marcos, efectos…) y `unlock` otras formas de
+-- conseguirlos (logros, eventos…). El aspecto de cada diseño vive en la app (CSS), por su id.
+create table if not exists public.cosmetics (
+  id           text primary key check (id ~ '^[a-z0-9_]{2,32}$'),
+  kind         text not null check (kind in ('card_design')),
+  name         text not null,
+  description  text not null,
+  price        int check (price is null or price >= 0),
+  unlock       text not null check (unlock in ('default', 'coins', 'achievement', 'event')),
+  sort         int not null default 0,
+  is_available boolean not null default true,
+  created_at   timestamptz not null default now(),
+  check (unlock <> 'coins' or price is not null)
+);
+
+-- Catálogo inicial. Para cambiar un precio o un texto, se cambia aquí y se vuelve a ejecutar.
+insert into public.cosmetics (id, kind, name, description, price, unlock, sort) values
+  ('classic', 'card_design', 'Clásico', 'El diseño de siempre: papel cálido y el color de cada número.', null, 'default', 0),
+  ('galaxy', 'card_design', 'Galaxia', 'Cartas llegadas del espacio profundo: nebulosas, estrellas y polvo cósmico.', 10, 'coins', 1),
+  ('neon', 'card_design', 'Neón', 'Rejilla futurista, bordes eléctricos y números que brillan en la oscuridad.', 30, 'coins', 2),
+  ('emerald', 'card_design', 'Esmeralda', 'Terciopelo verde, filigrana dorada y acabado de joya. El más exclusivo.', 50, 'coins', 3)
+on conflict (id) do update
+  set kind = excluded.kind, name = excluded.name, description = excluded.description,
+      price = excluded.price, unlock = excluded.unlock, sort = excluded.sort;
+
+-- Saldo de cada jugador (nunca negativo).
+create table if not exists public.player_wallets (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  coins      int not null default 0 check (coins >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Cosméticos que posee cada jugador (el clásico se da a todos).
+create table if not exists public.player_cosmetics (
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  cosmetic_id text not null references public.cosmetics (id),
+  source      text not null check (source in ('default', 'purchase', 'achievement', 'event', 'reward')),
+  acquired_at timestamptz not null default now(),
+  primary key (user_id, cosmetic_id)
+);
+
+-- Cosmético equipado de cada tipo. La clave ajena a player_cosmetics impide equipar algo que
+-- no se posee (la propiedad y lo equipado son cosas distintas).
+create table if not exists public.player_equipped (
+  user_id     uuid not null,
+  kind        text not null,
+  cosmetic_id text not null,
+  updated_at  timestamptz not null default now(),
+  primary key (user_id, kind),
+  foreign key (user_id, cosmetic_id) references public.player_cosmetics (user_id, cosmetic_id) on delete cascade
+);
+
+-- Registro de TODOS los movimientos de monedas.
+create table if not exists public.coin_transactions (
+  id            bigint generated always as identity primary key,
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  amount        int not null check (amount <> 0),
+  balance_after int not null check (balance_after >= 0),
+  kind          text not null check (kind in ('match_reward', 'purchase', 'adjustment')),
+  reason        text not null,
+  match_id      bigint references public.game_results (id) on delete set null,
+  cosmetic_id   text references public.cosmetics (id),
+  created_at    timestamptz not null default now()
+);
+create index if not exists coin_transactions_user_idx on public.coin_transactions (user_id, id desc);
+
+-- Recompensa de cada jugador en cada partida. UNA como mucho (match_id, user_id): no se puede
+-- cobrar dos veces. Se guarda aunque sea 0, con el desglose, para la pantalla final.
+create table if not exists public.match_rewards (
+  id             bigint generated always as identity primary key,
+  match_id       bigint not null references public.game_results (id) on delete cascade,
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  coins          int not null check (coins >= 0),
+  breakdown      jsonb not null,
+  balance_before int not null,
+  balance_after  int not null,
+  created_at     timestamptz not null default now(),
+  unique (match_id, user_id)
+);
+create index if not exists match_rewards_user_idx on public.match_rewards (user_id);
 
 -- ───────────────────────────── Seguridad de tablas ─────────────────────────────
 
@@ -165,6 +259,37 @@ revoke all on table public.rooms, public.room_players, public.hands, public.room
   from anon, authenticated, public;
 grant select on table public.rooms, public.room_players, public.hands, public.room_events,
   public.chat_messages, public.room_signals to authenticated;
+
+-- Economía: nadie escribe desde la app. Cada uno solo puede LEER lo suyo; el catálogo, todos.
+alter table public.cosmetics         enable row level security;
+alter table public.player_wallets    enable row level security;
+alter table public.player_cosmetics  enable row level security;
+alter table public.player_equipped   enable row level security;
+alter table public.coin_transactions enable row level security;
+alter table public.match_rewards     enable row level security;
+revoke all on table public.cosmetics, public.player_wallets, public.player_cosmetics, public.player_equipped,
+  public.coin_transactions, public.match_rewards
+  from anon, authenticated, public;
+grant select on table public.cosmetics, public.player_wallets, public.player_cosmetics, public.player_equipped,
+  public.coin_transactions, public.match_rewards to authenticated;
+
+drop policy if exists cosmetics_select_all on public.cosmetics;
+create policy cosmetics_select_all on public.cosmetics for select to authenticated using (true);
+drop policy if exists wallets_select_own on public.player_wallets;
+create policy wallets_select_own on public.player_wallets
+  for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists player_cosmetics_select_own on public.player_cosmetics;
+create policy player_cosmetics_select_own on public.player_cosmetics
+  for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists player_equipped_select_own on public.player_equipped;
+create policy player_equipped_select_own on public.player_equipped
+  for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists coin_transactions_select_own on public.coin_transactions;
+create policy coin_transactions_select_own on public.coin_transactions
+  for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists match_rewards_select_own on public.match_rewards;
+create policy match_rewards_select_own on public.match_rewards
+  for select to authenticated using (user_id = (select auth.uid()));
 
 -- ¿Pertenece quien llama a la sala? (Usada por las políticas RLS.)
 create or replace function public.is_room_member(p_room uuid)
@@ -423,6 +548,7 @@ as $$
       select coalesce(jsonb_agg(jsonb_build_object(
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
                'lastSeenAt', p.last_seen_at,
+               'cardDesign', p.card_design,
                'cardsLeft', case when v.blind and p.user_id <> p_uid then null else
                  (select count(*) from public.hands h where h.room_id = p.room_id and h.user_id = p.user_id) end
              ) order by p.seat), '[]'::jsonb)
@@ -438,6 +564,12 @@ as $$
              ) order by e.seq), '[]'::jsonb)
       from (select * from public.room_events ev where ev.room_id = r.id order by ev.seq desc limit 8) e),
     'lastReward', r.last_reward,
+    -- Al terminar: las monedas que ha recibido este jugador (null si no ha participado).
+    'myReward', case when r.status in ('won', 'lost', 'abandoned') then (
+      select jsonb_build_object('coins', mr.coins, 'breakdown', mr.breakdown,
+                                'balanceBefore', mr.balance_before, 'balanceAfter', mr.balance_after)
+      from public.game_results g join public.match_rewards mr on mr.match_id = g.id
+      where g.room_id = r.id and g.game_no = r.game_no and mr.user_id = p_uid) end,
     'myHand', (
       -- En el orden en que se juegan (de menor a mayor, o de mayor a menor en descendente).
       select coalesce(jsonb_agg(h.card order by case when r.config ->> 'order' = 'desc' then -h.card else h.card end), '[]'::jsonb)
@@ -489,8 +621,12 @@ $$;
 create or replace function game_private.end_game(p_room uuid, p_status text)
 returns void language plpgsql set search_path = ''
 as $$
-declare r public.rooms;
+declare
+  r public.rooms;
+  v_prev text;
+  v_match bigint;
 begin
+  select status into v_prev from public.rooms where id = p_room;
   update public.rooms set status = p_status, vote = null, offer = null, lightning_ends_at = null
    where id = p_room returning * into r;
   delete from public.hands where room_id = p_room;
@@ -499,7 +635,15 @@ begin
   select r.id, r.game_no, p_status, r.level, r.max_level,
          coalesce(array_agg(p.user_id order by p.seat), '{}'),
          coalesce(array_agg(p.name order by p.seat), '{}')
-  from public.room_players p where p.room_id = p_room;
+  from public.room_players p where p.room_id = p_room
+  returning id into v_match;
+  -- Monedas por el resultado definitivo (en esta misma transacción: o todo o nada).
+  -- Niveles superados: todos si se gana; si no, los anteriores al actual (o también el actual,
+  -- si la partida se abandonó en la pantalla de «nivel superado»).
+  perform game_private.grant_match_rewards(
+    v_match, p_room,
+    case when p_status = 'won' then r.max_level when v_prev = 'level_complete' then r.level else r.level - 1 end,
+    p_status = 'won');
 end;
 $$;
 
@@ -858,6 +1002,140 @@ begin
 end;
 $$;
 
+-- ───────────────────────────── Economía ─────────────────────────────
+
+-- TODOS los números de las recompensas, en un único sitio. La idea: se cobra por el esfuerzo
+-- real, y el esfuerzo de un nivel son sus cartas (jugadores × nivel).
+--   * Por cada nivel superado: perLevel + 1 moneda por cada `cardsPerCoin` cartas del nivel.
+--     (Los niveles altos valen más: tienen más cartas y son más difíciles.)
+--   * Participación: si se supera al menos un nivel.
+--   * Victoria: 1 moneda por cada `victoryCardsPerCoin` cartas de TODA la partida (crece mucho más
+--     en las partidas largas: ganar una de 1 nivel apenas da nada).
+--   * Para cobrar hay que haber jugado al menos `minCardsPlayed` cartas en la partida.
+-- Ejemplos (victoria): 2 jugadores × 12 niveles = 131 · 3 × 10 = 139 · 4 × 8 = 118 · 2 × 3 = 14.
+-- Y doce victorias de 1 nivel (2 jugadores) suman 60: mucho menos que UNA de 12 niveles.
+create or replace function game_private.reward_settings()
+returns jsonb language sql immutable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'perLevel', 1,
+    'cardsPerCoin', 2,
+    'participation', 2,
+    'victoryCardsPerCoin', 4,
+    'minCardsPlayed', 1);
+$$;
+
+-- Recompensa (con desglose) de una partida de p_players jugadores y p_max_level niveles en la
+-- que se superaron p_completed niveles. Función pura: la usan las pruebas y grant_match_rewards.
+create or replace function game_private.match_reward(p_players int, p_max_level int, p_completed int, p_won boolean)
+returns jsonb language plpgsql immutable set search_path = ''
+as $$
+declare
+  s jsonb := game_private.reward_settings();
+  v_done int := greatest(0, least(coalesce(p_completed, 0), p_max_level));
+  v_levels int := 0;
+  v_part int := 0;
+  v_win int := 0;
+  l int;
+begin
+  for l in 1 .. v_done loop
+    v_levels := v_levels + (s ->> 'perLevel')::int + ceil(p_players * l / (s ->> 'cardsPerCoin')::numeric)::int;
+  end loop;
+  if v_done >= 1 then v_part := (s ->> 'participation')::int; end if;
+  if p_won then
+    v_win := ceil((p_players * p_max_level * (p_max_level + 1) / 2) / (s ->> 'victoryCardsPerCoin')::numeric)::int;
+  end if;
+  return jsonb_build_object(
+    'players', p_players, 'maxLevel', p_max_level, 'levelsCompleted', v_done, 'won', p_won,
+    'participation', v_part, 'levels', v_levels, 'victory', v_win, 'total', v_part + v_levels + v_win);
+end;
+$$;
+
+-- Crea (si no existen) el monedero del jugador, su diseño clásico y lo equipa.
+create or replace function game_private.ensure_player(p_uid uuid)
+returns void language plpgsql set search_path = ''
+as $$
+begin
+  insert into public.player_wallets (user_id) values (p_uid) on conflict do nothing;
+  insert into public.player_cosmetics (user_id, cosmetic_id, source)
+  select p_uid, c.id, 'default' from public.cosmetics c where c.unlock = 'default'
+  on conflict do nothing;
+  insert into public.player_equipped (user_id, kind, cosmetic_id) values (p_uid, 'card_design', 'classic')
+  on conflict do nothing;
+end;
+$$;
+
+-- ÚNICA forma de cambiar un saldo: suma (o resta) y apunta el movimiento. Si el saldo fuera a
+-- quedar negativo, la restricción de la tabla aborta TODA la operación (compra incluida).
+create or replace function game_private.add_coins(
+  p_uid uuid, p_amount int, p_kind text, p_reason text, p_match bigint default null, p_cosmetic text default null)
+returns int language plpgsql set search_path = ''
+as $$
+declare v_balance int;
+begin
+  update public.player_wallets set coins = coins + p_amount, updated_at = now()
+   where user_id = p_uid returning coins into v_balance;
+  if not found then raise exception 'NOT_AUTHENTICATED'; end if;
+  if p_amount <> 0 then
+    insert into public.coin_transactions (user_id, amount, balance_after, kind, reason, match_id, cosmetic_id)
+    values (p_uid, p_amount, v_balance, p_kind, p_reason, p_match, p_cosmetic);
+  end if;
+  return v_balance;
+end;
+$$;
+
+-- Paga la recompensa de la partida p_match a quienes han participado de verdad: siguen en la sala
+-- al terminar (quien abandona no cobra; quien se desconecta sin salir, sí) y han jugado alguna
+-- carta. Una sola vez por jugador y partida (además, match_rewards lo impide con su clave única).
+create or replace function game_private.grant_match_rewards(p_match bigint, p_room uuid, p_completed int, p_won boolean)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  r public.rooms;
+  p record;
+  v_players int;
+  v_reward jsonb;
+  v_before int;
+  v_after int;
+begin
+  select * into r from public.rooms where id = p_room;
+  v_players := coalesce(nullif(r.start_players, 0), (select count(*) from public.room_players where room_id = p_room));
+  v_reward := game_private.match_reward(v_players, r.max_level, p_completed, p_won);
+  for p in
+    select user_id from public.room_players
+     where room_id = p_room and cards_played >= (game_private.reward_settings() ->> 'minCardsPlayed')::int
+     order by seat
+  loop
+    continue when exists (select 1 from public.match_rewards where match_id = p_match and user_id = p.user_id);
+    perform game_private.ensure_player(p.user_id);
+    select coins into v_before from public.player_wallets where user_id = p.user_id for update;
+    v_after := game_private.add_coins(p.user_id, (v_reward ->> 'total')::int, 'match_reward',
+      case when p_won then 'Victoria en partida' else 'Progreso de partida' end, p_match, null);
+    insert into public.match_rewards (match_id, user_id, coins, breakdown, balance_before, balance_after)
+    values (p_match, p.user_id, (v_reward ->> 'total')::int, v_reward, v_before, v_after);
+  end loop;
+end;
+$$;
+
+-- Lo que la app necesita del jugador: saldo, lo equipado, lo que posee y el catálogo a la venta
+-- (más lo que ya posea aunque deje de venderse).
+create or replace function game_private.profile(p_uid uuid)
+returns jsonb language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'coins', (select coins from public.player_wallets where user_id = p_uid),
+    'equipped', coalesce((select jsonb_object_agg(kind, cosmetic_id) from public.player_equipped where user_id = p_uid), '{}'::jsonb),
+    'owned', coalesce((select jsonb_agg(cosmetic_id order by acquired_at, cosmetic_id) from public.player_cosmetics where user_id = p_uid), '[]'::jsonb),
+    'catalog', coalesce((
+      select jsonb_agg(jsonb_build_object('id', c.id, 'kind', c.kind, 'name', c.name, 'description', c.description,
+                                          'price', c.price, 'unlock', c.unlock, 'available', c.is_available)
+                       order by c.sort, c.id)
+      from public.cosmetics c
+      where c.is_available or exists (select 1 from public.player_cosmetics o where o.user_id = p_uid and o.cosmetic_id = c.id)
+    ), '[]'::jsonb),
+    'rewards', game_private.reward_settings());
+$$;
+
 create or replace function game_private.new_code()
 returns text language plpgsql volatile set search_path = ''
 as $$
@@ -1018,8 +1296,16 @@ begin
          -- Se sortea antes de repartir: el reparto pone en marcha el reloj si toca en el nivel 1.
          lightning_level = case when (v_res ->> 'maxLevel')::int >= 2
                                 then 1 + floor(random() * ((v_res ->> 'maxLevel')::int - 1))::int
-                                else 0 end
+                                else 0 end,
+         start_players = v_count
    where id = p_room;
+  -- Cada jugador juega la partida con el diseño de cartas que tenga equipado AHORA (si lo cambia
+  -- durante la partida, se aplica en la siguiente) y empieza sin cartas jugadas.
+  update public.room_players p
+     set cards_played = 0,
+         card_design = coalesce((select e.cosmetic_id from public.player_equipped e
+                                  where e.user_id = p.user_id and e.kind = 'card_design'), 'classic')
+   where p.room_id = p_room;
   perform game_private.deal(p_room);
   perform game_private.emit(p_room, 'game_start', v_uid,
     jsonb_build_object('level', 1, 'maxLevel', (v_res ->> 'maxLevel')::int));
@@ -1064,6 +1350,7 @@ begin
   end if;
 
   delete from public.hands where room_id = p_room and card = p_card;
+  update public.room_players set cards_played = cards_played + 1 where room_id = p_room and user_id = v_uid;
   -- Se ha jugado una carta: todos pueden volver a proponer shuriken.
   update public.rooms set pile = pile || jsonb_build_array(jsonb_build_object('c', p_card, 'p', v_uid)),
                           pile_at = now(), shuriken_blocked = '[]'::jsonb
@@ -1395,6 +1682,77 @@ begin
 end;
 $$;
 
+-- ── Economía (API) ── Ninguna recibe precios ni cantidades: todo sale de las tablas del servidor.
+
+-- Perfil del jugador (lo crea la primera vez: saldo 0 y el diseño clásico equipado).
+create or replace function public.get_my_profile()
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  perform game_private.ensure_player(v_uid);
+  return game_private.profile(v_uid);
+end;
+$$;
+
+-- Compra un cosmético con monedas. Todo o nada: se cobra, se apunta y se entrega, o no pasa nada.
+-- El monedero se bloquea (FOR UPDATE): dos pulsaciones seguidas se atienden de una en una y la
+-- segunda recibe ALREADY_OWNED en lugar de cobrar dos veces.
+create or replace function public.buy_cosmetic(p_cosmetic text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_coins int;
+  c public.cosmetics;
+begin
+  perform game_private.ensure_player(v_uid);
+  select coins into v_coins from public.player_wallets where user_id = v_uid for update;
+  select * into c from public.cosmetics where id = p_cosmetic;
+  if not found then raise exception 'COSMETIC_NOT_FOUND'; end if;
+  if exists (select 1 from public.player_cosmetics where user_id = v_uid and cosmetic_id = c.id) then
+    raise exception 'ALREADY_OWNED';
+  end if;
+  if c.unlock <> 'coins' or not c.is_available or c.price is null then raise exception 'NOT_FOR_SALE'; end if;
+  if v_coins < c.price then raise exception 'NOT_ENOUGH_COINS'; end if;
+  insert into public.player_cosmetics (user_id, cosmetic_id, source) values (v_uid, c.id, 'purchase');
+  perform game_private.add_coins(v_uid, -c.price, 'purchase', 'Compra: ' || c.name, null, c.id);
+  return game_private.profile(v_uid);
+end;
+$$;
+
+-- Equipa un cosmético que ya se posee (gratis y tantas veces como se quiera). Se aplica a las
+-- partidas que empiecen a partir de ahora.
+create or replace function public.equip_cosmetic(p_cosmetic text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_kind text;
+begin
+  perform game_private.ensure_player(v_uid);
+  select kind into v_kind from public.cosmetics where id = p_cosmetic;
+  if not found then raise exception 'COSMETIC_NOT_FOUND'; end if;
+  if not exists (select 1 from public.player_cosmetics where user_id = v_uid and cosmetic_id = p_cosmetic) then
+    raise exception 'NOT_OWNED';
+  end if;
+  insert into public.player_equipped (user_id, kind, cosmetic_id) values (v_uid, v_kind, p_cosmetic)
+  on conflict (user_id, kind) do update set cosmetic_id = excluded.cosmetic_id, updated_at = now();
+  return game_private.profile(v_uid);
+end;
+$$;
+
+-- Últimos movimientos de monedas del jugador.
+create or replace function public.get_my_coin_history()
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'amount', t.amount, 'balanceAfter', t.balance_after, 'kind', t.kind, 'reason', t.reason,
+           'cosmeticId', t.cosmetic_id, 'at', t.created_at) order by t.id desc), '[]'::jsonb)
+  from (select * from public.coin_transactions
+         where user_id = (select auth.uid()) order by id desc limit 30) t;
+$$;
+
 -- Señal de vida para la tarea automática de GitHub (.github/workflows/keepalive.yml):
 -- una consulta mínima cada pocos días evita que Supabase pause el proyecto gratuito por
 -- inactividad. No lee ni escribe nada del juego.
@@ -1428,7 +1786,11 @@ revoke all on function
   public.rematch(uuid),
   public.heartbeat(uuid),
   public.send_chat(uuid, text),
-  public.get_my_history()
+  public.get_my_history(),
+  public.get_my_profile(),
+  public.buy_cosmetic(text),
+  public.equip_cosmetic(text),
+  public.get_my_coin_history()
 from public, anon;
 
 revoke all on function public.ping() from public;
@@ -1454,7 +1816,11 @@ grant execute on function
   public.rematch(uuid),
   public.heartbeat(uuid),
   public.send_chat(uuid, text),
-  public.get_my_history()
+  public.get_my_history(),
+  public.get_my_profile(),
+  public.buy_cosmetic(text),
+  public.equip_cosmetic(text),
+  public.get_my_coin_history()
 to authenticated;
 
 -- ───────────────────────────── Tiempo real ─────────────────────────────

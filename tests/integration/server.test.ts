@@ -71,7 +71,7 @@ describe('privacidad de las cartas', () => {
     expect(snap.players.map((p) => p.cardsLeft)).toEqual([2, 2, 2]);
     const json = JSON.stringify(snap);
     expect(json).not.toContain('"hands"');
-    expect(Object.keys(snap.players[0]!).sort()).toEqual(['cardsLeft', 'id', 'lastSeenAt', 'name', 'ready', 'seat']);
+    expect(Object.keys(snap.players[0]!).sort()).toEqual(['cardDesign', 'cardsLeft', 'id', 'lastSeenAt', 'name', 'ready', 'seat']);
   });
 
   it('la señal de vida (ping) responde sin sesión y no da acceso a nada más', async () => {

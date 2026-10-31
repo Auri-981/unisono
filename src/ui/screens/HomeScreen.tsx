@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { t } from '../../i18n';
 import { onlineAvailable } from '../../net/supabase';
 import { Card } from '../components/Card';
-import { ComodinIcon, LifeIcon, LinkIcon, LogoMark } from '../components/Icons';
+import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon } from '../components/Icons';
+import { CoinBadge } from '../components/Resources';
+import { equippedCardDesign, refreshProfile, useProfile } from '../profile';
 
 interface Props {
   message: string | null;
@@ -11,13 +14,27 @@ interface Props {
   onTutorial: () => void;
   onSettings: () => void;
   onHistory: () => void;
+  onShop: () => void;
+  onCollection: () => void;
 }
 
 export function HomeScreen(p: Props) {
+  const { profile, loading } = useProfile();
+  const design = equippedCardDesign(profile);
+  useEffect(() => {
+    void refreshProfile();
+  }, []);
   return (
     <div className="home">
       {/* En el móvil este contenedor no existe a efectos de diseño (display: contents). */}
       <div className="home-main">
+        {onlineAvailable && (
+          <div className="home-topbar">
+            <button type="button" className="coin-link" onClick={p.onShop} aria-label={t('home.shop')}>
+              <CoinBadge coins={profile?.coins ?? null} loading={loading} />
+            </button>
+          </div>
+        )}
         <div className="home-hero">
           <LogoMark size={88} className="home-logo" />
           <h1 className="home-title">{t('app.name')}</h1>
@@ -42,6 +59,16 @@ export function HomeScreen(p: Props) {
           <button type="button" className="btn btn-ghost btn-large" onClick={p.onPractice}>
             {t('home.practice')}
           </button>
+          <div className="home-shop-row">
+            <button type="button" className="btn btn-secondary home-shop-btn" onClick={p.onShop} disabled={!onlineAvailable}>
+              <ShopIcon size={20} />
+              {t('home.shop')}
+            </button>
+            <button type="button" className="btn btn-secondary home-shop-btn" onClick={p.onCollection} disabled={!onlineAvailable}>
+              <CardsIcon size={20} />
+              {t('home.collection')}
+            </button>
+          </div>
         </nav>
 
         <footer className="home-footer">
@@ -66,9 +93,9 @@ export function HomeScreen(p: Props) {
       {/* Solo en pantallas anchas (ordenador): presentación del juego para llenar el espacio. */}
       <aside className="home-showcase" aria-label={t('home.showcase')}>
         <div className="home-showcase-table" aria-hidden>
-          <Card value={23} size="lg" />
-          <Card value={48} size="lg" />
-          <Card value={77} size="lg" />
+          <Card value={23} size="lg" design={design} />
+          <Card value={48} size="lg" design={design} />
+          <Card value={77} size="lg" design={design} />
         </div>
         <ul className="home-features">
           <li>

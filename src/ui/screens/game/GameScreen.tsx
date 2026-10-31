@@ -7,6 +7,7 @@ import { Card, CardBacks } from '../../components/Card';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { ChatIcon, ComodinIcon, ComodinKindIcon, CrownIcon, ExitIcon, HiddenHandIcon, LifeIcon } from '../../components/Icons';
 import { rewardText, upcomingReward } from '../../rewards';
+import { equippedCardDesign, useProfile } from '../../profile';
 import { Toast } from '../../components/Layout';
 import { ConnectionDot, Lives, ShieldOn } from '../../components/Resources';
 import { ChatSheet } from './ChatSheet';
@@ -36,6 +37,10 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const top = pile.at(-1);
   const previous = pile.at(-2);
   const chatEnabled = ctl.kind === 'online' && room.config.mode === 'friends';
+  // Diseño de cartas de cada jugador (fijado al empezar la partida). En práctica, el tuyo equipado.
+  const localDesign = equippedCardDesign(useProfile().profile);
+  const designOf = (id: string) => players.find((p) => p.id === id)?.cardDesign ?? (id === me ? localDesign : 'classic');
+  const myDesign = designOf(me);
   const unread = chatOpen ? 0 : Math.max(0, ctl.chat.length - seenChat);
 
   useEffect(() => {
@@ -209,13 +214,13 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
         </div>
         <div className="pile">
           {final ? (
-            <BlindPile snap={snap} clockOffset={ctl.clockOffset} />
+            <BlindPile snap={snap} clockOffset={ctl.clockOffset} designOf={designOf} />
           ) : (
             <>
-              {previous && <Card value={previous.c} size="xl" className="pile-previous" muted />}
+              {previous && <Card value={previous.c} size="xl" className="pile-previous" muted design={designOf(previous.p)} />}
               {top ? (
                 <div className="pile-top" key={`${room.level}-${pile.length}`}>
-                  <Card value={top.c} size="xl" />
+                  <Card value={top.c} size="xl" design={designOf(top.p)} />
                   <span className="pile-owner">{players.find((p) => p.id === top.p)?.name ?? ''}</span>
                 </div>
               ) : (
@@ -229,7 +234,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
             <span className="field-label">{t('game.discarded')}</span>
             <div className="revealed-cards">
               {revealed.map((r) => (
-                <Card key={`${r.c}`} value={r.c} size="xs" muted className={`revealed-${r.r}`} />
+                <Card key={`${r.c}`} value={r.c} size="xs" muted className={`revealed-${r.r}`} design={designOf(r.p)} />
               ))}
             </div>
           </div>
@@ -246,12 +251,12 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
               disabled={!playing || Boolean(vote) || pendingCard !== null}
               aria-label={`${t('game.play')} ${lowest}`}
             >
-              <Card value={lowest} size="xl" key={lowest} className="hand-lowest" />
+              <Card value={lowest} size="xl" key={lowest} className="hand-lowest" design={myDesign} />
             </button>
             {myHand.length > 1 && (
               <div className="hand-rest" aria-label={t('game.yourCards')}>
                 {myHand.slice(1).map((c) => (
-                  <Card key={c} value={c} size={myHand.length > 7 ? 'xs' : 'sm'} />
+                  <Card key={c} value={c} size={myHand.length > 7 ? 'xs' : 'sm'} design={myDesign} />
                 ))}
               </div>
             )}

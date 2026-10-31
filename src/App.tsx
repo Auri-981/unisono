@@ -13,6 +13,7 @@ import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
 import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
+import { CollectionScreen, ShopScreen } from './ui/screens/ShopScreens';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
 
 type Screen =
@@ -24,7 +25,9 @@ type Screen =
   | { name: 'practice'; bots: number; config: RoomConfig; run: number }
   | { name: 'tutorial' }
   | { name: 'settings' }
-  | { name: 'history' };
+  | { name: 'history' }
+  | { name: 'shop' }
+  | { name: 'collection' };
 
 function codeFromUrl(): string | undefined {
   try {
@@ -104,6 +107,8 @@ export function App() {
           onTutorial={() => setScreen({ name: 'tutorial' })}
           onSettings={() => setScreen({ name: 'settings' })}
           onHistory={() => setScreen({ name: 'history' })}
+          onShop={() => setScreen({ name: 'shop' })}
+          onCollection={() => setScreen({ name: 'collection' })}
         />
       );
     case 'create':
@@ -152,5 +157,9 @@ export function App() {
       return <SettingsScreen onBack={() => home()} />;
     case 'history':
       return <HistoryScreen onBack={() => home()} />;
+    case 'shop':
+      return <ShopScreen onBack={() => home()} onCollection={() => setScreen({ name: 'collection' })} />;
+    case 'collection':
+      return <CollectionScreen onBack={() => home()} onShop={() => setScreen({ name: 'shop' })} />;
   }
 }

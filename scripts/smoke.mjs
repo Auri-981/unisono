@@ -167,6 +167,25 @@ async function main() {
   const final = await b.rpc('get_room_state', { p_room: room });
   ok(final.room.status === 'won', `partida terminada en victoria (nivel ${final.room.level}/${final.room.maxLevel}, ${final.room.lives} vidas)`);
 
+  // Economía: la recompensa llega con el resultado, una sola vez, y se puede gastar en la tienda.
+  const reward = final.myReward;
+  ok(reward?.coins > 0 && reward.breakdown?.won === true, `monedas por la victoria: +${reward?.coins} (${JSON.stringify(reward?.breakdown)})`);
+  const again = await b.rpc('get_room_state', { p_room: room });
+  const profileB = await b.rpc('get_my_profile', {});
+  ok(again.myReward?.coins === reward?.coins && profileB.coins === reward?.balanceAfter, `saldo guardado en el servidor: ${profileB.coins}`);
+  ok(profileB.catalog.filter((c) => c.unlock === 'coins').map((c) => c.price).join(',') === '10,30,50', 'tienda: Galaxia 10, Neón 30, Esmeralda 50');
+  const fail = (p) => p.then(() => 'OK', (e) => e.message);
+  ok((await fail(b.rpc('equip_cosmetic', { p_cosmetic: 'neon' }))) === 'NOT_OWNED', 'no se puede equipar lo que no se tiene');
+  const bought = await b.rpc('buy_cosmetic', { p_cosmetic: 'galaxy' });
+  ok(bought.coins === profileB.coins - 10 && bought.owned.includes('galaxy'), `compra de Galaxia: ${profileB.coins} → ${bought.coins}`);
+  ok((await fail(b.rpc('buy_cosmetic', { p_cosmetic: 'galaxy' }))) === 'ALREADY_OWNED', 'no se puede comprar dos veces');
+  const equipped = await b.rpc('equip_cosmetic', { p_cosmetic: 'galaxy' });
+  ok(equipped.equipped.card_design === 'galaxy', 'Galaxia equipada');
+  await b.sb.from('player_wallets').update({ coins: 99999 }).eq('user_id', b.id);
+  const { error: giftErr } = await b.sb.from('player_cosmetics').insert({ user_id: b.id, cosmetic_id: 'emerald', source: 'purchase' });
+  const afterHack = await b.rpc('get_my_profile', {});
+  ok(afterHack.coins === bought.coins && Boolean(giftErr) && !afterHack.owned.includes('emerald'), 'no se pueden regalar monedas ni diseños desde el cliente');
+
   for (const p of players) await p.rpc('leave_room', { p_room: room }).catch(() => {});
   await b.sb.removeChannel(channel);
   for (const p of players) await p.sb.auth.signOut().catch(() => {});

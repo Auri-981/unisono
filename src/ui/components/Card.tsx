@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { designClass } from '../cosmetics';
 
 /**
  * Tono de la carta: de azul frío (1) a ámbar cálido (100), pasando por violeta y rosa.
@@ -15,12 +16,20 @@ interface CardProps {
   className?: string;
   muted?: boolean;
   label?: string;
+  /** Diseño de la carta (cosmético). Solo cambia el aspecto, nunca el valor ni el tamaño. */
+  design?: string | null;
 }
 
-export function Card({ value, size = 'md', className = '', muted, label }: CardProps) {
+export function Card({ value, size = 'md', className = '', muted, label, design }: CardProps) {
   const style = { '--h': cardHue(value) } as CSSProperties;
+  const skin = designClass(design);
   return (
-    <div className={`card card-${size} ${muted ? 'card-muted' : ''} ${className}`} style={style} aria-label={label ?? `Carta ${value}`}>
+    <div
+      className={`card card-${size} ${skin} ${muted ? 'card-muted' : ''} ${className}`}
+      style={style}
+      aria-label={label ?? `Carta ${value}`}
+    >
+      {skin && <span className="card-art" aria-hidden />}
       <span className="card-corner card-corner-tl" aria-hidden>
         {value}
       </span>

@@ -121,6 +121,33 @@ export const LightningIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Moneda del juego: un disco dorado con la marca de la carta. */
+export const CoinIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="12" cy="12" r="9.5" fill="var(--coin, #f5c84c)" />
+    <circle cx="12" cy="12" r="7.2" fill="none" stroke="var(--coin-dark, #b8861f)" strokeWidth="1.4" />
+    <rect x="10" y="8.2" width="4" height="7.6" rx="1" fill="var(--coin-dark, #b8861f)" opacity="0.85" />
+    <path d="M7.6 7.4a6.5 6.5 0 0 1 4.4-2" stroke="#fff7d6" strokeWidth="1.3" strokeLinecap="round" opacity="0.8" />
+  </svg>
+);
+
+/** Tienda: una bolsa. */
+export const ShopIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M5 8.5h14l-1.2 11a1.6 1.6 0 0 1-1.6 1.5H7.8a1.6 1.6 0 0 1-1.6-1.5L5 8.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M9 10.5V7a3 3 0 0 1 6 0v3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+/** Colección de cartas: tres cartas en abanico. */
+export const CardsIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="3.5" y="6" width="9" height="13" rx="1.8" transform="rotate(-12 8 12.5)" stroke="currentColor" strokeWidth="1.6" opacity="0.6" />
+    <rect x="11.5" y="6" width="9" height="13" rx="1.8" transform="rotate(12 16 12.5)" stroke="currentColor" strokeWidth="1.6" opacity="0.6" />
+    <rect x="7.5" y="4" width="9" height="14" rx="1.8" fill="var(--surface, #1b2040)" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
 /** Ronda final: dos espadas cruzadas (el «jefe final»). */
 export const FinalIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>

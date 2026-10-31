@@ -25,6 +25,8 @@
   --comodin: #f5b971;
   --lightning: #ffd84d;
   --final: #ff5c8a;
+  --coin: #f5c84c;
+  --coin-dark: #b8861f;
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 10px 30px rgb(0 0 0 / 0.35);
@@ -3682,4 +3684,771 @@ html {
   place-items: center;
   padding: 6px 0;
   color: var(--final);
+}
+
+/* ───────────── Diseños de cartas (cosméticos) ─────────────
+   Solo cambian el aspecto: tamaño, forma y número son los de siempre. Cada diseño redefine el
+   fondo, el marco, la decoración (.card-art y ::after) y la tipografía del número. */
+
+.card > .card-art {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.card[class*='design-'] .card-value,
+.card[class*='design-'] .card-corner {
+  position: relative;
+  z-index: 1;
+}
+
+.card[class*='design-'] .card-corner {
+  position: absolute;
+}
+
+/* Galaxia: espacio profundo con nebulosas del color del número y estrellas que titilan. */
+.card.design-galaxy {
+  background:
+    radial-gradient(65% 45% at 22% 18%, hsl(calc(var(--h) + 30) 85% 62% / 0.5), transparent 70%),
+    radial-gradient(60% 50% at 82% 88%, hsl(190 90% 55% / 0.32), transparent 70%),
+    radial-gradient(40% 30% at 70% 30%, hsl(300 80% 60% / 0.18), transparent 70%),
+    radial-gradient(130% 100% at 50% 45%, #211a52 0%, #0c0a2a 55%, #04030e 100%);
+  color: #f7f3ff;
+  border: 2px solid rgb(200 182 255 / 0.6);
+  box-shadow:
+    0 0 0 4px rgb(140 110 255 / 0.14),
+    0 0 22px rgb(140 110 255 / 0.28),
+    0 10px 24px rgb(0 0 0 / 0.5);
+}
+
+.card.design-galaxy::after {
+  border-color: rgb(220 210 255 / 0.18);
+}
+
+.design-galaxy > .card-art {
+  background:
+    radial-gradient(1.2px 1.2px at 12% 22%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 30% 70%, #fff 99%, transparent),
+    radial-gradient(1.6px 1.6px at 78% 14%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 88% 52%, #dcd4ff 99%, transparent),
+    radial-gradient(1.3px 1.3px at 58% 86%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 18% 92%, #cfe9ff 99%, transparent),
+    radial-gradient(1px 1px at 46% 10%, #fff 99%, transparent),
+    radial-gradient(1.4px 1.4px at 66% 60%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 8% 50%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 92% 80%, #fff 99%, transparent);
+  animation: galaxy-twinkle 4s ease-in-out infinite alternate;
+}
+
+/* Un pequeño planeta con anillo en la esquina. */
+.design-galaxy > .card-art::after {
+  content: '';
+  position: absolute;
+  right: 14%;
+  top: 11%;
+  width: 13%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe2b8, #c77d4f 60%, #5a2d3a);
+  box-shadow: 0 0 0 0.9px rgb(255 226 184 / 0), 0 0 8px rgb(255 190 140 / 0.35);
+}
+
+.design-galaxy > .card-art::before {
+  content: '';
+  position: absolute;
+  right: calc(14% - 6%);
+  top: calc(11% + 5%);
+  width: 25%;
+  height: 4%;
+  border-radius: 50%;
+  border: 1px solid rgb(255 226 184 / 0.7);
+  transform: rotate(-18deg);
+}
+
+@keyframes galaxy-twinkle {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.design-galaxy .card-value {
+  text-shadow:
+    0 0 2px #fff,
+    0 0 14px hsl(calc(var(--h) + 30) 95% 72% / 0.95),
+    0 0 28px hsl(calc(var(--h) + 30) 95% 65% / 0.6);
+}
+
+.design-galaxy .card-corner {
+  color: #e6dcff;
+  opacity: 0.85;
+}
+
+/* Neón: rejilla tecnológica, borde eléctrico y número luminoso del color de la carta. */
+.card.design-neon {
+  --neon: hsl(var(--h) 100% 64%);
+  background:
+    linear-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px) 0 0 / 100% 11px,
+    linear-gradient(90deg, rgb(255 255 255 / 0.06) 1px, transparent 1px) 0 0 / 11px 100%,
+    radial-gradient(110% 65% at 50% 112%, hsl(var(--h) 100% 55% / 0.42), transparent 62%),
+    linear-gradient(180deg, #0d0828, #05030f);
+  color: #fff;
+  border: 2px solid var(--neon);
+  box-shadow:
+    0 0 6px var(--neon),
+    0 0 18px hsl(var(--h) 100% 60% / 0.5),
+    inset 0 0 14px hsl(var(--h) 100% 60% / 0.35),
+    0 10px 24px rgb(0 0 0 / 0.5);
+  font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+/* Esquinas en forma de corchete (en lugar del marco interior del clásico). */
+.card.design-neon::after {
+  inset: 6px;
+  border: none;
+  border-radius: 3px;
+  background:
+    linear-gradient(var(--neon), var(--neon)) left top / 12px 2px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) left top / 2px 12px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) right top / 12px 2px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) right top / 2px 12px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) left bottom / 12px 2px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) left bottom / 2px 12px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) right bottom / 12px 2px no-repeat,
+    linear-gradient(var(--neon), var(--neon)) right bottom / 2px 12px no-repeat;
+  opacity: 0.9;
+}
+
+/* Dos trazos diagonales (magenta y cian) cruzando la carta. */
+.design-neon > .card-art {
+  background: linear-gradient(
+    128deg,
+    transparent 40%,
+    rgb(255 64 200 / 0.28) 40% 41.5%,
+    transparent 41.5% 57%,
+    rgb(64 232 255 / 0.22) 57% 58%,
+    transparent 58%
+  );
+}
+
+.design-neon .card-value {
+  font-weight: 700;
+  letter-spacing: -0.06em;
+  text-shadow:
+    0 0 3px #fff,
+    0 0 10px var(--neon),
+    0 0 22px var(--neon);
+}
+
+.design-neon .card-corner {
+  color: var(--neon);
+  opacity: 1;
+  font-size: 0.66rem;
+}
+
+/* Esmeralda: terciopelo verde con rombos, doble filete dorado y número de oro. */
+.card.design-emerald {
+  --gold: #e9c66c;
+  background:
+    repeating-linear-gradient(45deg, rgb(233 198 108 / 0.07) 0 1.5px, transparent 1.5px 11px),
+    repeating-linear-gradient(-45deg, rgb(233 198 108 / 0.07) 0 1.5px, transparent 1.5px 11px),
+    radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.14), transparent 70%),
+    radial-gradient(130% 100% at 30% 15%, #229566 0%, #10603f 48%, #063322 100%);
+  color: var(--gold);
+  border: 2px solid #cfa64c;
+  box-shadow:
+    0 0 0 1px #5e4410,
+    0 0 0 4px rgb(233 198 108 / 0.16),
+    0 10px 24px rgb(0 0 0 / 0.5);
+}
+
+/* Doble filete dorado interior. */
+.card.design-emerald::after {
+  inset: 5px;
+  border: 1px solid rgb(233 198 108 / 0.75);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 3px rgb(6 51 34 / 0.85),
+    inset 0 0 0 4px rgb(233 198 108 / 0.45);
+}
+
+/* Rombos dorados arriba y abajo, como un broche. */
+.design-emerald > .card-art::before,
+.design-emerald > .card-art::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 9%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #fff1bf, var(--gold) 50%, #9a6d1c);
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 0 0 6px rgb(233 198 108 / 0.5);
+}
+
+.design-emerald > .card-art::before {
+  top: 2.5%;
+}
+
+.design-emerald > .card-art::after {
+  bottom: 2.5%;
+}
+
+.design-emerald .card-value {
+  font-weight: 700;
+  color: var(--gold);
+  background: linear-gradient(180deg, #fff6d2 0%, #ecc86d 45%, #b07f24 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.35));
+}
+
+.design-emerald .card-corner {
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+/* En las cartas pequeñas (manos, descartes) se quitan los detalles finos: solo legibilidad. */
+.card-xs.design-galaxy > .card-art::before,
+.card-xs.design-galaxy > .card-art::after,
+.card-sm.design-galaxy > .card-art::before,
+.card-sm.design-galaxy > .card-art::after,
+.card-xs.design-emerald > .card-art,
+.card-xs.design-neon > .card-art {
+  display: none;
+}
+
+/* ───────────── Monedas, tienda y colección ───────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.coin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 7px;
+  border-radius: 999px;
+  border: 1px solid rgb(245 200 76 / 0.4);
+  background: linear-gradient(180deg, rgb(245 200 76 / 0.16), rgb(245 200 76 / 0.06));
+  color: var(--coin);
+  font-family: var(--font-num);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.coin-badge svg {
+  filter: drop-shadow(0 1px 3px rgb(245 200 76 / 0.45));
+}
+
+/* Cada vez que cambia el saldo, la cifra hace un «pop». */
+.coin-badge-value {
+  min-width: 1ch;
+  font-variant-numeric: tabular-nums;
+  animation: pop 0.45s ease;
+}
+
+.coin-link {
+  border: none;
+  background: none;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.home {
+  position: relative;
+}
+
+.home-topbar {
+  position: absolute;
+  top: calc(var(--safe-top) + 12px);
+  right: calc(var(--safe-right) + 16px);
+  z-index: 2;
+}
+
+.home-shop-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.home-shop-btn {
+  min-height: 46px;
+  padding: 8px 10px;
+}
+
+.home-shop-btn svg {
+  color: var(--coin);
+  flex: none;
+}
+
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--coin);
+  font-family: var(--font-num);
+  font-size: 1.15rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-owned,
+.badge-equipped {
+  align-self: flex-start;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  background: rgb(111 220 170 / 0.14);
+  color: var(--success);
+}
+
+.badge-equipped {
+  background: rgb(245 185 113 / 0.16);
+  color: var(--warm);
+}
+
+/* Tres cartas de ejemplo en abanico. */
+.design-fan {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 10px 0 4px;
+}
+
+.design-fan .card {
+  margin: 0 -10px;
+  transition: transform 0.25s ease;
+}
+
+.design-fan .card:nth-child(1) {
+  transform: rotate(-9deg) translateY(4px);
+}
+
+.design-fan .card:nth-child(3) {
+  transform: rotate(9deg) translateY(4px);
+}
+
+.design-fan .card:nth-child(2) {
+  z-index: 1;
+}
+
+.design-fan-lg .card {
+  margin: 0 -8px;
+}
+
+.page-shop .page-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shop-intro {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(245 200 76 / 0.28);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(245 200 76 / 0.12), transparent 60%),
+    var(--surface);
+}
+
+.shop-intro p {
+  margin: 0;
+}
+
+.shop-intro-icon {
+  color: var(--coin);
+  margin-top: 2px;
+}
+
+.shop-how {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.shop-how summary {
+  cursor: pointer;
+  color: var(--coin);
+  font-weight: 600;
+}
+
+.shop-how ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-grid,
+.collection-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+}
+
+.shop-item,
+.collection-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.shop-item.is-owned {
+  border-color: rgb(111 220 170 / 0.35);
+}
+
+.shop-item-preview {
+  border: none;
+  padding: 14px 0 12px;
+  background:
+    radial-gradient(80% 90% at 50% 100%, rgb(126 166 255 / 0.14), transparent 70%),
+    var(--surface-2);
+  cursor: pointer;
+}
+
+.shop-item-preview:hover .card:nth-child(1),
+.shop-item-preview:focus-visible .card:nth-child(1) {
+  transform: rotate(-14deg) translate(-6px, 2px);
+}
+
+.shop-item-preview:hover .card:nth-child(3),
+.shop-item-preview:focus-visible .card:nth-child(3) {
+  transform: rotate(14deg) translate(6px, 2px);
+}
+
+.shop-item-body,
+.collection-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+  flex: 1;
+}
+
+.shop-item-body p {
+  margin: 0;
+  flex: 1;
+}
+
+.shop-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shop-item-name {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 1.3rem;
+}
+
+.shop-buy {
+  min-height: 44px;
+}
+
+.shop-missing {
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Carga: tres huecos con un brillo que pasa. */
+.shop-skeleton {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+}
+
+.shop-skeleton-item {
+  height: 250px;
+  border-radius: var(--radius);
+  background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%) 0 0 / 300% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -300% 0;
+  }
+}
+
+.shop-state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+/* Vista ampliada de un diseño (7, 42 y 96). */
+.overlay-preview .overlay-card {
+  gap: 12px;
+}
+
+.preview-card .design-fan {
+  padding: 12px 0 10px;
+}
+
+.preview-kicker {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--coin);
+  animation: pop 0.5s ease;
+}
+
+.preview-card.is-unlocked .design-fan {
+  animation: unlock 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+
+@keyframes unlock {
+  0% {
+    transform: scale(0.8);
+    filter: brightness(2);
+  }
+  100% {
+    transform: none;
+    filter: none;
+  }
+}
+
+.preview-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+}
+
+.preview-actions .btn svg {
+  margin-left: 2px;
+}
+
+/* Colección: el equipado, resaltado. */
+.collection-item {
+  padding-top: 10px;
+  background:
+    radial-gradient(80% 60% at 50% 0%, rgb(126 166 255 / 0.1), transparent 70%),
+    var(--surface);
+}
+
+.collection-item.is-equipped {
+  border-color: rgb(245 185 113 / 0.6);
+  box-shadow: 0 0 0 1px rgb(245 185 113 / 0.35), 0 8px 24px rgb(245 185 113 / 0.12);
+}
+
+.collection-item.just-equipped .design-fan {
+  animation: pop 0.45s ease;
+}
+
+.collection-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px dashed rgb(245 200 76 / 0.45);
+  background: rgb(245 200 76 / 0.06);
+  color: var(--coin);
+  font-weight: 600;
+}
+
+/* Movimientos de monedas. */
+.movements ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.movements li {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+.movement-amount {
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.movement-amount.is-plus {
+  color: var(--coin);
+}
+
+.movement-amount.is-minus {
+  color: var(--muted);
+}
+
+.movement-reason {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recompensa en la pantalla final. */
+.end-rewards {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.end-levels {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.end-levels-value {
+  font-family: var(--font-num);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.coin-reward {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(245 200 76 / 0.35);
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgb(245 200 76 / 0.16), transparent 70%),
+    var(--surface-2);
+  animation: rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.coin-reward.is-big {
+  border-color: rgb(245 200 76 / 0.6);
+  box-shadow: 0 0 28px rgb(245 200 76 / 0.18);
+}
+
+.coin-reward-total {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--coin);
+  font-family: var(--font-num);
+  font-size: 2.3rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgb(245 200 76 / 0.35);
+}
+
+.coin-reward.is-big .coin-reward-total {
+  font-size: 2.8rem;
+}
+
+.coin-reward-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.9rem;
+}
+
+.coin-reward-lines li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.coin-reward-lines strong {
+  color: var(--coin);
+  font-variant-numeric: tabular-nums;
+}
+
+.coin-reward-lines .is-victory span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.coin-reward-balance {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Unas monedas que saltan una vez al aparecer (breve; nada que esperar). */
+.coin-reward-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.coin-spark {
+  position: absolute;
+  left: 50%;
+  top: 32px;
+  opacity: 0;
+  animation: coin-spark 1s ease-out calc(var(--i) * 70ms) forwards;
+}
+
+@keyframes coin-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + (var(--i) - 3.5) * 22px), -46px) scale(1) rotate(calc((var(--i) - 3.5) * 25deg));
+  }
+}
+
+/* Con sitio (ordenador), los tres diseños en una fila. */
+@media (min-width: 720px) {
+  .shop-grid,
+  .shop-skeleton {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .collection-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }

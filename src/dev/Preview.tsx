@@ -3,6 +3,7 @@
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
  *      | final | finalpeek | finalalert | finalnext | finallost
+ *      | shop | shoprich | collection | designs | wonreward | lostreward | noreward
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -10,6 +11,34 @@ import * as E from '../game/engine';
 import { seededRng } from '../game/testing';
 import { GameScreen } from '../ui/screens/game/GameScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
+import { CollectionScreen, ShopScreen } from '../ui/screens/ShopScreens';
+import type { MatchReward } from '../game/types';
+import type { Profile } from '../net/api';
+import { previewProfile } from '../ui/profile';
+
+/** Perfil de ejemplo (shop: 34 monedas y Galaxia comprada · shoprich: 120 y nada comprado). */
+function demoProfile(kind: string): Profile {
+  const rich = kind === 'shoprich';
+  return {
+    coins: rich ? 120 : 34,
+    equipped: { card_design: rich ? 'classic' : 'galaxy' },
+    owned: rich ? ['classic'] : ['classic', 'galaxy'],
+    catalog: [
+      { id: 'classic', kind: 'card_design', name: 'Clásico', description: 'El diseño de siempre: papel cálido y el color de cada número.', price: null, unlock: 'default', available: true },
+      { id: 'galaxy', kind: 'card_design', name: 'Galaxia', description: 'Cartas llegadas del espacio profundo: nebulosas, estrellas y polvo cósmico.', price: 10, unlock: 'coins', available: true },
+      { id: 'neon', kind: 'card_design', name: 'Neón', description: 'Rejilla futurista, bordes eléctricos y números que brillan en la oscuridad.', price: 30, unlock: 'coins', available: true },
+      { id: 'emerald', kind: 'card_design', name: 'Esmeralda', description: 'Terciopelo verde, filigrana dorada y acabado de joya. El más exclusivo.', price: 50, unlock: 'coins', available: true },
+    ],
+    rewards: { perLevel: 1, cardsPerCoin: 2, participation: 2, victoryCardsPerCoin: 4, minCardsPlayed: 1 },
+  };
+}
+
+/** Recompensa de ejemplo para la pantalla final. */
+const DEMO_REWARD: Record<string, MatchReward | null> = {
+  wonreward: { coins: 118, balanceBefore: 34, balanceAfter: 152, breakdown: { players: 4, maxLevel: 8, levelsCompleted: 8, won: true, participation: 2, levels: 80, victory: 36, total: 118 } },
+  lostreward: { coins: 22, balanceBefore: 34, balanceAfter: 56, breakdown: { players: 4, maxLevel: 8, levelsCompleted: 3, won: false, participation: 2, levels: 20, victory: 0, total: 22 } },
+  noreward: null,
+};
 
 const NOW = Date.now();
 const noop = async () => {};
@@ -152,6 +181,17 @@ function build(kind: string): E.EngineState {
       }
     }
   }
+  if (kind === 'designs') {
+    // Cada jugador con su diseño: tu mano en Galaxia; en la mesa, la de Ainhoa (Esmeralda) y la de Marcos (Neón).
+    step(E.playCard(s, 'b', 40, NOW));
+    s.revealed = [];
+  }
+  if (kind === 'wonreward' || kind === 'lostreward' || kind === 'noreward') {
+    s.status = kind === 'wonreward' ? 'won' : 'lost';
+    if (kind === 'wonreward') s.level = s.maxLevel;
+    s.recentEvents = [];
+    s.lastEvent = null;
+  }
   if (kind === 'won') {
     s.status = 'won';
     s.level = s.maxLevel;
@@ -160,10 +200,21 @@ function build(kind: string): E.EngineState {
 }
 
 export function Preview({ kind }: { kind: string }) {
+  if (kind === 'shop' || kind === 'shoprich' || kind === 'collection') {
+    previewProfile(demoProfile(kind));
+    return kind === 'collection' ? <CollectionScreen onBack={noop} onShop={noop} /> : <ShopScreen onBack={noop} onCollection={noop} />;
+  }
+  previewProfile(demoProfile('shop'));
   const s = build(kind);
+  const snapshot = E.toSnapshot(s, 'me', NOW);
+  if (kind === 'designs') {
+    const designs: Record<string, string> = { me: 'galaxy', a: 'classic', b: 'neon', c: 'emerald' };
+    for (const p of snapshot.players) p.cardDesign = designs[p.id];
+  }
+  if (kind in DEMO_REWARD) snapshot.myReward = DEMO_REWARD[kind];
   const ctl: RoomController = {
     kind: 'online',
-    snapshot: E.toSnapshot(s, 'me', NOW),
+    snapshot,
     connection: 'online',
     onlineIds: new Set(['me', 'a', 'c']),
     clockOffset: 0,
