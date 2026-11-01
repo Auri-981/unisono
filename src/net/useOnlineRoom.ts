@@ -9,6 +9,10 @@
  *   - al volver a primer plano o recuperar la red,
  *   - en cada heartbeat (cada 15 s) si la versión del servidor es mayor,
  *   - con un sondeo de respaldo mientras el canal no esté conectado.
+ * Expulsiones: el expulsado deja de ser miembro y ya no recibe las señales de la sala (las
+ * filtra la seguridad del servidor), así que el anfitrión le avisa además por un mensaje
+ * directo del canal. Ese mensaje solo hace que el expulsado vuelva a pedir la foto: es el
+ * servidor quien le contesta que ya no es miembro, así que un mensaje falso no saca a nadie.
  * Una foto con versión menor que la actual se descarta (nunca se retrocede).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,6 +39,7 @@ export function useOnlineRoom(
   const [busy, setBusy] = useState(false);
 
   const snapRef = useRef<RoomSnapshot | null>(initial);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const exitedRef = useRef(false);
   const onExitRef = useRef(onExit);
   onExitRef.current = onExit;
@@ -122,12 +127,16 @@ export function useOnlineRoom(
               : [...prev.slice(-99), { id: m.id, userId: m.user_id, name: m.name, body: m.body, createdAt: m.created_at }],
           );
         })
+        .on('broadcast', { event: 'kicked' }, ({ payload }) => {
+          if ((payload as { target?: string } | undefined)?.target === uid) void refresh();
+        })
         .on('presence', { event: 'sync' }, () => {
           if (channel) setOnlineIds(new Set(Object.keys(channel.presenceState())));
         })
         .subscribe((status) => {
           if (cancelled) return;
           if (status === 'SUBSCRIBED') {
+            channelRef.current = channel;
             setConnection('online');
             void channel?.track({ since: Date.now() });
             void refresh();
@@ -152,6 +161,7 @@ export function useOnlineRoom(
 
     return () => {
       cancelled = true;
+      channelRef.current = null;
       if (channel) void getSupabase().removeChannel(channel);
     };
   }, [roomId, refresh]);
@@ -224,7 +234,12 @@ export function useOnlineRoom(
       setLobbyReady: (ready) => run(() => api.setLobbyReady(roomId, ready)),
       updateConfig: (config: RoomConfig) => run(() => api.updateConfig(roomId, config)),
       startGame: () => run(() => api.startGame(roomId)),
-      kick: (target) => run(() => api.kick(roomId, target)),
+      kick: (target) =>
+        run(async () => {
+          const snap = await api.kick(roomId, target);
+          void channelRef.current?.send({ type: 'broadcast', event: 'kicked', payload: { target } }).catch(() => {});
+          return snap;
+        }),
       rematch: () => run(() => api.rematch(roomId)),
       sendChat: (body) => run(() => api.sendChat(roomId, body)),
       leave: async () => {
