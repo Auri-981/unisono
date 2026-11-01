@@ -364,9 +364,9 @@ function EndRewards({ ctl, snap }: { ctl: RoomController; snap: RoomSnapshot }) 
   );
 }
 
-/** Cuenta de 0 a `to` en menos de un segundo (al instante si se reduce el movimiento). */
+/** Cuenta de 0 a `to` en menos de un segundo (al instante con «Reducir movimiento» de Ajustes). */
 function CountUp({ to }: { to: number }) {
-  const reduced = getPrefs().reducedMotion || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const reduced = getPrefs().reducedMotion;
   const [n, setN] = useState(reduced ? to : 0);
   useEffect(() => {
     if (reduced) {

@@ -2385,28 +2385,24 @@ h3 {
   }
 }
 
-/* Menos movimiento (ajuste del móvil, que muchos Samsung activan solos al ahorrar batería, o el
-   de Ajustes): las animaciones terminan al instante. Excepciones que dan información y no
-   deben desaparecer: el número de la cuenta atrás (su animación acaba invisible, así que va
-   sin animar) y la barra del vistazo de la ronda final (sigue corriendo su tiempo real). */
+/* «Reducir movimiento» del sistema: muchos Android (Samsung en ahorro de batería) lo activan
+   solos, así que no se quita todo, solo el movimiento fuerte: la sacudida al fallar, el
+   destello del relámpago y lo que flota o late sin parar. Las entradas cortas y los fundidos
+   se quedan, para que la app se vea igual en todos los móviles. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  .countdown-number {
+  .game-shake .table,
+  .lightning-flash,
+  .home-logo,
+  .home-showcase-table .card,
+  .side-decor-card {
     animation: none !important;
-  }
-
-  .blind-timer {
-    animation-duration: var(--peek-ms, 1s) !important;
   }
 }
 
+/* «Reducir movimiento» de Ajustes (lo elige el jugador): sin animaciones. Excepciones que dan
+   información y no deben desaparecer: el número de la cuenta atrás (su animación acaba
+   invisible, así que va sin animar) y la barra del vistazo de la ronda final (sigue corriendo
+   su tiempo real). */
 .reduce-motion *,
 .reduce-motion *::before,
 .reduce-motion *::after {
