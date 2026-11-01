@@ -3181,9 +3181,10 @@ html {
 
 /* ───────────── Ronda relámpago ───────────── */
 
-/* Marco de las rondas especiales: un resplandor fijo sobre los bordes de toda la pantalla
-   (no de la columna del juego). Es ancho a propósito: las esquinas redondeadas del móvil
-   (iPhone) recortan los bordes, y una línea fina apenas se veía. No captura toques. */
+/* Marco fino de las rondas especiales, por los bordes de toda la pantalla. No captura toques.
+   En móviles y tabletas las esquinas se redondean: la pantalla del iPhone es muy curva y
+   recortaba las esquinas de un marco recto. Un radio algo mayor que el de la pantalla
+   solo mete la curva un poco hacia dentro; uno menor dejaría las esquinas cortadas. */
 .game-lightning::after,
 .game-final::after {
   content: '';
@@ -3191,10 +3192,16 @@ html {
   inset: 0;
   pointer-events: none;
   z-index: 4;
+  border-radius: var(--screen-radius, 0);
   box-shadow:
-    inset 0 0 0 3px rgb(var(--frame) / 0.55),
-    inset 0 0 22px 2px rgb(var(--frame) / 0.4),
-    inset 0 0 80px rgb(var(--frame) / 0.14);
+    inset 0 0 0 2px rgb(var(--frame) / 0.3),
+    inset 0 0 60px rgb(var(--frame) / 0.08);
+}
+
+@media (pointer: coarse) {
+  .game {
+    --screen-radius: 62px;
+  }
 }
 
 /* Durante la ronda, un marco dorado. */
@@ -3326,10 +3333,10 @@ html {
 @keyframes lightning-alarm {
   0%,
   100% {
-    opacity: 0.55;
+    box-shadow: inset 0 0 0 2px rgb(255 122 122 / 0.25), inset 0 0 40px rgb(255 122 122 / 0.05);
   }
   50% {
-    opacity: 1;
+    box-shadow: inset 0 0 0 2px rgb(255 122 122 / 0.6), inset 0 0 70px rgb(255 122 122 / 0.15);
   }
 }
 
