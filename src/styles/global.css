@@ -850,22 +850,6 @@ h3 {
   gap: 14px;
 }
 
-.config-summary {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 6px 12px;
-  margin: 0;
-  font-size: 0.92rem;
-}
-
-.config-summary dt {
-  color: var(--muted);
-}
-
-.config-summary dd {
-  margin: 0;
-}
-
 .reward-table {
   display: flex;
   flex-direction: column;
@@ -4450,5 +4434,206 @@ html {
   }
   .collection-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ───────────── Configuración vista por quien no es anfitrión ───────────── */
+
+.config-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Los tres números que más importan, grandes. */
+.config-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.config-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(90% 80% at 50% 0%, rgb(126 166 255 / 0.12), transparent 70%),
+    var(--surface-2);
+}
+
+.config-stat-icon {
+  margin-bottom: 2px;
+}
+
+.stat-levels {
+  color: var(--cool);
+}
+
+.stat-lives {
+  color: var(--danger);
+}
+
+.stat-vistazos {
+  color: var(--warm);
+}
+
+.config-stat-value {
+  font-family: var(--font-num);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.config-stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Cada opción en una ficha con su icono. */
+.config-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.config-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'icon label'
+    'icon value'
+    'icon hint';
+  column-gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+/* La última (si queda sola) ocupa toda la fila. */
+.config-tile:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.config-tile-icon {
+  grid-area: icon;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgb(126 166 255 / 0.12);
+  color: var(--cool);
+}
+
+.config-tile-label {
+  grid-area: label;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.config-tile-value {
+  grid-area: value;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.config-tile-hint {
+  grid-area: hint;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.25;
+}
+
+.tile-inline-life {
+  color: var(--danger);
+}
+
+.tile-inline-comodin {
+  color: var(--warm);
+}
+
+/* Recompensas nivel a nivel. */
+.config-rewards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reward-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reward-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+
+.reward-chip-level {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.reward-chip-prize {
+  display: inline-flex;
+  gap: 6px;
+  font-weight: 700;
+}
+
+/* Premios de niveles que no se jugarán con esta configuración. */
+.reward-chip.is-out {
+  opacity: 0.4;
+}
+
+.config-lock {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.config-lock svg {
+  color: var(--warm);
+}
+
+@media (max-width: 340px) {
+  .config-tiles {
+    grid-template-columns: 1fr;
   }
 }

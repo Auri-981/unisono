@@ -155,11 +155,13 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
 
       <section className="panel lobby-config">
         <h2 className="panel-title">{t('lobby.config')}</h2>
-        <p className="muted small">{t('lobby.summary', { levels: res.maxLevel, lives: res.lives, shurikens: res.shurikens })}</p>
         {isHost ? (
-          <ConfigEditor config={draft} onChange={changeConfig} disabled={ctl.busy} playerCount={Math.max(2, players.length)} />
+          <>
+            <p className="muted small">{t('lobby.summary', { levels: res.maxLevel, lives: res.lives, shurikens: res.shurikens })}</p>
+            <ConfigEditor config={draft} onChange={changeConfig} disabled={ctl.busy} playerCount={Math.max(2, players.length)} />
+          </>
         ) : (
-          <ConfigSummary config={room.config} playerCount={Math.max(2, players.length)} />
+          <ConfigSummary config={room.config} playerCount={Math.max(2, players.length)} hostName={host?.name ?? ''} />
         )}
       </section>
 

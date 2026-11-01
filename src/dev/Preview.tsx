@@ -3,7 +3,7 @@
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
  *      | final | finalpeek | finalalert | finalnext | finallost
- *      | shop | shoprich | collection | designs | wonreward | lostreward | noreward
+ *      | lobbyguest | shop | shoprich | collection | designs | wonreward | lostreward | noreward
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -49,8 +49,10 @@ function build(kind: string): E.EngineState {
     const r = E.addPlayer(s, id, name, NOW);
     if (r.ok) s = r.state;
   }
-  if (kind === 'lobby') {
+  if (kind === 'lobby' || kind === 'lobbyguest') {
     s.players[1]!.ready = true;
+    // lobbyguest: la sala vista por quien no es anfitrión (Lucía crea la sala).
+    if (kind === 'lobbyguest') s.hostId = 'a';
     return s;
   }
   for (const p of s.players) p.ready = true;
@@ -238,5 +240,5 @@ export function Preview({ kind }: { kind: string }) {
       sendChat: noop,
     },
   };
-  return kind === 'lobby' ? <LobbyScreen ctl={ctl} /> : <GameScreen ctl={ctl} onExit={() => {}} />;
+  return kind === 'lobby' || kind === 'lobbyguest' ? <LobbyScreen ctl={ctl} /> : <GameScreen ctl={ctl} onExit={() => {}} />;
 }

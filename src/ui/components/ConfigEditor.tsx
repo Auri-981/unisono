@@ -1,8 +1,22 @@
-import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, levelsToPlay, normalizeConfig, presetFor, rewardTable } from '../../config/gameConfig';
+import type { ReactNode } from 'react';
+import { CONFIG_LIMITS, MAX_PLAYERS, MIN_PLAYERS, normalizeConfig, presetFor, rewardTable, startingResources } from '../../config/gameConfig';
 import { t } from '../../i18n';
-import { LIFE_SYMBOL, COMODIN_SYMBOL, rewardListText, rewardPresetLabel } from '../rewards';
+import { LIFE_SYMBOL, COMODIN_SYMBOL, rewardListText } from '../rewards';
 import type { Reward, RoomConfig } from '../../game/types';
-import { CloseIcon, MinusIcon, PlusIcon } from './Icons';
+import {
+  ChatIcon,
+  CloseIcon,
+  ComodinIcon,
+  CrownIcon,
+  DifficultyIcon,
+  LevelsIcon,
+  LifeIcon,
+  MinusIcon,
+  OrderIcon,
+  PlusIcon,
+  TimerIcon,
+  VistazoIcon,
+} from './Icons';
 
 interface Props {
   config: RoomConfig;
@@ -315,31 +329,99 @@ export function ConfigEditor({ config, onChange, disabled, practice, playerCount
 }
 
 /** Resumen legible de la configuración (para quien no es anfitrión). */
-export function ConfigSummary({ config, playerCount }: { config: RoomConfig; playerCount: number }) {
-  const levels = levelsToPlay(config, playerCount);
-  const allLevels = levels === presetFor(playerCount).levels;
-  const rewards =
-    config.rewardPreset === 'custom'
-      ? config.customRewards
-          .map((r) => `${r.level}:${r.lives ? ` +${r.lives}${LIFE_SYMBOL}` : ''}${r.shurikens ? ` +${r.shurikens}${COMODIN_SYMBOL}` : ''}`)
-          .join(' · ') || t('config.rewards.none')
-      : rewardPresetLabel(config);
+/**
+ * Vista de la configuración para quien NO es anfitrión: lo mismo que ve el anfitrión al editarla,
+ * pero en fichas de solo lectura (los números grandes arriba, cada opción con su icono y las
+ * recompensas nivel a nivel).
+ */
+export function ConfigSummary({ config, playerCount, hostName }: { config: RoomConfig; playerCount: number; hostName: string }) {
+  const res = startingResources(config, playerCount);
+  const rewards = rewardTable(config);
+  const mode = splitHint(t(`config.mode.${config.mode}`));
+  const difficulty = splitHint(t(`config.difficulty.${config.difficulty}`));
   return (
-    <dl className="config-summary">
-      <dt>{t('config.order')}</dt>
-      <dd>{t(`config.order.${config.order}`)}</dd>
-      <dt>{t('config.levels')}</dt>
-      <dd>{allLevels ? t('config.levels.all', { n: levels }) : levels}</dd>
-      <dt>{t('config.mode')}</dt>
-      <dd>{t(`config.mode.${config.mode}`)}</dd>
-      <dt>{t('config.difficulty')}</dt>
-      <dd>{t(`config.difficulty.${config.difficulty}`)}</dd>
-      <dt>{t('config.rewards')}</dt>
-      <dd>{rewards}</dd>
-      <dt>{t('config.maxLives')} / {t('config.maxShurikens')}</dt>
-      <dd>
-        {config.maxLives} / {config.maxShurikens}
-      </dd>
-    </dl>
+    <div className="config-view">
+      <div className="config-stats">
+        <div className="config-stat">
+          <LevelsIcon size={22} className="config-stat-icon stat-levels" />
+          <span className="config-stat-value">{res.maxLevel}</span>
+          <span className="config-stat-label">{t('config.view.levels')}</span>
+        </div>
+        <div className="config-stat">
+          <LifeIcon size={22} className="config-stat-icon stat-lives" />
+          <span className="config-stat-value">{res.lives}</span>
+          <span className="config-stat-label">{t('common.lives')}</span>
+        </div>
+        <div className="config-stat">
+          <VistazoIcon size={22} className="config-stat-icon stat-vistazos" />
+          <span className="config-stat-value">{res.shurikens}</span>
+          <span className="config-stat-label">{t('common.shurikens')}</span>
+        </div>
+      </div>
+
+      <ul className="config-tiles">
+        <ConfigTile icon={<OrderIcon size={20} />} label={t('config.order')} value={config.order === 'asc' ? '1 → 100' : '100 → 1'} hint={t(`config.order.view.${config.order}`)} />
+        <ConfigTile icon={<ChatIcon size={20} />} label={t('config.mode')} value={mode.label} hint={mode.hint} />
+        <ConfigTile icon={<DifficultyIcon size={20} level={config.difficulty} />} label={t('config.difficulty')} value={difficulty.label} hint={difficulty.hint ?? t('config.difficulty.classicHint')} />
+        <ConfigTile icon={<TimerIcon size={20} />} label={t('config.view.countdown')} value={t(config.countdown ? 'config.view.yes' : 'config.view.no')} hint={t('config.view.countdownHint')} />
+        <ConfigTile
+          icon={<ComodinIcon size={20} />}
+          label={t('config.view.caps')}
+          value={
+            <>
+              {res.livesCap}
+              <LifeIcon size={15} className="tile-inline-life" /> · {res.shurikensCap}
+              <ComodinIcon size={15} className="tile-inline-comodin" />
+            </>
+          }
+          hint={t('config.view.capsHint')}
+        />
+      </ul>
+
+      <div className="config-rewards">
+        <span className="field-label">{t('config.rewards')}</span>
+        {rewards.length === 0 ? (
+          <p className="muted small">{t('config.rewards.noneHint')}</p>
+        ) : (
+          <ul className="reward-chips">
+            {rewards.map((r) => (
+              <li key={r.level} className={`reward-chip ${r.level >= res.maxLevel ? 'is-out' : ''}`}>
+                <span className="reward-chip-level">{t('config.view.level', { n: r.level })}</span>
+                <span className="reward-chip-prize">
+                  {r.lives > 0 && (
+                    <span className="resource resource-life">
+                      <LifeIcon size={14} />+{r.lives}
+                    </span>
+                  )}
+                  {r.shurikens > 0 && (
+                    <span className="resource resource-comodin">
+                      <ComodinIcon size={14} />+{r.shurikens}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <p className="config-lock">
+        <CrownIcon size={15} />
+        {t('config.view.onlyHost', { name: hostName })}
+      </p>
+    </div>
+  );
+}
+
+function ConfigTile({ icon, label, value, hint }: { icon: ReactNode; label: string; value: ReactNode; hint?: string }) {
+  return (
+    <li className="config-tile">
+      <span className="config-tile-icon" aria-hidden>
+        {icon}
+      </span>
+      <span className="config-tile-label">{label}</span>
+      <span className="config-tile-value">{value}</span>
+      {hint && <span className="config-tile-hint">{hint}</span>}
+    </li>
   );
 }

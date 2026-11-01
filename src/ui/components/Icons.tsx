@@ -183,6 +183,41 @@ export const HiddenHandIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Niveles: escalones. */
+export const LevelsIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M4 19h4.5v-4.5H13V10h4.5V5.5H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Orden de las cartas: una flecha con tres barras crecientes. */
+export const OrderIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M5 18v-3M10 18v-6M15 18V9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    <path d="M17 5h3v3M20 5l-5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Dificultad: tres barras; se rellenan según el nivel. */
+export const DifficultyIcon = ({ size, level = 'classic', ...p }: P & { level?: 'easy' | 'classic' | 'hard' }) => {
+  const filled = level === 'easy' ? 1 : level === 'classic' ? 2 : 3;
+  return (
+    <svg {...base(size)} {...p}>
+      {[0, 1, 2].map((i) => (
+        <rect key={i} x={4 + i * 6} y={14 - i * 4} width="4" height={6 + i * 4} rx="1.2" fill="currentColor" opacity={i < filled ? 1 : 0.25} />
+      ))}
+    </svg>
+  );
+};
+
+/** Cuenta atrás: un cronómetro. */
+export const TimerIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="12" cy="13.5" r="7" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M12 13.5V9.8M10 3.5h4M18.2 7.3l1.3-1.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
 export const MinusIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
     <path d="M6 12h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
