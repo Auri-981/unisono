@@ -7,6 +7,14 @@ import { ConfigEditor, Switch } from '../components/ConfigEditor';
 import { Page } from '../components/Layout';
 import { setPrefs, usePrefs } from '../prefs';
 
+/** «1 nov, 18:03»: para saber si el móvil ya ha cargado la última publicación. */
+const buildDate = new Date(__BUILD_TIME__).toLocaleString('es-ES', {
+  day: 'numeric',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const prefs = usePrefs();
   return (
@@ -25,7 +33,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
         <Switch label={t('settings.sound')} checked={prefs.sound} onChange={(sound) => setPrefs({ sound })} />
         <Switch label={t('settings.vibration')} checked={prefs.vibration} onChange={(vibration) => setPrefs({ vibration })} />
         <Switch label={t('settings.reducedMotion')} checked={prefs.reducedMotion} onChange={(reducedMotion) => setPrefs({ reducedMotion })} />
-        <p className="muted small">{t('settings.version', { v: __APP_VERSION__ })}</p>
+        <p className="muted small">{t('settings.version', { v: __APP_VERSION__, date: buildDate })}</p>
       </div>
     </Page>
   );

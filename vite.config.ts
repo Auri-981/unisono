@@ -12,6 +12,8 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    // Momento de la publicación: en Ajustes se ve si el móvil tiene ya la última versión.
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
   },
   build: {
     target: 'es2020',

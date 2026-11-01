@@ -287,7 +287,7 @@ export const es = {
   'settings.sound': 'Efectos de sonido',
   'settings.vibration': 'Vibración en los errores',
   'settings.reducedMotion': 'Reducir animaciones',
-  'settings.version': 'Versión {v}',
+  'settings.version': 'Versión {v} · publicada el {date}',
 
   'coins.aria': '{n} monedas',
   'coins.title': 'Tus monedas',
