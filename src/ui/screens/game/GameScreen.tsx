@@ -311,7 +311,7 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
 
       {chatEnabled && chatOpen && <ChatSheet ctl={ctl} onClose={() => setChatOpen(false)} />}
       {showIntroAlert &&
-        (final ? <FinalAlert onDone={closeIntroAlert} /> : <LightningAlert level={room.level} onDone={closeIntroAlert} />)}
+        (final ? <FinalAlert suddenDeath={room.config.difficulty === 'hard'} onDone={closeIntroAlert} /> : <LightningAlert level={room.level} onDone={closeIntroAlert} />)}
       {playing && room.config.countdown && feed.countdownSeq !== null && !showIntroAlert && (
         <Countdown
           level={room.level}

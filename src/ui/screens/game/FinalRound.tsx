@@ -8,11 +8,11 @@ import { FINAL_ALERT_SECONDS, FINAL_PEEK_SECONDS, FINAL_PEEK_SERVER_SECONDS } fr
 import type { RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
 import { Card } from '../../components/Card';
-import { BlindIcon, FinalIcon, HiddenHandIcon, NoComodinIcon } from '../../components/Icons';
+import { BlindIcon, FinalIcon, HiddenHandIcon, NoComodinIcon, SuddenDeathIcon } from '../../components/Icons';
 import { rich } from '../../rich';
 
-/** Las tres reglas, con su icono (aviso al empezar, tutorial). */
-export function FinalRules() {
+/** Las tres reglas, con su icono (aviso al empezar, tutorial); en «Difícil», también la muerte súbita. */
+export function FinalRules({ suddenDeath = false }: { suddenDeath?: boolean }) {
   return (
     <ul className="final-rules">
       <li>
@@ -27,12 +27,18 @@ export function FinalRules() {
         <HiddenHandIcon size={22} />
         <span>{rich(t('final.rule.hidden'))}</span>
       </li>
+      {suddenDeath && (
+        <li className="final-rule-sudden">
+          <SuddenDeathIcon size={22} />
+          <span>{rich(t('final.rule.suddenDeath'))}</span>
+        </li>
+      )}
     </ul>
   );
 }
 
 /** «¡Último nivel! Ronda final»: antes de la cuenta atrás. Se puede cerrar tocando. */
-export function FinalAlert({ onDone }: { onDone: () => void }) {
+export function FinalAlert({ suddenDeath, onDone }: { suddenDeath: boolean; onDone: () => void }) {
   useEffect(() => {
     const id = window.setTimeout(onDone, FINAL_ALERT_SECONDS * 1000);
     return () => window.clearTimeout(id);
@@ -43,7 +49,7 @@ export function FinalAlert({ onDone }: { onDone: () => void }) {
       <FinalIcon size={68} className="final-alert-icon" />
       <span className="final-alert-kicker">{t('final.alert')}</span>
       <span className="final-alert-title">{t('final.title')}</span>
-      <FinalRules />
+      <FinalRules suddenDeath={suddenDeath} />
       <span className="muted small">{t('game.countdownSkip')}</span>
     </button>
   );

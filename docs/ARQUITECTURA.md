@@ -160,6 +160,8 @@ Los estados transitorios que pide el diseño se modelan como **eventos** dentro 
     conexiones lentas); las demás no se envían
     (`pileHidden` dice cuántas hay boca abajo) y el evento `play` no lleva el número.
   - *Manos ocultas*: `cardsLeft` de los demás jugadores llega como `null` (el propio, sí).
+  - *Muerte súbita* (solo con dificultad `hard`): un error deja las vidas a 0 y acaba la partida;
+    el evento `mistake` lleva `suddenDeath: true`. En las demás dificultades cuesta una vida, como siempre.
   Al terminar la partida la mesa vuelve a verse entera.
 - Configuración clásica (centralizada en `src/config/gameConfig.ts` y su espejo SQL):
   2 jugadores → 12 niveles, 2 vidas, 1 shuriken · 3 → 10, 3, 1 · 4 → 8, 4, 1.

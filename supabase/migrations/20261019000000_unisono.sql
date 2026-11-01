@@ -1326,6 +1326,7 @@ declare
   v_lowest int; -- la carta que toca: la más baja (o la más alta en descendente)
   v_lower jsonb;
   v_lives int;
+  v_sudden boolean;
 begin
   if p_action is not null then
     insert into public.processed_actions (user_id, action_id, room_id) values (v_uid, p_action, p_room)
@@ -1358,6 +1359,7 @@ begin
 
   -- ¿Alguien tenía cartas que debían ir antes (menores; mayores en descendente)?
   -- Error: se descartan TODAS y se pierde UNA vida (salvo que haya un escudo activo).
+  -- En la ronda final en «Difícil» es muerte súbita: se pierden TODAS las vidas.
   with removed as (
     delete from public.hands
      where room_id = p_room and (case when v_desc then card > p_card else card < p_card end)
@@ -1378,9 +1380,12 @@ begin
       perform game_private.emit(p_room, 'mistake', v_uid,
         jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives, 'shielded', true));
     else
-      update public.rooms set lives = lives - 1 where id = p_room returning lives into v_lives;
+      v_sudden := r.level = r.max_level and r.config ->> 'difficulty' = 'hard';
+      update public.rooms set lives = case when v_sudden then 0 else lives - 1 end
+       where id = p_room returning lives into v_lives;
       perform game_private.emit(p_room, 'mistake', v_uid,
-        jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives));
+        jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives)
+        || case when v_sudden then '{"suddenDeath": true}'::jsonb else '{}'::jsonb end);
       if r.rewinds > 0 and r.level <> r.max_level then
         -- Se pregunta a todos si quieren usar Rebobinar (nunca en la ronda final). Hasta decidirlo,
         -- la partida espera (incluso si era la última vida o el nivel se ha quedado sin cartas).

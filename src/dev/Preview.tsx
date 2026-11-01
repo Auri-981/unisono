@@ -2,7 +2,7 @@
  * Solo en desarrollo (`npm run dev`): muestra pantallas con estados de ejemplo sin servidor.
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
- *      | final | finalpeek | finalalert | finalnext | finallost
+ *      | final | finalpeek | finalalert | finalnext | finallost  (+ «hard»: finalalerthard, finalnexthard, finallosthard)
  *      | lobbyguest | shop | shoprich | collection | designs | wonreward | lostreward | noreward | kicked
  * No se incluye en la web publicada.
  */
@@ -44,8 +44,18 @@ const DEMO_REWARD: Record<string, MatchReward | null> = {
 const NOW = Date.now();
 const noop = async () => {};
 
-function build(kind: string): E.EngineState {
-  let s = E.createRoom({ id: 'demo', code: 'K7MPQ', hostId: 'me', hostName: 'Rubén', config: { mode: 'friends' }, now: NOW });
+function build(variant: string): E.EngineState {
+  // Sufijo «hard»: la misma pantalla en dificultad Difícil (p. ej. finalalerthard, finallosthard).
+  const hard = variant.endsWith('hard');
+  const kind = hard ? variant.slice(0, -4) : variant;
+  let s = E.createRoom({
+    id: 'demo',
+    code: 'K7MPQ',
+    hostId: 'me',
+    hostName: 'Rubén',
+    config: { mode: 'friends', ...(hard ? { difficulty: 'hard' as const } : {}) },
+    now: NOW,
+  });
   for (const [id, name] of [['a', 'Lucía'], ['b', 'Marcos'], ['c', 'Ainhoa']] as const) {
     const r = E.addPlayer(s, id, name, NOW);
     if (r.ok) s = r.state;
@@ -181,7 +191,7 @@ function build(kind: string): E.EngineState {
       // Dos descartadas de un fallo anterior, para ver que no chocan con el montón.
       s.revealed = [{ c: 30, p: 'a', r: 'mistake' }, { c: 47, p: 'b', r: 'mistake' }];
       if (kind === 'finallost') {
-        s.lives = 1;
+        s.lives = hard ? 3 : 1; // en Difícil se pierden las 3 de golpe
         step(E.playCard(s, 'b', 40, NOW - 4000));
       }
     }

@@ -663,6 +663,22 @@ describe('ronda final', () => {
     expect(snap.room.pileHidden).toBe(0);
   });
 
+  it('en Difícil el aviso del error dice que es muerte súbita (en Clásica no)', () => {
+    const play = (difficulty: 'hard' | 'classic') => {
+      let { s } = room(2, { levels: 2, difficulty });
+      s = ok(E.startGame(s, 'p0', seededRng(5), NOW));
+      s.level = 2;
+      s.lives = 3;
+      s.hands = { p0: [10, 60], p1: [5, 90] };
+      return ok(E.playCard(s, 'p0', 10, NOW));
+    };
+    const hard = play('hard');
+    expect(hard.recentEvents.find((e) => e.kind === 'mistake')?.payload).toMatchObject({ lives: 0, suddenDeath: true });
+    const classic = play('classic');
+    expect(classic.lives).toBe(2);
+    expect(classic.recentEvents.find((e) => e.kind === 'mistake')?.payload).not.toHaveProperty('suddenDeath');
+  });
+
   it('en los demás niveles la mesa y las manos se ven como siempre', () => {
     let { s } = room(2, { levels: 3 });
     s = ok(E.startGame(s, 'p0', seededRng(5), NOW));

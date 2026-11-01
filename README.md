@@ -8,7 +8,7 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
 - Las cartas de cada jugador son privadas **en el servidor** (Row Level Security), no solo ocultas en pantalla.
 - Vidas y tres comodines con votación (Vistazo, Escudo y Rebobinar), recompensas configurables con
   elección de comodín, ronda relámpago con reloj (un nivel al azar por partida), ronda final
-  (el último nivel: sin comodines, mesa a ciegas y manos ocultas), orden ascendente o descendente, revancha, historial, chat opcional.
+  (el último nivel: sin comodines, mesa a ciegas y manos ocultas; en Difícil, además, muerte súbita), orden ascendente o descendente, revancha, historial, chat opcional.
   (En el código y la base de datos el vistazo se llama internamente «shuriken».)
 - Monedas por jugar online (más por cada nivel superado y mucho más por ganar partidas largas),
   tienda con diseños de cartas (Galaxia, Neón, Esmeralda) y «Mis cartas» para equiparlos.

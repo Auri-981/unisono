@@ -263,7 +263,7 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
         {isFinalLevel(room.level + 1, room.maxLevel) && (
           <p className="next-final" role="note">
             <FinalIcon size={20} />
-            <span>{rich(t('final.next', { level: room.level + 1 }))}</span>
+            <span>{rich(t(room.config.difficulty === 'hard' ? 'final.nextHard' : 'final.next', { level: room.level + 1 }))}</span>
           </p>
         )}
         {nextReward && (
@@ -393,14 +393,17 @@ export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: Ro
   const isHost = room.hostId === me;
   const events = snap.recentEvents?.length ? snap.recentEvents : snap.lastEvent ? [snap.lastEvent] : [];
   const outOfTime = status === 'lost' && events.some((e) => e.kind === 'lightning_timeout');
+  const suddenDeath = status === 'lost' && events.some((e) => e.kind === 'mistake' && (e.payload as { suddenDeath?: boolean }).suddenDeath);
   const text =
     status === 'won'
       ? t(room.maxLevel === 1 ? 'end.wonTextOne' : 'end.wonText', { levels: room.maxLevel })
       : outOfTime
         ? t('end.lightningText', { level: room.level })
-        : status === 'lost'
-          ? t(isFinalLevel(room.level, room.maxLevel) && room.maxLevel > 1 ? 'end.finalLostText' : 'end.lostText', { level: room.level })
-          : t('end.abandonedText');
+        : suddenDeath
+          ? t('end.suddenDeathText', { level: room.level })
+          : status === 'lost'
+            ? t(isFinalLevel(room.level, room.maxLevel) && room.maxLevel > 1 ? 'end.finalLostText' : 'end.lostText', { level: room.level })
+            : t('end.abandonedText');
   return (
     <div className={`overlay overlay-end end-${status}`} role="dialog" aria-modal="true" aria-labelledby="end-title">
       <div className="overlay-card">

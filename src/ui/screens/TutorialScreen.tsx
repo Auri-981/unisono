@@ -302,6 +302,7 @@ const STEPS: Step[] = [
         <p>{rich(t('tutorial.final.text'))}</p>
         <FinalRules />
         <p className="muted small">{t('tutorial.final.note')}</p>
+        <p className="muted small">{rich(t('tutorial.final.hard'))}</p>
       </>
     ),
   },

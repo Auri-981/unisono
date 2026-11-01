@@ -106,6 +106,8 @@ export interface MistakePayload {
   lives: number;
   /** Un escudo activo ha evitado perder la vida. */
   shielded?: boolean;
+  /** Ronda final en «Difícil»: el error ha quitado todas las vidas. */
+  suddenDeath?: boolean;
 }
 
 export interface ShurikenUsedPayload {

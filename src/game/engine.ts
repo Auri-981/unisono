@@ -485,8 +485,10 @@ export function playCard(state: EngineState, actor: PlayerId, card: number, now:
       d.s.shieldActive = false;
       d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives, shielded: true });
     } else {
-      d.s.lives -= 1;
-      d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives });
+      // Ronda final en «Difícil»: muerte súbita, un error os quita todas las vidas.
+      const suddenDeath = final && d.s.config.difficulty === 'hard';
+      d.s.lives = suddenDeath ? 0 : d.s.lives - 1;
+      d.emit('mistake', actor, { card, discarded: lower, lives: d.s.lives, ...(suddenDeath ? { suddenDeath: true } : {}) });
       if (d.s.rewinds > 0 && !final) {
         // Se pregunta a todos si quieren usar Rebobinar (nunca en la ronda final). Hasta decidirlo,
         // la partida espera (incluso si era la última vida o el nivel se ha quedado sin cartas).

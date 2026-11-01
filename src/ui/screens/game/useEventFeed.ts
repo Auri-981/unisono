@@ -81,7 +81,7 @@ export function useEventFeed(snap: RoomSnapshot, clockOffset: number) {
             show(
               'danger',
               ev.actor === me ? t('event.mistakeMine', { card: m.card }) : t('event.mistake', { name: name(ev.actor), card: m.card }),
-              t('event.mistakeDetail', { cards }),
+              t(m.suddenDeath ? 'event.mistakeSuddenDetail' : 'event.mistakeDetail', { cards }),
             );
           }
           break;

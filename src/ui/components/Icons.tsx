@@ -174,6 +174,19 @@ export const NoComodinIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Muerte súbita: un corazón partido. */
+export const SuddenDeathIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path
+      d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20Z"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+    />
+    <path d="m12.6 7.6-2 3.6 3 1.6-2 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** Manos ocultas: una carta boca abajo con una interrogación. */
 export const HiddenHandIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>
