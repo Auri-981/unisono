@@ -177,6 +177,8 @@ function build(kind: string): E.EngineState {
     } else {
       step(E.playCard(s, 'c', 9, NOW - 9000));
       step(E.playCard(s, 'me', 18, kind === 'finalpeek' ? NOW : NOW - 6000));
+      // Dos descartadas de un fallo anterior, para ver que no chocan con el montón.
+      s.revealed = [{ c: 30, p: 'a', r: 'mistake' }, { c: 47, p: 'b', r: 'mistake' }];
       if (kind === 'finallost') {
         s.lives = 1;
         step(E.playCard(s, 'b', 40, NOW - 4000));

@@ -109,11 +109,9 @@ export function BlindPile({
         <div className={`blind-stack ${peeking ? 'is-under' : ''}`} aria-hidden>
           <span className="blind-back" />
           {hidden > 1 && <span className="blind-back blind-back-2" />}
-          {!peeking && (
-            <span className="blind-count">{played}</span>
-          )}
         </div>
       )}
+      {hidden > 0 && !peeking && <span className="blind-count">{played}</span>}
       {peeking && top && (
         <div className="pile-top blind-peek" key={room.pileAt}>
           <Card value={top.c} size="xl" design={designOf(top.p)} />

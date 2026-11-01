@@ -3489,6 +3489,7 @@ html {
   position: relative;
   display: grid;
   place-items: center;
+  gap: 6px;
 }
 
 .blind-stack {
@@ -3525,9 +3526,9 @@ html {
   opacity: 0.6;
 }
 
+/* Debajo del montón ocupando su sitio, como el nombre bajo la carta normal. */
 .blind-count {
-  position: absolute;
-  bottom: -26px;
+  min-height: 1.2em;
   white-space: nowrap;
   font-size: 0.8rem;
   color: var(--muted);
