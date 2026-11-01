@@ -279,8 +279,13 @@ export const es = {
   'conn.reconnecting': 'Reconectando…',
   'conn.offline': 'Sin conexión',
 
-  'exit.kicked': 'Ya no formas parte de esa sala.',
   'exit.gone': 'La sala ya no existe.',
+  'kicked.title': 'Te han expulsado',
+  'kicked.text': 'El anfitrión te ha sacado de la sala.',
+  'kicked.textCode': 'El anfitrión te ha sacado de la sala {code}.',
+  'kicked.hint': 'Puedes crear tu propia partida o unirte a otra con un código nuevo.',
+  'kicked.home': 'Volver al inicio',
+  'kicked.create': 'Crear mi partida',
 
   'settings.title': 'Ajustes',
   'settings.name': 'Alias por defecto',

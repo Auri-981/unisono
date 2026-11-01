@@ -12,6 +12,7 @@ import { UpdateBanner } from './ui/components/UpdateBanner';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
+import { KickedScreen } from './ui/screens/KickedScreen';
 import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
 import { CollectionScreen, ShopScreen } from './ui/screens/ShopScreens';
@@ -19,6 +20,7 @@ import { TutorialScreen } from './ui/screens/TutorialScreen';
 
 type Screen =
   | { name: 'home'; message?: string }
+  | { name: 'kicked'; code?: string }
   | { name: 'create' }
   | { name: 'join'; code?: string }
   | { name: 'room'; roomId: string; initial: RoomSnapshot | null }
@@ -99,11 +101,13 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
 
   const exitRoom = useCallback(
     (reason: ExitReason) => {
+      const code = storedRoom.get()?.code;
       storedRoom.set(null);
       setUrlCode(null);
-      home(reason === 'left' ? undefined : t(reason === 'gone' ? 'exit.gone' : 'exit.kicked'));
+      if (reason === 'kicked') setScreen({ name: 'kicked', code });
+      else home(reason === 'gone' ? t('exit.gone') : undefined);
     },
-    [home],
+    [home, setScreen],
   );
 
   switch (screen.name) {
@@ -121,6 +125,8 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
           onCollection={() => setScreen({ name: 'collection' })}
         />
       );
+    case 'kicked':
+      return <KickedScreen code={screen.code} onHome={() => home()} onCreate={() => setScreen({ name: 'create' })} />;
     case 'create':
       return <EntryScreen mode="create" onBack={() => home()} onEntered={enterRoom} />;
     case 'join':

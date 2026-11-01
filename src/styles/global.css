@@ -1927,6 +1927,69 @@ h3 {
   color: var(--danger);
 }
 
+/* ───────────── Expulsado de la sala ───────────── */
+
+.kicked-screen {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: calc(var(--safe-top) + 24px) calc(var(--safe-right) + var(--gutter)) calc(var(--safe-bottom) + 24px)
+    calc(var(--safe-left) + var(--gutter));
+}
+
+.kicked-card {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 22px 24px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid rgb(255 122 122 / 0.35);
+  border-radius: 24px;
+  box-shadow: var(--shadow), 0 0 60px rgb(255 122 122 / 0.08);
+  animation: rise 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.kicked-icon {
+  width: 84px;
+  height: 84px;
+  margin-bottom: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--danger);
+  background: radial-gradient(circle, rgb(255 122 122 / 0.2), rgb(255 122 122 / 0.06));
+  border: 1px solid rgb(255 122 122 / 0.4);
+}
+
+.kicked-title {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 1.9rem;
+  color: var(--danger);
+}
+
+.kicked-text {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.kicked-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.kicked-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
 /* ───────────── Mensajes flotantes ───────────── */
 
 .toast-layer {

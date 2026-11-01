@@ -3,7 +3,7 @@
  * Uso: http://localhost:5173/?preview=lobby | mistake | won | lost | vote | shieldvote | shieldon | rewind | rewindlast | pick | picked
  *      | lightning | lightninglow | lightningalert | lightningnext | lightninglost
  *      | final | finalpeek | finalalert | finalnext | finallost
- *      | lobbyguest | shop | shoprich | collection | designs | wonreward | lostreward | noreward
+ *      | lobbyguest | shop | shoprich | collection | designs | wonreward | lostreward | noreward | kicked
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -11,6 +11,7 @@ import * as E from '../game/engine';
 import { seededRng } from '../game/testing';
 import { GameScreen } from '../ui/screens/game/GameScreen';
 import { LobbyScreen } from '../ui/screens/LobbyScreen';
+import { KickedScreen } from '../ui/screens/KickedScreen';
 import { CollectionScreen, ShopScreen } from '../ui/screens/ShopScreens';
 import type { MatchReward } from '../game/types';
 import type { Profile } from '../net/api';
@@ -204,6 +205,7 @@ function build(kind: string): E.EngineState {
 }
 
 export function Preview({ kind }: { kind: string }) {
+  if (kind === 'kicked') return <KickedScreen code="J7S7E" onHome={noop} onCreate={noop} />;
   if (kind === 'shop' || kind === 'shoprich' || kind === 'collection') {
     previewProfile(demoProfile(kind));
     return kind === 'collection' ? <CollectionScreen onBack={noop} onShop={noop} /> : <ShopScreen onBack={noop} onCollection={noop} />;
