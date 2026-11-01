@@ -1978,6 +1978,56 @@ h3 {
   border-color: rgb(111 220 170 / 0.5);
 }
 
+/* Aviso de versión nueva: abajo, por encima de todo menos de los diálogos. */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 16px);
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(440px, calc(100% - 32px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+  border: 1px solid rgb(126 166 255 / 0.45);
+  box-shadow: var(--shadow);
+  animation: rise 0.25s ease;
+}
+
+.update-banner-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.9rem;
+}
+
+.update-banner-text span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.update-banner .btn {
+  flex: none;
+}
+
+.update-banner-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
 /* ───────────── Chat ───────────── */
 
 .sheet {

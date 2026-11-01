@@ -8,6 +8,7 @@ import type { RoomConfig, RoomSnapshot } from './game/types';
 import { t } from './i18n';
 import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
+import { UpdateBanner } from './ui/components/UpdateBanner';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
@@ -76,6 +77,15 @@ function initialScreen(): Screen {
 
 export function App() {
   const [screen, setScreen] = useState<Screen>(initialScreen);
+  return (
+    <>
+      <Screens screen={screen} setScreen={setScreen} />
+      <UpdateBanner hidden={screen.name === 'room' || screen.name === 'practice'} />
+    </>
+  );
+}
+
+function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
   const home = useCallback((message?: string) => setScreen({ name: 'home', message }), []);
 
   const enterRoom = useCallback((snap: RoomSnapshot) => {

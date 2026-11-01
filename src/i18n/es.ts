@@ -288,6 +288,9 @@ export const es = {
   'settings.vibration': 'Vibración en los errores',
   'settings.reducedMotion': 'Reducir animaciones',
   'settings.version': 'Versión {v} · publicada el {date}',
+  'update.title': 'Hay una versión nueva',
+  'update.body': 'Actualiza para tener los últimos cambios.',
+  'update.action': 'Actualizar',
 
   'coins.aria': '{n} monedas',
   'coins.title': 'Tus monedas',
