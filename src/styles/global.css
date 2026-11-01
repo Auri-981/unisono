@@ -3181,11 +3181,25 @@ html {
 
 /* ───────────── Ronda relámpago ───────────── */
 
-/* Durante la ronda, un marco dorado alrededor de la partida. */
-.game-lightning {
+/* Marco de las rondas especiales: un resplandor fijo sobre los bordes de toda la pantalla
+   (no de la columna del juego). Es ancho a propósito: las esquinas redondeadas del móvil
+   (iPhone) recortan los bordes, y una línea fina apenas se veía. No captura toques. */
+.game-lightning::after,
+.game-final::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
   box-shadow:
-    inset 0 0 0 2px rgb(255 216 77 / 0.28),
-    inset 0 0 60px rgb(255 216 77 / 0.07);
+    inset 0 0 0 3px rgb(var(--frame) / 0.55),
+    inset 0 0 22px 2px rgb(var(--frame) / 0.4),
+    inset 0 0 80px rgb(var(--frame) / 0.14);
+}
+
+/* Durante la ronda, un marco dorado. */
+.game-lightning {
+  --frame: 255 216 77;
 }
 
 /* Una sola fila (rayo y nombre · barra · tiempo) para no quitar sitio a las cartas en el móvil. */
@@ -3302,16 +3316,20 @@ html {
 }
 
 .game-lightning:has(.lightning-bar.is-low) {
+  --frame: 255 122 122;
+}
+
+.game-lightning:has(.lightning-bar.is-low)::after {
   animation: lightning-alarm 1s ease-in-out infinite;
 }
 
 @keyframes lightning-alarm {
   0%,
   100% {
-    box-shadow: inset 0 0 0 2px rgb(255 122 122 / 0.25), inset 0 0 40px rgb(255 122 122 / 0.05);
+    opacity: 0.55;
   }
   50% {
-    box-shadow: inset 0 0 0 2px rgb(255 122 122 / 0.6), inset 0 0 70px rgb(255 122 122 / 0.15);
+    opacity: 1;
   }
 }
 
@@ -3419,11 +3437,9 @@ html {
 
 /* ───────────── Ronda final ───────────── */
 
-/* Durante la ronda final, un marco carmesí alrededor de la partida. */
+/* Durante la ronda final, un marco carmesí (el resplandor está en .game-final::after). */
 .game-final {
-  box-shadow:
-    inset 0 0 0 2px rgb(255 92 138 / 0.3),
-    inset 0 0 70px rgb(255 92 138 / 0.08);
+  --frame: 255 92 138;
 }
 
 /* En la cabecera, en el sitio del premio (que en el último nivel no hay). */
