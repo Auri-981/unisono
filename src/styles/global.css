@@ -3182,26 +3182,25 @@ html {
 /* ───────────── Ronda relámpago ───────────── */
 
 /* Marco fino de las rondas especiales, por los bordes de toda la pantalla. No captura toques.
-   En móviles y tabletas las esquinas se redondean: la pantalla del iPhone es muy curva y
-   recortaba las esquinas de un marco recto. Un radio algo mayor que el de la pantalla
-   solo mete la curva un poco hacia dentro; uno menor dejaría las esquinas cortadas. */
+   Las esquinas solo se redondean donde la página llega hasta la esquina física de la pantalla,
+   que es cuando el sistema reserva una zona segura arriba o abajo (iPhone desde la pantalla de
+   inicio): esas pantallas son muy curvas y recortaban un marco recto. En el resto (navegador de
+   Android, ordenador) la página es un rectángulo bajo la barra de estado y encima de los
+   botones, y ahí las esquinas quedan rectas. «zona · 100» vale 0 sin zona segura y, con ella,
+   se queda en el tope de 62 px (algo más que la curva de la pantalla: nunca se corta). */
 .game-lightning::after,
 .game-final::after {
+  --corner-top: min(62px, calc(var(--safe-top) * 100));
+  --corner-bottom: min(62px, calc(var(--safe-bottom) * 100));
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 4;
-  border-radius: var(--screen-radius, 0);
+  border-radius: var(--corner-top) var(--corner-top) var(--corner-bottom) var(--corner-bottom);
   box-shadow:
     inset 0 0 0 2px rgb(var(--frame) / 0.3),
     inset 0 0 60px rgb(var(--frame) / 0.08);
-}
-
-@media (pointer: coarse) {
-  .game {
-    --screen-radius: 62px;
-  }
 }
 
 /* Durante la ronda, un marco dorado. */
