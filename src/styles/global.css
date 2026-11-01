@@ -2385,6 +2385,10 @@ h3 {
   }
 }
 
+/* Menos movimiento (ajuste del móvil, que muchos Samsung activan solos al ahorrar batería, o el
+   de Ajustes): las animaciones terminan al instante. Excepciones que dan información y no
+   deben desaparecer: el número de la cuenta atrás (su animación acaba invisible, así que va
+   sin animar) y la barra del vistazo de la ronda final (sigue corriendo su tiempo real). */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2392,6 +2396,14 @@ h3 {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .countdown-number {
+    animation: none !important;
+  }
+
+  .blind-timer {
+    animation-duration: var(--peek-ms, 1s) !important;
   }
 }
 
@@ -2401,6 +2413,14 @@ h3 {
   animation-duration: 0.01ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+}
+
+.reduce-motion .countdown-number {
+  animation: none !important;
+}
+
+.reduce-motion .blind-timer {
+  animation-duration: var(--peek-ms, 1s) !important;
 }
 
 /* ───────────── Premio anunciado del nivel ───────────── */
@@ -3667,7 +3687,7 @@ html {
   border-radius: 999px;
   background: var(--final);
   transform-origin: left center;
-  animation: blind-timer linear forwards;
+  animation: blind-timer var(--peek-ms, 1s) linear forwards;
 }
 
 @keyframes blind-timer {

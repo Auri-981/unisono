@@ -3,7 +3,7 @@
  * El servidor ya no envía lo que no se puede ver; aquí solo se muestra (y la última carta
  * se tapa en pantalla al pasar FINAL_PEEK_SECONDS desde que llega, sin esperar a otra foto).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { FINAL_ALERT_SECONDS, FINAL_PEEK_SECONDS, FINAL_PEEK_SERVER_SECONDS } from '../../../config/gameConfig';
 import type { RoomSnapshot } from '../../../game/types';
 import { t } from '../../../i18n';
@@ -62,7 +62,7 @@ export function FinalBadge() {
 /** Barra que se vacía mientras la carta sigue a la vista (la duración se fija al aparecer). */
 function PeekTimer({ ms }: { ms: number }) {
   const [duration] = useState(() => Math.max(0, ms));
-  return <span className="blind-timer" style={{ animationDuration: `${duration}ms` }} aria-hidden />;
+  return <span className="blind-timer" style={{ '--peek-ms': `${duration}ms` } as CSSProperties} aria-hidden />;
 }
 
 /**
