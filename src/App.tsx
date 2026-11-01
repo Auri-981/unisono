@@ -8,7 +8,7 @@ import type { RoomConfig, RoomSnapshot } from './game/types';
 import { t } from './i18n';
 import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
-import { UpdateBanner } from './ui/components/UpdateBanner';
+import { AutoUpdate } from './ui/components/AutoUpdate';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
@@ -77,12 +77,15 @@ function initialScreen(): Screen {
   return { name: 'home' };
 }
 
+/** Pantallas donde recargar haría perder algo (la partida online la retiene GameScreen). */
+const HOLD_UPDATE_SCREENS = new Set<Screen['name']>(['practice', 'tutorial', 'create', 'join']);
+
 export function App() {
   const [screen, setScreen] = useState<Screen>(initialScreen);
   return (
     <>
       <Screens screen={screen} setScreen={setScreen} />
-      <UpdateBanner hidden={screen.name === 'room' || screen.name === 'practice'} />
+      <AutoUpdate blocked={HOLD_UPDATE_SCREENS.has(screen.name)} />
     </>
   );
 }

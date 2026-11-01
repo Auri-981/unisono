@@ -1,15 +1,17 @@
 /**
- * Aviso de versión nueva. GitHub Pages deja que el móvil guarde la página hasta 10 minutos y
+ * Actualización automática. GitHub Pages deja que el móvil guarde la página hasta 10 minutos y
  * la app de la pantalla de inicio del iPhone a veces la guarda más; así que de vez en cuando
  * se pide la página de nuevo y, si apunta a otro código (otro `assets/index-….js`), hay
- * versión nueva.
+ * versión nueva y la app se recarga sola (así nadie juega con una versión distinta a la de
+ * los demás). Nunca a mitad de partida: mientras se ve una partida (`useHoldUpdates`) se espera
+ * a que termine y se vuelva a la sala de espera o al inicio.
  *
  * La comprobación usa `cache: 'reload'`: va a la red y además guarda la página nueva en la
  * caché del navegador, así que al recargar se abre ya la versión nueva y no la guardada.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 
-const CHECK_EVERY_MS = 5 * 60_000;
+const CHECK_EVERY_MS = 2 * 60_000;
 const MIN_GAP_MS = 30_000;
 const SCRIPT_RE = /assets\/index-[\w-]+\.js/;
 
@@ -66,4 +68,29 @@ export function useNewVersion(): boolean {
 
 export function reloadToNewVersion() {
   window.location.reload();
+}
+
+// Pantallas que retienen la actualización mientras están abiertas (la partida).
+let holds = 0;
+const listeners = new Set<() => void>();
+const subscribe = (fn: () => void) => {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+};
+
+/** Mientras el componente que lo usa esté en pantalla, la app no se recarga sola. */
+export function useHoldUpdates() {
+  useEffect(() => {
+    holds += 1;
+    listeners.forEach((fn) => fn());
+    return () => {
+      holds -= 1;
+      listeners.forEach((fn) => fn());
+    };
+  }, []);
+}
+
+/** true si alguna pantalla está reteniendo la actualización. */
+export function useUpdatesHeld(): boolean {
+  return useSyncExternalStore(subscribe, () => holds > 0);
 }
