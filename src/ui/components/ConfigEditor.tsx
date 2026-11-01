@@ -360,12 +360,12 @@ export function ConfigSummary({ config, playerCount, hostName }: { config: RoomC
       </div>
 
       <ul className="config-tiles">
-        <ConfigTile icon={<OrderIcon size={20} />} label={t('config.order')} value={config.order === 'asc' ? '1 → 100' : '100 → 1'} hint={t(`config.order.view.${config.order}`)} />
-        <ConfigTile icon={<ChatIcon size={20} />} label={t('config.mode')} value={mode.label} hint={mode.hint} />
-        <ConfigTile icon={<DifficultyIcon size={20} level={config.difficulty} />} label={t('config.difficulty')} value={difficulty.label} hint={difficulty.hint ?? t('config.difficulty.classicHint')} />
-        <ConfigTile icon={<TimerIcon size={20} />} label={t('config.view.countdown')} value={t(config.countdown ? 'config.view.yes' : 'config.view.no')} hint={t('config.view.countdownHint')} />
+        <ConfigTile icon={<OrderIcon size={16} />} label={t('config.order')} value={config.order === 'asc' ? '1 → 100' : '100 → 1'} hint={t(`config.order.view.${config.order}`)} />
+        <ConfigTile icon={<ChatIcon size={16} />} label={t('config.mode')} value={mode.label} hint={mode.hint} />
+        <ConfigTile icon={<DifficultyIcon size={16} level={config.difficulty} />} label={t('config.difficulty')} value={difficulty.label} hint={difficulty.hint ?? t('config.difficulty.classicHint')} />
+        <ConfigTile icon={<TimerIcon size={16} />} label={t('config.view.countdown')} value={t(config.countdown ? 'config.view.yes' : 'config.view.no')} hint={t('config.view.countdownHint')} />
         <ConfigTile
-          icon={<ComodinIcon size={20} />}
+          icon={<ComodinIcon size={16} />}
           label={t('config.view.caps')}
           value={
             <>

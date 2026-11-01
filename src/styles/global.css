@@ -4509,12 +4509,15 @@ html {
 .config-tile {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  /* El icono va junto al título: así el valor tiene todo el ancho (palabras largas como «Concentración»). */
   grid-template-areas:
     'icon label'
-    'icon value'
-    'icon hint';
-  column-gap: 10px;
+    'value value'
+    'hint hint';
+  column-gap: 8px;
+  row-gap: 4px;
   align-items: center;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
@@ -4528,11 +4531,11 @@ html {
 
 .config-tile-icon {
   grid-area: icon;
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgb(126 166 255 / 0.12);
   color: var(--cool);
 }
@@ -4548,6 +4551,9 @@ html {
 
 .config-tile-value {
   grid-area: value;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  hyphens: auto;
   display: inline-flex;
   align-items: center;
   gap: 3px;
