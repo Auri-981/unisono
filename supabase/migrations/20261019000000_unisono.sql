@@ -353,6 +353,23 @@ create table if not exists public.progress_events (
   primary key (user_id, event, ref)
 );
 
+-- ───────────────────────────── Cuentas ─────────────────────────────
+-- Todos empiezan como invitados (sesión anónima, guardada solo en ese navegador). Al iniciar
+-- sesión con Google, el progreso de invitado de ese móvil se une a la cuenta:
+--   1. Como invitado, la app pide un vale de un solo uso (start_account_merge) y lo guarda.
+--   2. Vuelve de Google ya con la cuenta y lo canjea (claim_account_merge): monedas, cartas,
+--      títulos, logros, estadísticas e historial pasan del invitado a la cuenta.
+-- El vale solo sirve una vez, durante una hora, a una cuenta con sesión (no a otro invitado)
+-- y solo si quien lo pidió sigue siendo invitado. Nadie puede canjear el progreso de otro sin
+-- tener su vale, que nunca sale de su navegador.
+create table if not exists public.account_merges (
+  token      text primary key,
+  from_user  uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  used_by    uuid,
+  used_at    timestamptz
+);
+
 -- Catálogo de logros. Para cambiar un texto, un objetivo o un premio: aquí, y volver a ejecutar.
 insert into public.achievements (id, category, name, description, condition, metric, target, reward_coins, sort) values
   ('games_1', 'games', 'Primera conexión', 'Toda gran aventura empieza con una partida.', 'Termina tu primera partida online', 'games', 1, 5, 10),
@@ -476,6 +493,10 @@ create policy achievement_cosmetics_select_all on public.achievement_cosmetics f
 drop policy if exists player_stats_select_own on public.player_stats;
 create policy player_stats_select_own on public.player_stats
   for select to authenticated using (user_id = (select auth.uid()));
+-- Los vales para unir cuentas son internos (solo las funciones los leen).
+alter table public.account_merges enable row level security;
+revoke all on table public.account_merges from public, anon, authenticated;
+
 drop policy if exists player_achievements_select_own on public.player_achievements;
 create policy player_achievements_select_own on public.player_achievements
   for select to authenticated using (user_id = (select auth.uid()));
@@ -2228,6 +2249,201 @@ begin
 end;
 $$;
 
+-- ── Cuentas (API) ──
+
+-- ¿Es un invitado (sesión anónima)? Quien no existe cuenta como invitado: nunca tiene cuenta.
+create or replace function game_private.is_guest(p_uid uuid)
+returns boolean language sql stable set search_path = ''
+as $$
+  select coalesce((select u.is_anonymous from auth.users u where u.id = p_uid), true);
+$$;
+
+-- Pasa TODO el progreso de p_from (invitado) a p_to (cuenta) y deja a p_from vacío, de modo que
+-- no se pueda unir dos veces. Las monedas se suman; cartas, títulos y logros se juntan (si ya
+-- estaban, se queda la fecha más antigua); las estadísticas se suman (los récords y rachas, el
+-- mayor); el historial de partidas pasa a la cuenta. Lo equipado en la cuenta se respeta, salvo
+-- que fuera lo de serie (entonces se usa lo que llevaba el invitado).
+create or replace function game_private.merge_account(p_from uuid, p_to uuid)
+returns jsonb language plpgsql set search_path = ''
+as $$
+declare
+  v_coins int;
+  v_cards int;
+  v_titles int;
+  v_achievements int;
+  f public.player_stats;
+begin
+  perform game_private.ensure_stats(p_to);
+
+  select coins into v_coins from public.player_wallets where user_id = p_from for update;
+  v_coins := coalesce(v_coins, 0);
+  if v_coins > 0 then
+    perform game_private.add_coins(p_from, -v_coins, 'adjustment', 'Pasadas a tu cuenta');
+    perform game_private.add_coins(p_to, v_coins, 'adjustment', 'Progreso de invitado unido a tu cuenta');
+  end if;
+
+  select count(*) filter (where c.kind = 'card_design'), count(*) filter (where c.kind = 'title')
+    into v_cards, v_titles
+  from public.player_cosmetics o join public.cosmetics c on c.id = o.cosmetic_id
+  where o.user_id = p_from and o.source <> 'default'
+    and not exists (select 1 from public.player_cosmetics x where x.user_id = p_to and x.cosmetic_id = o.cosmetic_id);
+  insert into public.player_cosmetics (user_id, cosmetic_id, source, acquired_at)
+  select p_to, o.cosmetic_id, o.source, o.acquired_at from public.player_cosmetics o where o.user_id = p_from
+  on conflict (user_id, cosmetic_id) do update
+    set acquired_at = least(public.player_cosmetics.acquired_at, excluded.acquired_at);
+  insert into public.player_equipped (user_id, kind, cosmetic_id)
+  select p_to, e.kind, e.cosmetic_id from public.player_equipped e where e.user_id = p_from
+  on conflict (user_id, kind) do update set cosmetic_id = excluded.cosmetic_id, updated_at = now()
+    where exists (select 1 from public.cosmetics c
+                   where c.id = public.player_equipped.cosmetic_id and c.unlock = 'default');
+  delete from public.player_cosmetics where user_id = p_from and source <> 'default';
+
+  select count(*) into v_achievements from public.player_achievements a
+  where a.user_id = p_from
+    and not exists (select 1 from public.player_achievements b where b.user_id = p_to and b.achievement_id = a.achievement_id);
+  -- Ya se enseñaron (o se enseñarán) en el móvil del invitado: no se repiten los avisos.
+  insert into public.player_achievements (user_id, achievement_id, coins, unlocked_at, seen_at)
+  select p_to, a.achievement_id, a.coins, a.unlocked_at, coalesce(a.seen_at, now())
+  from public.player_achievements a where a.user_id = p_from
+  on conflict (user_id, achievement_id) do update
+    set unlocked_at = least(public.player_achievements.unlocked_at, excluded.unlocked_at);
+  delete from public.player_achievements where user_id = p_from;
+
+  select * into f from public.player_stats where user_id = p_from;
+  if found then
+    update public.player_stats t
+       set games_completed = t.games_completed + f.games_completed,
+           wins = t.wins + f.wins,
+           win_streak = greatest(t.win_streak, f.win_streak),
+           best_win_streak = greatest(t.best_win_streak, f.best_win_streak),
+           levels_completed = t.levels_completed + f.levels_completed,
+           team_levels = t.team_levels + f.team_levels,
+           clean_streak = greatest(t.clean_streak, f.clean_streak),
+           best_clean_streak = greatest(t.best_clean_streak, f.best_clean_streak),
+           safe_streak = greatest(t.safe_streak, f.safe_streak),
+           best_safe_streak = greatest(t.best_safe_streak, f.best_safe_streak),
+           wins_duo = t.wins_duo + f.wins_duo,
+           wins_full_team = t.wins_full_team + f.wins_full_team,
+           wins_no_vistazo = t.wins_no_vistazo + f.wins_no_vistazo,
+           flawless_wins = t.flawless_wins + f.flawless_wins,
+           hard_wins = t.hard_wins + f.hard_wins,
+           long_wins = t.long_wins + f.long_wins,
+           early_games = t.early_games + f.early_games,
+           updated_at = now()
+     where t.user_id = p_to;
+    delete from public.player_stats where user_id = p_from;
+  end if;
+
+  -- Los grupos se identifican por los ids de sus jugadores: el del invitado pasa a ser el de la cuenta.
+  insert into public.player_group_wins (user_id, group_key, wins)
+  select p_to,
+         (select string_agg(x, ',' order by x::uuid)
+            from unnest(string_to_array(replace(g.group_key, p_from::text, p_to::text), ',')) as x),
+         g.wins
+  from public.player_group_wins g where g.user_id = p_from
+  on conflict (user_id, group_key) do update set wins = public.player_group_wins.wins + excluded.wins;
+  delete from public.player_group_wins where user_id = p_from;
+  update public.player_stats
+     set best_group_wins = greatest(best_group_wins,
+           coalesce((select max(wins) from public.player_group_wins where user_id = p_to), 0))
+   where user_id = p_to;
+
+  insert into public.progress_events (user_id, event, ref, created_at)
+  select p_to, event, ref, created_at from public.progress_events where user_id = p_from
+  on conflict do nothing;
+  delete from public.progress_events where user_id = p_from;
+
+  update public.game_results set player_ids = array_replace(player_ids, p_from, p_to)
+   where p_from = any (player_ids);
+
+  -- Con lo unido puede cumplir logros nuevos (p. ej. coleccionar 5 diseños).
+  perform game_private.evaluate_achievements(p_to);
+
+  return jsonb_build_object(
+    'coins', v_coins, 'cards', v_cards, 'titles', v_titles, 'achievements', v_achievements,
+    'games', coalesce(f.games_completed, 0));
+end;
+$$;
+
+-- Paso 1 (como invitado, justo antes de ir a Google): un vale de un solo uso para su progreso.
+create or replace function public.start_account_merge()
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_token text := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
+begin
+  if not game_private.is_guest(v_uid) then raise exception 'NOT_GUEST'; end if;
+  delete from public.account_merges where from_user = v_uid or created_at < now() - interval '1 day';
+  insert into public.account_merges (token, from_user) values (v_token, v_uid);
+  return jsonb_build_object('token', v_token);
+end;
+$$;
+
+-- Paso 2 (ya con la cuenta): canjea el vale y devuelve lo unido y el perfil de la cuenta.
+create or replace function public.claim_account_merge(p_token text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  m public.account_merges;
+  v_merged jsonb;
+begin
+  if game_private.is_guest(v_uid) then raise exception 'NOT_SIGNED_IN'; end if;
+  select * into m from public.account_merges where token = p_token for update;
+  if not found or m.used_at is not null or m.created_at < now() - interval '1 hour'
+     or m.from_user = v_uid or not game_private.is_guest(m.from_user) then
+    raise exception 'MERGE_INVALID';
+  end if;
+  update public.account_merges set used_by = v_uid, used_at = now() where token = p_token;
+  -- En dos pasos: el perfil (función estable) no vería lo unido si se calculara en la misma consulta.
+  v_merged := game_private.merge_account(m.from_user, v_uid);
+  return jsonb_build_object('merged', v_merged, 'profile', game_private.profile(v_uid));
+end;
+$$;
+
+-- Borra al jugador y todo su progreso (derecho de supresión). Antes sale de sus salas, para no
+-- dejar a nadie esperando. En el historial de los demás queda el nombre que usó en esas
+-- partidas, pero ya sin relación con ninguna cuenta.
+create or replace function public.delete_my_account()
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_room uuid;
+  v_auth boolean := true;
+begin
+  for v_room in select room_id from public.room_players where user_id = v_uid loop
+    perform game_private.lock_room(v_room, v_uid);
+    if game_private.remove_player(v_room, v_uid, 'left') then
+      perform game_private.touch(v_room);
+    end if;
+  end loop;
+  update public.game_results
+     set player_ids = array_replace(player_ids, v_uid, '00000000-0000-0000-0000-000000000000'::uuid)
+   where v_uid = any (player_ids);
+  delete from public.account_merges where from_user = v_uid;
+  delete from public.player_equipped where user_id = v_uid;
+  delete from public.player_cosmetics where user_id = v_uid;
+  delete from public.player_achievements where user_id = v_uid;
+  delete from public.player_group_wins where user_id = v_uid;
+  delete from public.player_stats where user_id = v_uid;
+  delete from public.progress_events where user_id = v_uid;
+  delete from public.match_rewards where user_id = v_uid;
+  delete from public.coin_transactions where user_id = v_uid;
+  delete from public.player_wallets where user_id = v_uid;
+  delete from public.chat_messages where user_id = v_uid;
+  delete from public.join_attempts where user_id = v_uid;
+  -- La cuenta en sí (con el correo, si inició sesión con Google).
+  begin
+    delete from auth.users where id = v_uid;
+  exception when insufficient_privilege then
+    v_auth := false;
+  end;
+  return jsonb_build_object('deleted', true, 'account', v_auth);
+end;
+$$;
+
 -- Últimos movimientos de monedas del jugador.
 create or replace function public.get_my_coin_history()
 returns jsonb language sql stable security definer set search_path = ''
@@ -2278,7 +2494,10 @@ revoke all on function
   public.equip_cosmetic(text),
   public.unequip_cosmetic(text),
   public.mark_achievements_seen(text[]),
-  public.get_my_coin_history()
+  public.get_my_coin_history(),
+  public.start_account_merge(),
+  public.claim_account_merge(text),
+  public.delete_my_account()
 from public, anon;
 
 revoke all on function public.ping() from public;
@@ -2310,7 +2529,10 @@ grant execute on function
   public.equip_cosmetic(text),
   public.unequip_cosmetic(text),
   public.mark_achievements_seen(text[]),
-  public.get_my_coin_history()
+  public.get_my_coin_history(),
+  public.start_account_merge(),
+  public.claim_account_merge(text),
+  public.delete_my_account()
 to authenticated;
 
 -- ───────────────────────────── Tiempo real ─────────────────────────────

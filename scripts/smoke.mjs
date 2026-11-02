@@ -219,7 +219,20 @@ async function main() {
     'no se pueden falsear logros ni estadísticas desde el cliente',
   );
 
-  for (const p of players) await p.rpc('leave_room', { p_room: room }).catch(() => {});
+  // Cuentas: el vale para unir el progreso solo lo canjea quien ha iniciado sesión y nadie lo lee;
+  // borrar la cuenta lo borra todo, incluida la sesión.
+  const token = await c.rpc('start_account_merge', {});
+  ok(typeof token?.token === 'string' && token.token.length >= 32, 'vale para unir el progreso a una cuenta');
+  ok((await fail(b.rpc('claim_account_merge', { p_token: token.token }))) === 'NOT_SIGNED_IN', 'un invitado no puede quedarse el progreso de otro');
+  const { data: merges } = await c.sb.from('account_merges').select('*');
+  ok(!merges || merges.length === 0, 'nadie puede leer los vales desde la app');
+  await c.rpc('leave_room', { p_room: room }).catch(() => {});
+  const gone = await c.rpc('delete_my_account', {});
+  ok(gone?.deleted === true && gone.account === true, `borrar la cuenta (cuenta incluida: ${gone?.account})`);
+  const { data: afterDelete } = await c.sb.auth.getUser();
+  ok(!afterDelete?.user, 'la sesión borrada ya no sirve');
+
+  for (const p of [a, b]) await p.rpc('leave_room', { p_room: room }).catch(() => {});
   await b.sb.removeChannel(channel);
   for (const p of players) await p.sb.auth.signOut().catch(() => {});
 

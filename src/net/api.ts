@@ -125,6 +125,15 @@ export interface CoinMovement {
   at: string;
 }
 
+/** Lo que se ha pasado del invitado a la cuenta al iniciar sesión. */
+export interface MergeSummary {
+  coins: number;
+  cards: number;
+  titles: number;
+  achievements: number;
+  games: number;
+}
+
 const newActionId = () => crypto.randomUUID();
 
 export const api = {
@@ -164,4 +173,10 @@ export const api = {
       stats: { played: number; won: number; bestLevel: number };
       games: { result: 'won' | 'lost' | 'abandoned'; level: number; maxLevel: number; players: string[]; finishedAt: string }[];
     }>('get_my_history', {}, 1),
+  /** Vale de un solo uso para pasar el progreso de este invitado a una cuenta (antes de ir a Google). */
+  startAccountMerge: () => rpc<{ token: string }>('start_account_merge', {}),
+  /** Canjea el vale ya con la cuenta. Sin reintentos: el vale solo sirve una vez. */
+  claimAccountMerge: (token: string) => rpc<{ merged: MergeSummary; profile: Profile }>('claim_account_merge', { p_token: token }),
+  /** Borra al jugador y todo su progreso. */
+  deleteMyAccount: () => rpc<{ deleted: boolean; account: boolean }>('delete_my_account', {}),
 };

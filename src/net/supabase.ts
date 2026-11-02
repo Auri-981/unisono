@@ -15,7 +15,9 @@ export function getSupabase(): SupabaseClient {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        // Al volver de Google la dirección trae un código de un solo uso: se canjea por la sesión.
+        detectSessionInUrl: true,
+        flowType: 'pkce',
         storageKey: 'unisono-auth',
       },
       realtime: { params: { eventsPerSecond: 20 } },
@@ -27,9 +29,9 @@ export function getSupabase(): SupabaseClient {
 let sessionPromise: Promise<string> | null = null;
 
 /**
- * Garantiza una sesión anónima y devuelve el id del jugador.
- * La sesión se guarda en el navegador: al cerrar y reabrir la pestaña se recupera
- * la misma identidad (y por tanto el mismo sitio en la sala).
+ * Garantiza una sesión (la de la cuenta de Google o, si no hay, una de invitado anónima) y
+ * devuelve el id del jugador. La sesión se guarda en el navegador: al cerrar y reabrir la
+ * pestaña se recupera la misma identidad (y por tanto el mismo sitio en la sala).
  */
 export function ensureSession(): Promise<string> {
   if (!sessionPromise) {
@@ -49,4 +51,19 @@ export function ensureSession(): Promise<string> {
     });
   }
   return sessionPromise;
+}
+
+/** Olvida la sesión de este navegador (cerrar sesión o cuenta borrada); la siguiente llamada crea un invitado nuevo. */
+export async function dropSession(): Promise<void> {
+  sessionPromise = null;
+  await getSupabase().auth.signOut({ scope: 'local' });
+}
+
+/** ¿Está activado «Continuar con Google» en Supabase? (Ajuste público: así el botón no sale antes de tiempo.) */
+export async function googleEnabled(): Promise<boolean> {
+  if (!onlineAvailable) return false;
+  const res = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: key! }, signal: AbortSignal.timeout(8000) });
+  if (!res.ok) return false;
+  const body = (await res.json()) as { external?: Record<string, boolean> };
+  return Boolean(body.external?.google);
 }

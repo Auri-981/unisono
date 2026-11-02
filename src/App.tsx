@@ -8,6 +8,7 @@ import type { RoomConfig, RoomSnapshot } from './game/types';
 import { t } from './i18n';
 import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
+import { AccountNoticeDialog } from './ui/components/Account';
 import { AchievementNotices } from './ui/components/AchievementNotices';
 import { AutoUpdate } from './ui/components/AutoUpdate';
 import { getPrefs, storedRoom } from './ui/prefs';
@@ -15,6 +16,7 @@ import { EntryScreen } from './ui/screens/EntryScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
 import { KickedScreen } from './ui/screens/KickedScreen';
 import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
+import { PrivacyScreen } from './ui/screens/PrivacyScreen';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
 import { AchievementsScreen, ProfileScreen } from './ui/screens/ProgressScreens';
 import { CollectionScreen, ShopScreen, type CosmeticTab } from './ui/screens/ShopScreens';
@@ -30,6 +32,7 @@ type Screen =
   | { name: 'practice'; bots: number; config: RoomConfig; run: number }
   | { name: 'tutorial' }
   | { name: 'settings' }
+  | { name: 'privacy'; from: 'settings' | 'link' }
   | { name: 'history' }
   | { name: 'shop'; tab?: CosmeticTab }
   | { name: 'collection'; tab?: CosmeticTab }
@@ -62,6 +65,8 @@ function setUrlCode(code: string | null) {
  * restaura la pestaña al reabrir, no te mete otra vez en la sala sin querer.
  */
 function initialScreen(): Screen {
+  // Enlace directo a la política de privacidad (el que se da a Google).
+  if (new URLSearchParams(window.location.search).has('privacidad')) return { name: 'privacy', from: 'link' };
   const urlCode = codeFromUrl();
   if (!onlineAvailable) return { name: 'home' };
   const active = storedRoom.active();
@@ -90,6 +95,7 @@ export function App() {
     <>
       <Screens screen={screen} setScreen={setScreen} />
       {onlineAvailable && <AchievementNotices />}
+      {onlineAvailable && <AccountNoticeDialog />}
       <AutoUpdate blocked={HOLD_UPDATE_SCREENS.has(screen.name)} />
     </>
   );
@@ -180,7 +186,16 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
         />
       );
     case 'settings':
-      return <SettingsScreen onBack={() => home()} />;
+      return <SettingsScreen onBack={() => home()} onPrivacy={() => setScreen({ name: 'privacy', from: 'settings' })} />;
+    case 'privacy':
+      return (
+        <PrivacyScreen
+          onBack={() => {
+            if (screen.from === 'link') setUrlCode(null);
+            setScreen(screen.from === 'link' ? { name: 'home' } : { name: 'settings' });
+          }}
+        />
+      );
     case 'history':
       return <HistoryScreen onBack={() => home()} />;
     case 'shop':

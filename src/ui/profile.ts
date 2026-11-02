@@ -74,6 +74,22 @@ export function refreshProfile(): Promise<void> {
   return inFlight;
 }
 
+/** Perfil que el servidor ha devuelto por otra vía (p. ej. al unir el progreso a la cuenta). */
+export function acceptProfile(profile: Profile) {
+  if (!frozen) set({ profile, error: null });
+}
+
+/** Olvida el perfil guardado: en este navegador juega ahora otra persona (o un invitado nuevo). */
+export function forgetProfile() {
+  if (frozen) return;
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // Sin almacenamiento: no había nada guardado.
+  }
+  set({ profile: null, error: null });
+}
+
 /** Compra un cosmético. Devuelve null si ha ido bien o el código de error. */
 export async function buyCosmetic(id: string): Promise<string | null> {
   if (frozen) return simulate((p) => {

@@ -5,6 +5,8 @@
  *      | final | finalpeek | finalalert | finalnext | finallost  (+ «hard»: finalalerthard, finalnexthard, finallosthard)
  *      | lobbyguest | shop | shoptitles | shoprich | collection | collectiontitles | achievements | profile | achtoast | achunlock
  *      | designs | gallery | wonreward | lostreward | noreward | kicked
+ *      | profileguest | profilegoogle | settingsguest | settingsgoogle | homeguest | privacy
+ *      | accmerged | accsignedin | acccancelled | accsignedout  (ventanas al volver de Google)
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -19,6 +21,11 @@ import type { Achievement, CatalogItem, Profile } from '../net/api';
 import { AchievementNotices } from '../ui/components/AchievementNotices';
 import { AchievementsScreen, ProfileScreen } from '../ui/screens/ProgressScreens';
 import { previewProfile } from '../ui/profile';
+import { previewAccount } from '../ui/account';
+import { AccountNoticeDialog } from '../ui/components/Account';
+import { HomeScreen } from '../ui/screens/HomeScreen';
+import { SettingsScreen } from '../ui/screens/InfoScreens';
+import { PrivacyScreen } from '../ui/screens/PrivacyScreen';
 import { Card } from '../ui/components/Card';
 import { CARD_DESIGNS } from '../ui/cosmetics';
 
@@ -287,7 +294,54 @@ function build(variant: string): E.EngineState {
   return s;
 }
 
+function accountPreview(kind: string) {
+  const google = kind.endsWith('google');
+  previewAccount({ kind: google ? 'google' : 'guest', email: google ? 'ana.garcia@gmail.com' : null, googleReady: true });
+  previewProfile(demoProfile('profile'));
+  if (kind.startsWith('profile')) return <ProfileScreen onBack={noop} onCollection={noop} onAchievements={noop} onSettings={noop} />;
+  if (kind.startsWith('settings')) return <SettingsScreen onBack={noop} onPrivacy={noop} />;
+  if (kind === 'privacy') return <PrivacyScreen onBack={noop} />;
+  if (kind === 'homeguest') {
+    try {
+      localStorage.removeItem('unisono.saveNudge');
+    } catch {
+      // Sin almacenamiento: el aviso sale igual.
+    }
+    return (
+      <HomeScreen
+        message={null}
+        onCreate={noop}
+        onJoin={noop}
+        onPractice={noop}
+        onTutorial={noop}
+        onSettings={noop}
+        onHistory={noop}
+        onShop={noop}
+        onCollection={noop}
+        onAchievements={noop}
+        onProfile={noop}
+      />
+    );
+  }
+  const notices = {
+    accmerged: { kind: 'signedIn', merged: { coins: 85, cards: 2, titles: 1, achievements: 6, games: 9 } },
+    accsignedin: { kind: 'signedIn', merged: null },
+    acccancelled: { kind: 'cancelled' },
+    accsignedout: { kind: 'signedOut' },
+  } as const;
+  previewAccount({ kind: 'google', notice: notices[kind as keyof typeof notices] });
+  return (
+    <>
+      <SettingsScreen onBack={noop} onPrivacy={noop} />
+      <AccountNoticeDialog />
+    </>
+  );
+}
+
+const ACCOUNT_PREVIEWS = ['profileguest', 'profilegoogle', 'settingsguest', 'settingsgoogle', 'homeguest', 'privacy', 'accmerged', 'accsignedin', 'acccancelled', 'accsignedout'];
+
 export function Preview({ kind }: { kind: string }) {
+  if (ACCOUNT_PREVIEWS.includes(kind)) return accountPreview(kind);
   if (kind === 'kicked') return <KickedScreen code="J7S7E" onHome={noop} onCreate={noop} />;
   if (kind === 'gallery') {
     // Todos los diseños, con números de una y dos cifras, fríos y cálidos, en cada tamaño.

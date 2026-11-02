@@ -4,7 +4,9 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
 *The Mind*: jugad todas las cartas del 1 al 100 en orden ascendente… sin decir ni un número.
 
 - Multijugador online real (2–4 jugadores) con salas privadas, código e enlace de invitación.
-- Sin cuentas ni datos personales: cada móvil recibe una sesión anónima segura.
+- Se juega al momento como invitado (sesión anónima segura, sin datos personales). Opcional:
+  «Continuar con Google» guarda el progreso en una cuenta y lo une al que ya había en ese móvil.
+  Política de privacidad en la app (y en `?privacidad`) y borrado de cuenta desde Ajustes.
 - Las cartas de cada jugador son privadas **en el servidor** (Row Level Security), no solo ocultas en pantalla.
 - Vidas y tres comodines con votación (Vistazo, Escudo y Rebobinar), recompensas configurables con
   elección de comodín, ronda relámpago con reloj (un nivel al azar por partida), ronda final

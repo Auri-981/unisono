@@ -342,3 +342,31 @@ Para añadir un logro: una fila en el `insert into public.achievements` (y en
 `player_stats`, dónde se suma (`record_level_done` o `record_match_progress`) y su caso en
 `metric_value`. Para una carta exclusiva nueva: fila en `cosmetics` con `unlock = 'achievement'`,
 su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.
+
+## 14. Cuentas: invitado y Google
+
+- **Invitado**: al abrir la app se crea una sesión anónima de Supabase (sin datos personales) y
+  todo el progreso cuelga de su `auth.uid()`. Vive solo en ese navegador.
+- **Continuar con Google** (`src/ui/account.ts`): no se convierte la sesión, se **une** el
+  progreso. Así funciona igual con una cuenta nueva (primer móvil) que con una que ya tenía
+  progreso (otro móvil), y no hace falta el «manual linking» de Supabase.
+  1. Como invitado, `start_account_merge()` da un vale de un solo uso (en `account_merges`,
+     sin acceso desde la app) que se guarda en `localStorage`.
+  2. `signInWithOAuth('google')` con PKCE; al volver, supabase-js canjea el `?code=` por la sesión
+     de la cuenta (`detectSessionInUrl`).
+  3. Ya con la cuenta, `claim_account_merge(vale)` llama a `game_private.merge_account`: monedas
+     sumadas (con su movimiento), cartas y títulos juntos, lo equipado en la cuenta se respeta
+     salvo que fuera el de serie, logros juntos (fecha más antigua, sin repetir avisos),
+     estadísticas sumadas (rachas y récords: el mayor), grupos de victorias reescritos con el id
+     de la cuenta, eventos de progreso e historial (`game_results.player_ids`). El invitado queda
+     vacío. El vale solo vale una vez, una hora, para una cuenta con sesión (no otro invitado) y
+     si quien lo pidió sigue siendo invitado.
+  Si Google se cancela o falla, la sesión de invitado sigue intacta (supabase-js no la borra).
+- **Cerrar sesión**: `signOut({ scope: 'local' })` y se crea un invitado nuevo; el perfil guardado
+  en el navegador se olvida (`unisono.uid` detecta el cambio de jugador).
+- **Borrar la cuenta**: `delete_my_account()` saca al jugador de sus salas, borra su progreso y
+  su fila de `auth.users` (con el correo). En el historial de los demás su id pasa a ser el
+  id nulo y queda solo el alias de aquella partida.
+- **Botón de Google**: solo se enseña si `GET /auth/v1/settings` dice que Google está activado,
+  así se puede publicar antes de configurarlo (pasos en `docs/DESPLIEGUE.md`, apartado 8).
+

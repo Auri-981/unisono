@@ -11,6 +11,7 @@ Tiempo estimado: 20–30 minutos. Coste: 0 €. No hace falta tarjeta.
 | 5. Comprobar el servidor | Tu ordenador (`npm run smoke`) | Automático |
 | 6. Subir el código a GitHub y publicar | GitHub | Automático con `gh` (o manual) |
 | 7. Comprobación final y compartir | Tu móvil | Manual |
+| 8. Iniciar sesión con Google (opcional) | Google Cloud y panel de Supabase | **Manual** |
 
 ---
 
@@ -157,6 +158,45 @@ son `https://TU-USUARIO.github.io/unisono/?sala=CODIGO`.
 En iPhone: botón Compartir → **Añadir a pantalla de inicio** para tenerlo como una app.
 En Android/Chrome: menú ⋮ → **Instalar aplicación** / **Añadir a pantalla de inicio**.
 
+## 8. Iniciar sesión con Google (opcional)
+
+Sin esto el juego funciona igual: todos juegan como invitados y el progreso se queda en cada
+móvil. Con esto aparece «Continuar con Google» en el perfil, en Ajustes y en el inicio, y el
+progreso se guarda en la cuenta (la app no enseña el botón hasta que Google está activado).
+
+**En Google Cloud** (<https://console.cloud.google.com>, con tu cuenta de Google):
+
+1. Arriba, selector de proyectos → **Proyecto nuevo** → nombre `Unisono` → **Crear**, y selecciónalo.
+2. Menú → **APIs y servicios** → **Pantalla de consentimiento de OAuth** (o *Google Auth Platform*)
+   → **Comenzar**: nombre de la aplicación `Unísono`, tu correo de asistencia, público
+   **Externo**, tu correo de contacto, acepta y **Crear**.
+3. **Clientes** → **Crear cliente** → tipo **Aplicación web**, nombre `Unísono web`.
+   - **Orígenes de JavaScript autorizados**: `https://auri-981.github.io`
+   - **URI de redirección autorizados**: `https://<tu-proyecto>.supabase.co/auth/v1/callback`
+     (la *Project URL* del paso 4 más `/auth/v1/callback`).
+   - **Crear**. Copia el **ID de cliente** y el **Secreto del cliente** (el secreto solo se ve
+     ahora: guárdalo en tu gestor de contraseñas y no lo pegues en ningún otro sitio).
+4. **Público** → **Publicar aplicación** → confirmar. (Si se queda «en pruebas», solo podrían
+   entrar las cuentas que añadas a mano.) Con los permisos básicos (correo y perfil) Google no
+   pide verificación.
+5. Opcional, en **Desarrollo de la marca**: página principal `https://auri-981.github.io/unisono/` y
+   política de privacidad `https://auri-981.github.io/unisono/?privacidad`. No subas logotipo:
+   eso sí obliga a pasar una verificación.
+
+**En el panel de Supabase**:
+
+6. **Authentication** → **Sign In / Providers** → **Google** → actívalo, pega el **Client ID** y el
+   **Client Secret** → **Save**.
+7. **Authentication** → **URL Configuration**:
+   - **Site URL**: `https://auri-981.github.io/unisono/`
+   - **Redirect URLs** → **Add URL**: `https://auri-981.github.io/unisono/` (y, para probar en el
+     ordenador, `http://localhost:5173/`).
+
+Comprobación: abre la web, entra en tu perfil y pulsa «Continuar con Google». Al volver debe salir
+«¡Sesión iniciada!» con lo que se ha pasado a tu cuenta. En otro móvil, inicia sesión con la misma
+cuenta y verás lo mismo. (La pantalla de Google dirá «continuar a …supabase.co»: es normal; para
+que salga otro nombre haría falta un dominio propio.)
+
 ## Mantenimiento y límites
 
 - **Pausa por inactividad**: Supabase pausa el proyecto gratuito tras 7 días sin actividad. Para
@@ -166,7 +206,8 @@ En Android/Chrome: menú ⋮ → **Instalar aplicación** / **Añadir a pantalla
   sin cambios en el repositorio (avisa antes por correo); se reactiva en Actions → *Enable workflow*.
 - **Usuarios anónimos antiguos**: Supabase no los borra solo. Si algún día quieres limpiar, en el
   SQL Editor: `delete from auth.users where is_anonymous and created_at < now() - interval '90 days';`
-  (los jugadores afectados simplemente obtendrán una identidad nueva).
+  (los invitados afectados obtendrán una identidad nueva y perderán su progreso; a quienes
+  iniciaron sesión con Google no les afecta).
 - **Límite de sesiones**: 30 sesiones anónimas nuevas por hora y por IP (ajustable en
   Authentication → Rate Limits). Cada móvil solo crea una la primera vez.
 - **Costes futuros**: con el plan gratuito puedes tener hasta 200 conexiones simultáneas; para

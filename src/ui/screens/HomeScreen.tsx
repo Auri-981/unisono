@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { t } from '../../i18n';
 import { onlineAvailable } from '../../net/supabase';
+import { SaveNudge } from '../components/Account';
 import { Card } from '../components/Card';
 import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon, TrophyIcon } from '../components/Icons';
 import { TitleTag } from '../components/Progression';
@@ -58,6 +59,7 @@ export function HomeScreen(p: Props) {
           <p className="home-subtitle">{t('app.subtitle')}</p>
         </div>
 
+        {onlineAvailable && <SaveNudge />}
         {p.message && (
           <p className="notice notice-info" role="status">
             {p.message}

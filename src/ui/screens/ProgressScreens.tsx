@@ -5,6 +5,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { t } from '../../i18n';
 import type { Achievement, AchievementCategory, Profile } from '../../net/api';
+import { AccountCard } from '../components/Account';
 import { CheckIcon, TitleIcon, TrophyIcon } from '../components/Icons';
 import { Page } from '../components/Layout';
 import {
@@ -18,6 +19,7 @@ import {
   TitleTag,
 } from '../components/Progression';
 import { CoinBadge } from '../components/Resources';
+import { useAccount } from '../account';
 import { usePrefs } from '../prefs';
 import { equippedCardDesign, equippedTitle, refreshProfile, useProfile } from '../profile';
 import { DesignFan, ProfileGate, type CosmeticTab } from './ShopScreens';
@@ -193,6 +195,7 @@ function ProfileBody({
   onSettings: () => void;
 }) {
   const prefs = usePrefs();
+  const guest = useAccount().kind === 'guest';
   const name = prefs.name.trim();
   const title = equippedTitle(p);
   const design = equippedCardDesign(p);
@@ -225,6 +228,8 @@ function ProfileBody({
           </div>
         </div>
       </section>
+      {/* Al invitado se le enseña arriba: es lo que puede perder. */}
+      {guest && <AccountCard />}
 
       <button type="button" className="profile-design" onClick={() => onCollection('cards')}>
         <DesignFan design={design} />
@@ -289,7 +294,7 @@ function ProfileBody({
       <button type="button" className="btn btn-secondary btn-block" onClick={onAchievements}>
         <TrophyIcon size={20} /> {t('profile.seeAchievements')}
       </button>
-      <p className="muted small profile-device">{t('profile.device')}</p>
+      {!guest && <AccountCard />}
     </>
   );
 }

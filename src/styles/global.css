@@ -6455,11 +6455,6 @@ html {
   bottom: -3px;
 }
 
-.profile-device {
-  margin: 0;
-  text-align: center;
-}
-
 /* ───────────── Inicio: perfil y accesos ───────────── */
 
 .home-topbar {
@@ -6558,4 +6553,190 @@ html {
 .lobby-player-name .title-tag,
 .end-team .title-tag {
   white-space: normal;
+}
+
+/* ───────────── Cuenta: invitado o guardado en Google ───────────── */
+
+.account-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.account-guest {
+  border-color: rgb(245 185 113 / 0.45);
+  background:
+    radial-gradient(90% 140% at 0% 0%, rgb(245 185 113 / 0.12), transparent 70%),
+    var(--surface);
+}
+
+.account-saved {
+  border-color: rgb(111 220 170 / 0.4);
+}
+
+.account-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.account-icon {
+  margin-top: 1px;
+  color: var(--warm);
+}
+
+.account-saved .account-icon {
+  color: var(--success);
+}
+
+.account-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-email {
+  overflow-wrap: anywhere;
+  font-size: 0.92rem;
+}
+
+.account-signout {
+  justify-self: start;
+  padding: 4px 0;
+}
+
+/* Botón de Google: blanco con el logotipo en color, como piden sus normas. */
+.btn-google {
+  width: 100%;
+  background: #fff;
+  color: #1f1f1f;
+  border-color: #dadce0;
+}
+
+.btn-google:disabled {
+  opacity: 0.7;
+}
+
+.btn-google-sm {
+  width: auto;
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 0.92rem;
+}
+
+.save-nudge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 8px 12px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(245 185 113 / 0.45);
+  background: rgb(245 185 113 / 0.08);
+}
+
+.save-nudge-icon {
+  flex: none;
+  color: var(--warm);
+}
+
+.save-nudge-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.save-nudge .btn-google {
+  flex: none;
+}
+
+.save-nudge-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  color: var(--muted);
+}
+
+.account-notice {
+  text-align: center;
+}
+
+.account-badge-ok {
+  color: var(--success);
+  background: rgb(111 220 170 / 0.12);
+  border-color: rgb(111 220 170 / 0.45);
+}
+
+.account-badge-info {
+  color: var(--warm);
+  background: rgb(245 185 113 / 0.12);
+  border-color: rgb(245 185 113 / 0.45);
+}
+
+.account-merged {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.account-merged li {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-weight: 600;
+}
+
+.settings-account {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-account h2 {
+  margin: 0;
+}
+
+.settings-delete,
+.settings-privacy {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+}
+
+.link-danger {
+  color: var(--danger);
+}
+
+.privacy {
+  display: grid;
+  gap: 4px;
+  max-width: 680px;
+  line-height: 1.55;
+}
+
+.privacy h2 {
+  margin: 18px 0 2px;
+  font-size: 1.05rem;
+}
+
+.privacy p,
+.privacy ul {
+  margin: 0;
+}
+
+.privacy ul {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.privacy a {
+  color: var(--cool);
 }
