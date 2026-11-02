@@ -5,61 +5,28 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { MatchReward, RoomSnapshot } from '../../src/game/types';
 import { createTestDb, errorOf, type TestDb } from './db';
+import { gameHelpers } from './game';
 
 let t: TestDb;
+let started: ReturnType<typeof gameHelpers>['started'];
+let setHands: ReturnType<typeof gameHelpers>['setHands'];
+let playToTheEnd: ReturnType<typeof gameHelpers>['playToTheEnd'];
+let grant: ReturnType<typeof gameHelpers>['grant'];
 beforeAll(async () => {
   t = await createTestDb();
+  ({ started, setHands, playToTheEnd, grant } = gameHelpers(t));
 });
 
 interface Profile {
   coins: number;
   equipped: Record<string, string>;
   owned: string[];
-  catalog: { id: string; name: string; price: number | null; unlock: string }[];
-}
-
-async function started(n: number, config: object = {}) {
-  const ids: string[] = [];
-  for (let i = 0; i < n; i++) ids.push(await t.newUser());
-  const snap: RoomSnapshot = await t.rpc(ids[0]!, 'create_room', { p_name: 'Ana', p_config: config });
-  for (let i = 1; i < n; i++) await t.rpc(ids[i]!, 'join_room', { p_code: snap.room.code, p_name: `J${i}` });
-  for (const id of ids) await t.rpc(id, 'set_lobby_ready', { p_room: snap.room.id, p_ready: true });
-  await t.rpc(ids[0]!, 'start_game', { p_room: snap.room.id });
-  return { ids, room: snap.room.id };
-}
-
-async function setHands(room: string, ids: string[], hands: number[][], level: number) {
-  await t.admin(`update public.rooms set level = $2 where id = $1`, [room, level]);
-  await t.admin(`delete from public.hands where room_id = $1`, [room]);
-  for (let i = 0; i < ids.length; i++) {
-    for (const c of hands[i]!) await t.admin(`insert into public.hands (room_id, user_id, card) values ($1, $2, $3)`, [room, ids[i], c]);
-  }
-}
-
-/** Juega la partida entera sin errores (todas las cartas en orden), nivel a nivel. */
-async function playToTheEnd(room: string, ids: string[]): Promise<RoomSnapshot> {
-  for (let guard = 0; guard < 30; guard++) {
-    const state: RoomSnapshot = await t.rpc(ids[0]!, 'get_room_state', { p_room: room });
-    if (['won', 'lost', 'abandoned'].includes(state.room.status)) return state;
-    if (state.room.status === 'level_complete') {
-      if (state.room.offer) for (const id of ids) await t.rpc(id, 'pick_comodin', { p_room: room, p_level: state.room.level, p_kind: state.room.offer.choices[0] });
-      for (const id of ids) await t.rpc(id, 'ready_next_level', { p_room: room, p_level: state.room.level });
-      continue;
-    }
-    const rows = await t.admin<{ user_id: string; card: number }>(`select user_id, card from public.hands where room_id = $1 order by card`, [room]);
-    for (const r of rows) await t.rpc(r.user_id, 'play_card', { p_room: room, p_card: r.card });
-  }
-  throw new Error('la partida no terminó');
+  catalog: { id: string; kind: string; name: string; price: number | null; unlock: string }[];
 }
 
 const reward = async (players: number, maxLevel: number, completed: number, won: boolean) =>
   (await t.admin<{ r: { total: number } }>(`select game_private.match_reward($1, $2, $3, $4) as r`, [players, maxLevel, completed, won]))[0]!.r;
 const profile = (uid: string): Promise<Profile> => t.rpc(uid, 'get_my_profile', {});
-/** Da monedas como lo haría un ajuste interno (solo en las pruebas). */
-async function grant(uid: string, coins: number) {
-  await t.admin(`select game_private.ensure_player($1)`, [uid]);
-  await t.admin(`select game_private.add_coins($1, $2, 'adjustment', 'Prueba')`, [uid, coins]);
-}
 
 describe('fórmula de recompensas', () => {
   it('valores de referencia', async () => {
@@ -101,14 +68,19 @@ describe('monedas al terminar una partida', () => {
     const mine = end.myReward as MatchReward;
     expect(mine).toMatchObject({ coins: 14, balanceBefore: 0, balanceAfter: 14 });
     expect(mine.breakdown).toMatchObject({ levelsCompleted: 3, maxLevel: 3, won: true, participation: 2, levels: 9, victory: 3 });
-    for (const id of ids) expect((await profile(id)).coins).toBe(14);
+    // Saldo = partida (14) + los logros «Primera conexión» (5) y «Primera victoria» (10).
+    const ACH = 15;
+    for (const id of ids) expect((await profile(id)).coins).toBe(14 + ACH);
 
     // Pedirlo otra vez (o reintentar el pago desde dentro) no duplica nada.
     await t.rpc(ids[1]!, 'get_room_state', { p_room: room });
     const [match] = await t.admin<{ id: number }>(`select id from public.game_results where room_id = $1`, [room]);
     await t.admin(`select game_private.grant_match_rewards($1, $2, 3, true)`, [match!.id, room]);
-    for (const id of ids) expect((await profile(id)).coins).toBe(14);
-    const tx = await t.as<{ amount: number; kind: string; match_id: number }>(ids[0]!, `select amount, kind, match_id from public.coin_transactions`);
+    for (const id of ids) expect((await profile(id)).coins).toBe(14 + ACH);
+    const tx = await t.as<{ amount: number; kind: string; match_id: number }>(
+      ids[0]!,
+      `select amount, kind, match_id from public.coin_transactions where kind = 'match_reward'`,
+    );
     expect(tx).toEqual([{ amount: 14, kind: 'match_reward', match_id: match!.id }]);
 
     // La revancha es otra partida: se cobra aparte.
@@ -116,7 +88,8 @@ describe('monedas al terminar una partida', () => {
     for (const id of ids) await t.rpc(id, 'set_lobby_ready', { p_room: room, p_ready: true });
     await t.rpc(ids[0]!, 'start_game', { p_room: room });
     const again = await playToTheEnd(room, ids);
-    expect(again.myReward).toMatchObject({ coins: 14, balanceBefore: 14, balanceAfter: 28 });
+    // Antes de cobrarla, en su nivel 2 ya llevan 5 niveles seguidos sin perder vidas: «Sin margen de error» (+15).
+    expect(again.myReward).toMatchObject({ coins: 14, balanceBefore: 14 + ACH + 15, balanceAfter: 28 + ACH + 15 });
   });
 
   it('derrota en una partida larga: cobra lo superado; quien no jugó ninguna carta no cobra', async () => {
@@ -151,7 +124,12 @@ describe('tienda y colección', () => {
     const me = await t.newUser();
     const p = await profile(me);
     expect(p).toMatchObject({ coins: 0, owned: ['classic'], equipped: { card_design: 'classic' } });
-    expect(p.catalog.map((c) => [c.id, c.price])).toEqual([['classic', null], ['galaxy', 10], ['neon', 30], ['emerald', 50]]);
+    const designs = p.catalog.filter((c) => c.kind === 'card_design');
+    expect(designs.filter((c) => c.unlock !== 'achievement').map((c) => [c.id, c.price])).toEqual([['classic', null], ['galaxy', 10], ['neon', 30], ['emerald', 50]]);
+    // Los exclusivos de logros también salen (para enseñarlos bloqueados), pero sin precio.
+    expect(designs.filter((c) => c.unlock === 'achievement').map((c) => [c.id, c.price])).toEqual([
+      ['obsidian', null], ['aurora', null], ['chrono', null], ['phoenix', null], ['transcendence', null],
+    ]);
   });
 
   it('comprar: sin saldo no; con saldo se cobra, se apunta y se entrega; nunca dos veces', async () => {

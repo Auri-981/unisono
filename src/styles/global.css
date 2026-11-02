@@ -4045,6 +4045,427 @@ html {
   display: none;
 }
 
+/* ───────────── Diseños exclusivos (se consiguen con logros, no se venden) ───────────── */
+
+/* Obsidiana: cristal volcánico negro, vetas de magma, marco de acero y número de metal pulido. */
+.card.design-obsidian {
+  --steel: #b9bfc9;
+  background:
+    radial-gradient(60% 40% at 25% 12%, rgb(255 255 255 / 0.1), transparent 70%),
+    repeating-radial-gradient(circle at 70% 30%, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 4px),
+    radial-gradient(90% 60% at 70% 105%, rgb(255 96 32 / 0.28), transparent 65%),
+    linear-gradient(160deg, #23252b 0%, #0f1013 45%, #050506 100%);
+  color: #e9ecf1;
+  border: 2px solid #7d838d;
+  box-shadow:
+    0 0 0 1px #1a1b1f,
+    0 0 0 4px rgb(185 191 201 / 0.12),
+    0 10px 24px rgb(0 0 0 / 0.6);
+}
+
+/* Marco interior de acero con esquinas achaflanadas. */
+.card.design-obsidian::after {
+  inset: 6px;
+  border-radius: 6px;
+  border: 1px solid rgb(185 191 201 / 0.45);
+  box-shadow: inset 0 0 0 2px rgb(5 5 6 / 0.9), inset 0 0 0 3px rgb(185 191 201 / 0.18);
+}
+
+/* Vetas de magma que cruzan la piedra (finas, con brillo). */
+.design-obsidian > .card-art {
+  background:
+    linear-gradient(118deg, transparent 58%, rgb(255 120 40 / 0.85) 58.4%, rgb(255 190 90 / 0.9) 58.8%, transparent 59.4%),
+    linear-gradient(64deg, transparent 72%, rgb(255 96 32 / 0.6) 72.3%, transparent 72.9%),
+    linear-gradient(140deg, transparent 80%, rgb(255 140 60 / 0.55) 80.2%, transparent 80.8%),
+    linear-gradient(28deg, transparent 18%, rgb(255 96 32 / 0.35) 18.3%, transparent 18.8%);
+  filter: drop-shadow(0 0 3px rgb(255 110 40 / 0.7));
+}
+
+/* Una esquirla de cristal: reflejo afilado arriba a la izquierda. */
+.design-obsidian > .card-art::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  top: 6%;
+  width: 34%;
+  height: 22%;
+  background: linear-gradient(135deg, rgb(255 255 255 / 0.16), transparent 70%);
+  clip-path: polygon(0 0, 100% 0, 20% 100%);
+}
+
+.design-obsidian .card-value {
+  font-weight: 700;
+  background: linear-gradient(180deg, #ffffff 0%, #cfd4dc 40%, #8a909b 62%, #e3e7ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.8)) drop-shadow(0 0 8px rgb(255 110 40 / 0.35));
+}
+
+.design-obsidian .card-corner {
+  color: var(--steel);
+  opacity: 0.85;
+}
+
+/* Aurora: cielo polar con cortinas de luz verdes y violetas, estrellas y montañas nevadas. */
+.card.design-aurora {
+  background:
+    radial-gradient(120% 70% at 50% 0%, #10284a 0%, #0a1830 50%, #050b18 100%);
+  color: #f2fffb;
+  border: 2px solid rgb(150 255 220 / 0.65);
+  box-shadow:
+    0 0 0 4px rgb(110 255 200 / 0.12),
+    0 0 22px rgb(110 255 200 / 0.22),
+    0 10px 24px rgb(0 0 0 / 0.5);
+  overflow: hidden;
+}
+
+.card.design-aurora::after {
+  inset: 6px;
+  border-radius: 10px;
+  border: 1px solid rgb(200 255 240 / 0.22);
+}
+
+/* Las cortinas de luz: varias bandas difuminadas que ondulan despacio. */
+.design-aurora > .card-art {
+  background:
+    radial-gradient(55% 22% at 30% 30%, rgb(80 255 170 / 0.55), transparent 70%),
+    radial-gradient(45% 18% at 70% 22%, rgb(120 255 230 / 0.45), transparent 70%),
+    radial-gradient(60% 20% at 55% 42%, rgb(170 120 255 / 0.4), transparent 72%),
+    radial-gradient(1px 1px at 15% 12%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 82% 9%, #fff 99%, transparent),
+    radial-gradient(1.2px 1.2px at 62% 16%, #fff 99%, transparent),
+    radial-gradient(1px 1px at 40% 8%, #dffcff 99%, transparent);
+  background-size: 160% 100%, 160% 100%, 160% 100%, auto, auto, auto, auto;
+  animation: aurora-drift 9s ease-in-out infinite alternate;
+}
+
+/* Montañas nevadas en el horizonte. */
+.design-aurora > .card-art::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26%;
+  background: linear-gradient(180deg, #1c3550, #0a1626);
+  clip-path: polygon(0 55%, 14% 30%, 26% 50%, 42% 12%, 56% 44%, 70% 22%, 84% 48%, 100% 28%, 100% 100%, 0 100%);
+}
+
+.design-aurora > .card-art::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26%;
+  z-index: 1;
+  background: linear-gradient(180deg, rgb(230 250 255 / 0.85), rgb(230 250 255 / 0) 30%);
+  clip-path: polygon(38% 22%, 42% 12%, 47% 24%, 44% 21%, 41% 26%, 66% 30%, 70% 22%, 74% 31%, 71% 29%, 68% 33%);
+}
+
+@keyframes aurora-drift {
+  from {
+    background-position: 0% 0, 100% 0, 30% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+  to {
+    background-position: 100% 0, 0% 0, 80% 0, 0 0, 0 0, 0 0, 0 0;
+  }
+}
+
+.design-aurora .card-value {
+  font-weight: 700;
+  text-shadow:
+    0 0 2px #fff,
+    0 0 12px rgb(110 255 200 / 0.9),
+    0 0 26px rgb(150 120 255 / 0.55);
+}
+
+.design-aurora .card-corner {
+  color: #b6ffe6;
+  opacity: 0.9;
+}
+
+/* Crono: esfera de reloj de acero azulado, marcas de las horas, agujas y engranajes de plata. */
+.card.design-chrono {
+  --silver: #d6dde8;
+  background:
+    radial-gradient(circle at 50% 50%, rgb(140 180 255 / 0.18) 0 28%, transparent 29%),
+    radial-gradient(130% 100% at 30% 15%, #2a3a5c 0%, #15203a 55%, #0a1022 100%);
+  color: #f1f5ff;
+  border: 2px solid #aab6c8;
+  box-shadow:
+    0 0 0 1px #3c4a63,
+    0 0 0 4px rgb(170 182 200 / 0.14),
+    0 10px 24px rgb(0 0 0 / 0.5);
+  font-family: ui-serif, 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+}
+
+/* Anillo con las 12 marcas de las horas alrededor del número. */
+.card.design-chrono::after {
+  inset: 14% 8%;
+  border-radius: 50%;
+  border: 1px solid rgb(214 221 232 / 0.45);
+  background: repeating-conic-gradient(from -1.5deg, rgb(214 221 232 / 0.75) 0 3deg, transparent 3deg 30deg);
+  mask-image: radial-gradient(closest-side, transparent 84%, #000 85% 97%, transparent 98%);
+  -webkit-mask-image: radial-gradient(closest-side, transparent 84%, #000 85% 97%, transparent 98%);
+}
+
+/* Dos engranajes: uno grande abajo a la izquierda, otro pequeño arriba a la derecha. */
+.design-chrono > .card-art::before,
+.design-chrono > .card-art::after {
+  content: '';
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, #0f1830 0 22%, transparent 23%),
+    radial-gradient(circle, rgb(214 221 232 / 0.55) 0 58%, transparent 59%),
+    repeating-conic-gradient(rgb(214 221 232 / 0.55) 0 15deg, transparent 15deg 30deg);
+  mask-image: radial-gradient(circle, #000 0 70%, transparent 71%);
+  -webkit-mask-image: radial-gradient(circle, #000 0 70%, transparent 71%);
+}
+
+.design-chrono > .card-art::before {
+  width: 42%;
+  left: -12%;
+  bottom: -9%;
+  animation: chrono-spin 18s linear infinite;
+}
+
+.design-chrono > .card-art::after {
+  width: 26%;
+  right: -5%;
+  top: -4%;
+  animation: chrono-spin 12s linear infinite reverse;
+}
+
+/* Las agujas del reloj, detrás del número. */
+.design-chrono > .card-art {
+  background:
+    linear-gradient(rgb(214 221 232 / 0.5), rgb(214 221 232 / 0.5)) 50% 31% / 2px 20% no-repeat,
+    linear-gradient(rgb(140 180 255 / 0.55), rgb(140 180 255 / 0.55)) 61% 50% / 24% 2px no-repeat;
+}
+
+@keyframes chrono-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.design-chrono .card-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 0%, #dbe3f1 45%, #9fb0cc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px rgb(140 180 255 / 0.55)) drop-shadow(0 2px 0 rgb(0 0 0 / 0.5));
+}
+
+.design-chrono .card-corner {
+  color: var(--silver);
+  opacity: 0.85;
+}
+
+/* Fénix: brasas rojas y oro, llamas que suben desde abajo y plumas en las esquinas. */
+.card.design-phoenix {
+  --gold: #ffd27a;
+  background:
+    radial-gradient(70% 45% at 50% 108%, rgb(255 190 80 / 0.75), transparent 70%),
+    radial-gradient(45% 35% at 22% 100%, rgb(255 110 40 / 0.6), transparent 70%),
+    radial-gradient(45% 35% at 80% 102%, rgb(255 90 50 / 0.55), transparent 70%),
+    radial-gradient(130% 100% at 50% 20%, #7a1420 0%, #4a0b18 55%, #22040c 100%);
+  color: var(--gold);
+  border: 2px solid #e8a83c;
+  box-shadow:
+    0 0 0 1px #5a2208,
+    0 0 0 4px rgb(255 170 60 / 0.16),
+    0 0 22px rgb(255 120 40 / 0.3),
+    0 10px 24px rgb(0 0 0 / 0.5);
+}
+
+/* Doble filete de oro. */
+.card.design-phoenix::after {
+  inset: 5px;
+  border-radius: 10px;
+  border: 1px solid rgb(255 210 122 / 0.7);
+  box-shadow: inset 0 0 0 3px rgb(34 4 12 / 0.6), inset 0 0 0 4px rgb(255 210 122 / 0.3);
+}
+
+/* Lenguas de fuego que suben (ondulan despacio). */
+.design-phoenix > .card-art {
+  background:
+    radial-gradient(18% 34% at 30% 100%, rgb(255 220 120 / 0.55), transparent 70%),
+    radial-gradient(14% 30% at 52% 100%, rgb(255 240 170 / 0.5), transparent 70%),
+    radial-gradient(16% 32% at 72% 100%, rgb(255 200 100 / 0.5), transparent 70%);
+  animation: phoenix-flicker 2.6s ease-in-out infinite alternate;
+}
+
+/* Alas de plumas doradas, una a cada lado del número (sin tapar las esquinas). */
+.design-phoenix > .card-art::before,
+.design-phoenix > .card-art::after {
+  content: '';
+  position: absolute;
+  top: 27%;
+  width: 19%;
+  height: 38%;
+  border-radius: 100% 0 100% 0;
+  background:
+    repeating-linear-gradient(135deg, rgb(122 20 32 / 0.55) 0 1px, transparent 1px 5px),
+    linear-gradient(160deg, #fff0b8, #f0a63a 55%, #b8461c);
+  opacity: 0.85;
+}
+
+.design-phoenix > .card-art::before {
+  left: 3%;
+  transform: rotate(-24deg);
+}
+
+.design-phoenix > .card-art::after {
+  right: 3%;
+  transform: scaleX(-1) rotate(-24deg);
+}
+
+@keyframes phoenix-flicker {
+  from {
+    opacity: 0.75;
+    transform: translateY(2%) scaleY(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.design-phoenix .card-value {
+  font-weight: 700;
+  background: linear-gradient(180deg, #fff6d6 0%, #ffd27a 40%, #f08a2c 75%, #c8461c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgb(255 140 50 / 0.7)) drop-shadow(0 2px 0 rgb(0 0 0 / 0.45));
+}
+
+.design-phoenix .card-corner {
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+/* Trascendencia: marfil y oro, geometría celeste (círculos, estrella de doce puntas) y un halo. */
+.card.design-transcendence {
+  --gold: #c9a14a;
+  background:
+    radial-gradient(circle at 50% 48%, rgb(255 236 180 / 0.9) 0 18%, transparent 46%),
+    radial-gradient(120% 90% at 30% 10%, #fffdf6 0%, #f4eedf 55%, #e6dcc3 100%);
+  color: #2a2350;
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 1px #8a6a22,
+    0 0 0 4px rgb(255 226 150 / 0.35),
+    0 0 26px rgb(255 226 150 / 0.4),
+    0 10px 24px rgb(0 0 0 / 0.45);
+}
+
+/* Marco: doble filete de oro con un rombo en cada lado. */
+.card.design-transcendence::after {
+  inset: 5px;
+  border-radius: 10px;
+  border: 1px solid rgb(201 161 74 / 0.8);
+  box-shadow: inset 0 0 0 3px rgb(255 253 246 / 0.9), inset 0 0 0 4px rgb(201 161 74 / 0.45);
+}
+
+/* Geometría: anillos concéntricos y rayos finos de oro alrededor del número. */
+.design-transcendence > .card-art {
+  background:
+    repeating-conic-gradient(from 0deg at 50% 48%, rgb(201 161 74 / 0.42) 0 0.8deg, transparent 0.8deg 15deg),
+    radial-gradient(circle at 50% 48%, transparent 0 30%, rgb(201 161 74 / 0.55) 30.5% 31%, transparent 31.5% 38%, rgb(201 161 74 / 0.35) 38.5% 39%, transparent 39.5%);
+  mask-image: radial-gradient(circle at 50% 48%, #000 0 42%, transparent 62%);
+  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 0 42%, transparent 62%);
+  animation: transcend-turn 60s linear infinite;
+}
+
+/* Estrella de doce puntas (dos cuadrados girados) en la parte alta, y un destello. */
+.design-transcendence > .card-art::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 9%;
+  width: 13%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  background: linear-gradient(135deg, #fff3c4, var(--gold) 60%, #8a6a22);
+  clip-path: polygon(50% 0, 61% 35%, 100% 50%, 61% 65%, 50% 100%, 39% 65%, 0 50%, 39% 35%);
+  filter: drop-shadow(0 0 4px rgb(255 226 150 / 0.9));
+}
+
+.design-transcendence > .card-art::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 9%;
+  width: 9%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  background: var(--gold);
+  transform: rotate(45deg);
+  box-shadow: 0 0 6px rgb(255 226 150 / 0.8);
+}
+
+@keyframes transcend-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.design-transcendence .card-value {
+  font-weight: 700;
+  background: linear-gradient(180deg, #3a2f6e 0%, #2a2350 50%, #6b4f1a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 0 rgb(255 255 255 / 0.9)) drop-shadow(0 0 10px rgb(255 226 150 / 0.8));
+}
+
+.design-transcendence .card-corner {
+  color: #8a6a22;
+  opacity: 0.95;
+}
+
+/* En las cartas pequeñas (manos, descartes) se quitan los detalles finos de los exclusivos. */
+.card-xs.design-obsidian > .card-art::before,
+.card-xs.design-aurora > .card-art::before,
+.card-xs.design-aurora > .card-art::after,
+.card-sm.design-aurora > .card-art::before,
+.card-xs.design-chrono > .card-art,
+.card-xs.design-chrono::after,
+.card-sm.design-chrono::after,
+.card-xs.design-phoenix > .card-art::before,
+.card-xs.design-phoenix > .card-art::after,
+.card-sm.design-phoenix > .card-art::before,
+.card-sm.design-phoenix > .card-art::after,
+.card-xs.design-transcendence > .card-art,
+.card-sm.design-transcendence > .card-art::before,
+.card-sm.design-transcendence > .card-art::after {
+  display: none;
+}
+
+.card-xs.design-transcendence,
+.card-sm.design-transcendence {
+  background: radial-gradient(120% 90% at 30% 10%, #fffdf6 0%, #f1e8d2 100%);
+}
+
+/* Las animaciones continuas de los diseños, quietas con «Reducir movimiento». */
+@media (prefers-reduced-motion: reduce) {
+  .design-aurora > .card-art,
+  .design-chrono > .card-art::before,
+  .design-chrono > .card-art::after,
+  .design-phoenix > .card-art,
+  .design-transcendence > .card-art {
+    animation: none !important;
+  }
+}
+
 /* ───────────── Monedas, tienda y colección ───────────── */
 
 .sr-only {
@@ -4781,4 +5202,1360 @@ html {
   .config-tiles {
     grid-template-columns: 1fr;
   }
+}
+
+/* ═════════════ Títulos, logros, colección y perfil ═════════════ */
+
+/* Rareza: un color por nivel (también lo usan los títulos y las cartas exclusivas). */
+.rarity-common {
+  --rarity: #b9c0d8;
+  --rarity-soft: rgb(185 192 216 / 0.12);
+}
+
+.rarity-rare {
+  --rarity: #7ec8ff;
+  --rarity-soft: rgb(126 200 255 / 0.13);
+}
+
+.rarity-epic {
+  --rarity: #c69bff;
+  --rarity-soft: rgb(198 155 255 / 0.14);
+}
+
+.rarity-legendary {
+  --rarity: #f5c84c;
+  --rarity-soft: rgb(245 200 76 / 0.14);
+}
+
+.rarity-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rarity, var(--muted));
+}
+
+.rarity-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  background: currentColor;
+}
+
+/* El título bajo el nombre: pequeño, en versalitas, sin competir con el nombre. Los raros y
+   épicos llevan su color; los legendarios, un degradado de oro que brilla despacio. */
+.title-tag {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--rarity, #b9c0d8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.title-tag.rarity-legendary {
+  background: linear-gradient(90deg, #f7d98a, #fff3c9 30%, #e9b949 60%, #f7d98a) 0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shine 6s linear infinite;
+}
+
+.title-tag.rarity-epic {
+  text-shadow: 0 0 10px rgb(198 155 255 / 0.35);
+}
+
+.title-tag-lg {
+  font-size: 0.8rem;
+}
+
+@keyframes title-shine {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Pestañas (Cartas / Títulos). */
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.tab.is-active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+}
+
+.tab.is-active svg {
+  color: var(--warm);
+}
+
+.section-title {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Placa del título: cómo lo verán los demás (nombre y, debajo, el título). */
+.title-plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.title-plate-name {
+  font-weight: 700;
+  font-size: 1rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-plate-lg {
+  padding: 18px 26px;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(80% 120% at 50% 0%, var(--rarity-soft), transparent 70%),
+    var(--bg-2);
+  border: 1px solid color-mix(in srgb, var(--rarity) 35%, transparent);
+}
+
+.title-plate-lg .title-plate-name {
+  font-size: 1.3rem;
+}
+
+.title-plate-lg .title-tag {
+  font-size: 0.8rem;
+}
+
+/* Tienda de títulos. */
+.shop-titles-intro {
+  margin: 0;
+}
+
+.title-shop-list,
+.title-owned-list,
+.locked-grid,
+.ach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.title-shop-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+}
+
+/* Cada título en una fila compacta: cómo se ve (nombre + título), precio, descripción,
+   rareza y botón. */
+.title-shop-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'plate price'
+    'desc desc'
+    'rarity action';
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(60% 140% at 0% 0%, var(--rarity-soft), transparent 70%),
+    var(--surface);
+}
+
+.title-shop-item.rarity-legendary {
+  border-color: rgb(245 200 76 / 0.35);
+}
+
+.title-shop-item.is-owned {
+  border-color: rgb(111 220 170 / 0.35);
+}
+
+.title-shop-preview {
+  grid-area: plate;
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  border: none;
+  padding: 0;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.title-shop-preview .title-plate {
+  align-items: flex-start;
+}
+
+.title-shop-preview .title-tag {
+  font-size: 0.74rem;
+}
+
+.title-shop-item > .price {
+  grid-area: price;
+  justify-self: end;
+  align-self: start;
+}
+
+.title-shop-desc {
+  grid-area: desc;
+  margin: 0;
+}
+
+.title-shop-item > .rarity-label {
+  grid-area: rarity;
+}
+
+.title-shop-action {
+  grid-area: action;
+  justify-self: end;
+}
+
+.title-shop-action .btn {
+  width: auto;
+  min-height: 38px;
+  padding: 6px 16px;
+}
+
+/* Anuncio de las cartas exclusivas en la tienda (no se venden: llevan a los logros). */
+.exclusive-teaser {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'cards text' 'cards go';
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 6px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(198 155 255 / 0.35);
+  background:
+    radial-gradient(70% 140% at 0% 50%, rgb(198 155 255 / 0.16), transparent 70%),
+    var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.exclusive-teaser-cards {
+  grid-area: cards;
+  display: flex;
+  padding: 4px 6px;
+}
+
+.exclusive-teaser-cards .card {
+  margin: 0 -14px 0 0;
+  transform: rotate(-8deg);
+}
+
+.exclusive-teaser-cards .card:nth-child(2) {
+  transform: translateY(-4px);
+  z-index: 1;
+}
+
+.exclusive-teaser-cards .card:nth-child(3) {
+  transform: rotate(8deg);
+  margin-right: 0;
+}
+
+.exclusive-teaser-text {
+  grid-area: text;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.exclusive-teaser-go {
+  grid-area: go;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d8bcff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Carta exclusiva aún sin conseguir: se intuye, pero no se ve del todo. */
+.card.is-veiled,
+.design-fan.is-locked .card {
+  filter: brightness(0.32) saturate(0.55) blur(0.6px);
+}
+
+/* Colección: de dónde viene cada cosmético. */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--bg-2);
+  color: var(--muted);
+}
+
+.source-purchase {
+  color: var(--coin);
+  background: rgb(245 200 76 / 0.1);
+}
+
+.source-achievement {
+  color: #d8bcff;
+  background: rgb(198 155 255 / 0.12);
+}
+
+.collection-item.rarity-legendary:not(.is-equipped),
+.collection-item.rarity-epic:not(.is-equipped) {
+  border-color: color-mix(in srgb, var(--rarity) 30%, var(--line));
+}
+
+/* Por descubrir. */
+.locked-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+}
+
+.locked-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  border: 1px dashed color-mix(in srgb, var(--rarity) 40%, var(--line));
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.locked-preview {
+  position: relative;
+  border: none;
+  padding: 14px 0 12px;
+  background:
+    radial-gradient(70% 90% at 50% 100%, var(--rarity-soft), transparent 70%),
+    var(--bg-2);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* Un destello que recorre las cartas tapadas: insinúa el diseño sin enseñarlo. */
+.locked-preview::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.1) 48%, transparent 60%) 150% 0 / 200% 100% no-repeat;
+  animation: locked-sweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes locked-sweep {
+  0%,
+  35% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+.locked-lock {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgb(11 13 24 / 0.75);
+  border: 1px solid color-mix(in srgb, var(--rarity) 55%, transparent);
+  color: var(--rarity);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--rarity) 30%, transparent);
+}
+
+.locked-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px 14px;
+}
+
+.locked-body p {
+  margin: 0;
+}
+
+.locked-req {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.86rem;
+}
+
+.locked-req svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--rarity);
+}
+
+/* Barras de progreso. */
+.progress {
+  position: relative;
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+
+.progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cat, var(--cool)), color-mix(in srgb, var(--cat, var(--cool)) 60%, #fff));
+  transition: width 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.locked-item .progress-fill {
+  background: linear-gradient(90deg, var(--rarity), color-mix(in srgb, var(--rarity) 55%, #fff));
+}
+
+.ach-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
+.ach-progress-text {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ach-best {
+  grid-column: 1 / -1;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+/* Mis títulos. */
+.title-owned {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(60% 140% at 0% 50%, var(--rarity-soft, transparent), transparent 70%),
+    var(--surface);
+}
+
+.title-owned .btn {
+  width: auto;
+  min-width: 96px;
+}
+
+.title-owned.is-equipped {
+  border-color: rgb(245 185 113 / 0.6);
+  box-shadow: 0 0 0 1px rgb(245 185 113 / 0.35);
+}
+
+.title-owned.just-equipped .title-owned-main {
+  animation: pop 0.45s ease;
+}
+
+.title-owned-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title-owned-main .title-plate {
+  align-items: flex-start;
+}
+
+.title-owned-name {
+  font-weight: 700;
+}
+
+.empty-titles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 26px 16px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--line);
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-titles p {
+  margin: 0;
+}
+
+/* ───────────── Logros ───────────── */
+
+/* Cada categoría con su color (icono, barra y detalles). */
+.cat-games {
+  --cat: #7ea6ff;
+}
+
+.cat-wins {
+  --cat: #f5c84c;
+}
+
+.cat-progress {
+  --cat: #6fdcaa;
+}
+
+.cat-skill {
+  --cat: #ff8fa3;
+}
+
+.cat-team {
+  --cat: #8fd6ff;
+}
+
+.cat-special {
+  --cat: #c69bff;
+}
+
+.ach-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(245 200 76 / 0.25);
+  background:
+    radial-gradient(70% 140% at 0% 50%, rgb(245 200 76 / 0.12), transparent 70%),
+    var(--surface);
+}
+
+/* Anillo de progreso alrededor de la copa. */
+.ach-summary-ring {
+  --pct: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  color: var(--coin);
+  background: conic-gradient(var(--coin) calc(var(--pct) * 1%), var(--bg-2) 0);
+}
+
+.ach-summary-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.ach-summary-ring svg {
+  position: relative;
+}
+
+.ach-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ach-summary-count {
+  font-family: var(--font-num);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ach-summary .progress-fill,
+.stat-ach .progress-fill {
+  background: linear-gradient(90deg, var(--coin-dark), var(--coin));
+}
+
+.ach-note {
+  margin: -6px 0 0;
+}
+
+.ach-near ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.ach-near-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--cat) 35%, var(--line));
+  background:
+    radial-gradient(60% 140% at 0% 50%, color-mix(in srgb, var(--cat) 14%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.ach-near-item .ach-badge {
+  color: var(--cat);
+}
+
+.ach-near-body {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ach-near-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ach-near-left {
+  flex: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cat);
+}
+
+/* Filtros por categoría (una fila que se desliza en el móvil). */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  margin: 0 -2px;
+  scrollbar-width: none;
+}
+
+.chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.chip svg {
+  color: var(--cat, var(--muted));
+}
+
+.chip.is-active {
+  color: var(--text);
+  border-color: var(--cat, var(--warm));
+  background: color-mix(in srgb, var(--cat, var(--warm)) 14%, var(--surface));
+}
+
+.chip-count {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.ach-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ach-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-family: var(--font-num);
+  font-size: 1.25rem;
+}
+
+.ach-section-title svg {
+  color: var(--cat);
+}
+
+.ach-section-title .muted {
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.ach-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+
+.ach-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.ach-card.is-done {
+  border-color: color-mix(in srgb, var(--cat) 40%, var(--line));
+  background:
+    radial-gradient(60% 120% at 0% 0%, color-mix(in srgb, var(--cat) 13%, transparent), transparent 70%),
+    var(--surface);
+}
+
+/* Insignia: el icono de la categoría con una marca (hecho / candado). */
+.ach-badge {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: var(--cat);
+  background: color-mix(in srgb, var(--cat) 16%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--cat) 45%, transparent);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--cat) 18%, transparent);
+}
+
+.ach-card.is-pending .ach-badge {
+  color: var(--muted);
+  background: var(--bg-2);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.ach-badge-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.ach-badge-mark {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #08281a;
+  border: 2px solid var(--surface);
+}
+
+.ach-badge-mark.is-lock {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.ach-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ach-body p {
+  margin: 0;
+}
+
+.ach-name {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.ach-desc {
+  font-style: italic;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.ach-condition {
+  font-size: 0.86rem;
+}
+
+.ach-date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--cat);
+}
+
+.ach-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ach-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 6px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ach-reward-coins {
+  color: var(--coin);
+}
+
+.ach-reward-card {
+  color: var(--rarity);
+  padding-left: 4px;
+}
+
+.ach-reward-card .card {
+  height: 26px;
+  border-radius: 4px;
+}
+
+.ach-reward-card .card .card-value {
+  font-size: 0.6rem;
+}
+
+.ach-reward-card .card-corner {
+  display: none;
+}
+
+/* Aviso de logro conseguido: arriba, de uno en uno, sin bloquear nada. */
+.ach-toast-layer {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-top) + 12px);
+  translate: -50% 0;
+  z-index: 45;
+  width: min(440px, calc(100% - 24px));
+}
+
+.ach-toast {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--cat) 55%, transparent);
+  background:
+    radial-gradient(60% 140% at 0% 50%, color-mix(in srgb, var(--cat) 22%, transparent), transparent 70%),
+    var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  box-shadow: var(--shadow), 0 0 30px color-mix(in srgb, var(--cat) 25%, transparent);
+  overflow: hidden;
+  animation: ach-toast-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes ach-toast-in {
+  from {
+    transform: translateY(-120%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.ach-toast .ach-badge {
+  animation: pop 0.5s ease 0.2s both;
+}
+
+.ach-toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ach-toast-kicker {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cat);
+}
+
+.ach-toast-name {
+  font-size: 1.02rem;
+}
+
+.ach-toast-desc {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.ach-toast-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-num);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--coin);
+}
+
+/* Lo que le queda al aviso, como una línea que se vacía abajo. */
+.ach-toast-timer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--cat);
+  transform-origin: left center;
+  animation: blind-timer linear forwards;
+  opacity: 0.7;
+}
+
+/* Carta exclusiva desbloqueada: presentación especial. */
+.overlay-unlock {
+  z-index: 46;
+}
+
+.unlock-card {
+  border-color: color-mix(in srgb, var(--rarity) 45%, var(--line));
+  box-shadow: var(--shadow), 0 0 60px color-mix(in srgb, var(--rarity) 22%, transparent);
+}
+
+.unlock-rays {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 520px;
+  height: 520px;
+  translate: -50% -50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--rarity) 16%, transparent) 0 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle, #000 0 20%, transparent 62%);
+  -webkit-mask-image: radial-gradient(circle, #000 0 20%, transparent 62%);
+  animation: spin 24s linear infinite;
+  pointer-events: none;
+}
+
+.unlock-card > :not(.unlock-rays) {
+  position: relative;
+}
+
+.unlock-fan {
+  padding: 6px 0 4px;
+  animation: unlock-reveal 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@keyframes unlock-reveal {
+  from {
+    transform: scale(0.6) rotate(-6deg);
+    filter: brightness(3) blur(6px);
+    opacity: 0;
+  }
+  60% {
+    filter: brightness(1.4) blur(0);
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    filter: none;
+  }
+}
+
+.unlock-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--coin);
+  font-weight: 700;
+}
+
+/* Fin de partida: equipo con títulos y logros conseguidos. */
+.end-team,
+.end-achievements {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.end-team ul,
+.end-achievements ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.end-team li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 12px;
+  border-radius: 12px;
+  background: var(--bg-2);
+}
+
+.end-team li.is-me {
+  box-shadow: inset 0 0 0 1px rgb(245 185 113 / 0.45);
+}
+
+.end-team-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.end-achievements li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--cat) 40%, transparent);
+  background: color-mix(in srgb, var(--cat) 10%, var(--bg-2));
+  animation: pop 0.45s ease both;
+}
+
+.end-ach-name {
+  font-weight: 600;
+  font-size: 0.86rem;
+}
+
+.end-ach-coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--coin);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+/* ───────────── Perfil ───────────── */
+
+.profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 18px 16px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--rarity, var(--line)) 35%, var(--line));
+  background:
+    radial-gradient(70% 140% at 0% 0%, var(--rarity-soft, rgb(126 166 255 / 0.1)), transparent 70%),
+    var(--surface);
+}
+
+.profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  font-family: var(--font-num);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--warm), #e98a6b);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px color-mix(in srgb, var(--rarity, var(--warm)) 60%, transparent);
+}
+
+.profile-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.profile-name {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 1.55rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.profile-id-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.profile-id-actions .link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-design {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.profile-design .design-fan {
+  transform: scale(0.72);
+  margin: -14px -18px;
+}
+
+.profile-design-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.link-like {
+  color: var(--cool);
+}
+
+/* Tres arriba (partidas, victorias, niveles), dos récords debajo y los logros a lo ancho. */
+.stat-grid {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.stat-grid li {
+  grid-column: span 2;
+}
+
+.stat-grid li:nth-child(4),
+.stat-grid li:nth-child(5) {
+  grid-column: span 3;
+}
+
+.stat-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+
+.stat-grid strong {
+  font-family: var(--font-num);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+
+.stat-grid span {
+  font-size: 0.74rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.stat-grid .stat-ach {
+  grid-column: 1 / -1;
+  gap: 6px;
+}
+
+.profile-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-recent li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--cat) 35%, var(--line));
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.profile-recent .ach-badge-mark {
+  width: 14px;
+  height: 14px;
+  right: -3px;
+  bottom: -3px;
+}
+
+.profile-device {
+  margin: 0;
+  text-align: center;
+}
+
+/* ───────────── Inicio: perfil y accesos ───────────── */
+
+.home-topbar {
+  left: calc(var(--safe-left) + 16px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.profile-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  max-width: 62%;
+  padding: 4px 12px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgb(23 27 49 / 0.8);
+  color: var(--text);
+  text-align: left;
+}
+
+.profile-chip-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-family: var(--font-num);
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: linear-gradient(135deg, var(--warm), #e98a6b);
+}
+
+.profile-chip-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.profile-chip-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-chip .title-tag {
+  font-size: 0.58rem;
+}
+
+.home-shop-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-shop-btn {
+  position: relative;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 62px;
+  font-size: 0.86rem;
+}
+
+.dot-count {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--final);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+/* Sala de espera: el título bajo el nombre. */
+.lobby-player-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lobby-player-line {
+  overflow-wrap: anywhere;
+}
+
+/* Aquí el título puede ocupar dos líneas antes que cortarse («La Última Mente»). */
+.lobby-player-name .title-tag,
+.end-team .title-tag {
+  white-space: normal;
 }

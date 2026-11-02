@@ -165,6 +165,17 @@ export interface PublicPlayer {
   cardsLeft: number | null;
   /** Diseño de cartas con el que juega esta partida (se fija al empezar). Opcional: práctica y servidores antiguos. */
   cardDesign?: string;
+  /** Título equipado (null: ninguno). Opcional: práctica y servidores antiguos. */
+  title?: PlayerTitle | null;
+}
+
+/** Rareza de un cosmético: solo cambia cómo se ve. */
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+export interface PlayerTitle {
+  id: string;
+  name: string;
+  rarity: Rarity;
 }
 
 export interface PublicRoom {
@@ -260,6 +271,7 @@ export const GAME_ERROR_CODES = [
   'ALREADY_OWNED',
   'NOT_ENOUGH_COINS',
   'NOT_OWNED',
+  'CANNOT_UNEQUIP',
   'TOO_MANY_ROOMS',
   'TOO_MANY_ATTEMPTS',
   'CANNOT_KICK_SELF',

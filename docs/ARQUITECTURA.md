@@ -300,4 +300,45 @@ juegan los demás en la mesa, con el suyo. El diseño nunca toca valores, repart
 Un id que la app no conozca se ve como el clásico, así que el catálogo puede crecer antes que la
 app. `kind` (tipo) y `unlock` (forma de conseguirlo) ya admiten marcos, efectos, logros o eventos.
 
-**Deshacer**: `supabase/rollback/economia_down.sql` desactiva pagos y tienda sin borrar datos.
+**Deshacer**: `supabase/rollback/economia_down.sql` desactiva pagos, tienda y logros sin borrar datos.
+
+## 13. Títulos, logros y cartas exclusivas
+
+Todo reutiliza la economía: no hay un segundo inventario ni otra moneda.
+
+- **Títulos**: son cosméticos con `kind = 'title'` en `public.cosmetics` (12, de 10 a 500 monedas,
+  con `rarity` común/raro/épico/legendario, que solo cambia cómo se ven). Se compran con
+  `buy_cosmetic`, se equipan con `equip_cosmetic` (fila `title` en `player_equipped`) y se quitan
+  con `unequip_cosmetic('title')`. La foto de la sala lleva `players[].title` (al momento: si
+  alguien lo cambia, los demás lo ven en la sala de espera). En pantalla: sala de espera, fin de
+  partida, perfil y botón de perfil del inicio. En plena partida no se muestra (no distrae).
+- **Logros**: catálogo en `public.achievements` (25, en 6 categorías). Cada logro es
+  «métrica ≥ objetivo»; `game_private.metric_value` traduce cada métrica a un contador de
+  `public.player_stats` (o a un recuento: diseños poseídos, logros conseguidos). Premios: monedas
+  (`reward_coins`, cobradas con `add_coins`, tipo `achievement`) y cosméticos
+  (`achievement_cosmetics`: cartas o títulos, uno o varios).
+- **Cuándo se cuenta** (solo online; la práctica no): `record_level_done` al vaciarse las manos
+  (niveles totales, en grupos de 3-4, y rachas de niveles sin errores / sin perder vidas, que un
+  error, un fallo de nivel o una derrota cortan) y `record_match_progress` en `end_game` (partidas,
+  victorias, racha de victorias, hazañas de una partida, grupo exacto de jugadores, madrugador).
+  Ambas en la misma transacción que la jugada, y una vez por jugador gracias a `progress_events`
+  (un reintento o una reconexión no suman dos veces). Después, `evaluate_achievements` desbloquea
+  lo que se cumpla (una vez: clave primaria), entrega premios y repite por si hay logros de logros.
+- **Definiciones precisas**: «partida» = terminada (ganada o perdida) estando en la sala y habiendo
+  jugado alguna carta (igual que para cobrar). Las hazañas de una partida (ganar a 2 o a 4, sin
+  vistazos, sin perder vidas) piden partidas de `featMinLevels` (5) niveles o más. Las rachas
+  guardan la actual y el récord; el logro se consigue con el récord. Números en
+  `game_private.achievement_settings()`.
+- **Avisos**: `profile.unseen` lista los conseguidos sin enseñar; la app los muestra de uno en uno
+  (cola), con una presentación especial si dan una carta, y los marca con
+  `mark_achievements_seen`. Durante un nivel se retienen (`useHoldNotices`) y salen al terminar.
+- **Al instalarlo** se rellenan las estadísticas con el historial de partidas (`game_results`),
+  y `get_my_profile` evalúa los logros, así nadie empieza de cero.
+- **Seguridad**: las tablas nuevas solo se leen (lo propio); escribir progreso, logros o premios
+  solo lo hacen funciones internas (`game_private`), que la app no puede llamar.
+
+Para añadir un logro: una fila en el `insert into public.achievements` (y en
+`achievement_cosmetics` si da algo). Si necesita una métrica nueva: una columna en
+`player_stats`, dónde se suma (`record_level_done` o `record_match_progress`) y su caso en
+`metric_value`. Para una carta exclusiva nueva: fila en `cosmetics` con `unlock = 'achievement'`,
+su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.

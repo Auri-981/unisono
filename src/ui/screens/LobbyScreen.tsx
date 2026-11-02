@@ -7,6 +7,7 @@ import { ConfigEditor, ConfigSummary } from '../components/ConfigEditor';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { CheckIcon, CloseIcon, CopyIcon, CrownIcon, LinkIcon, ShareIcon } from '../components/Icons';
 import { Page, Toast } from '../components/Layout';
+import { TitleTag } from '../components/Progression';
 import { ConnectionDot } from '../components/Resources';
 
 export function inviteLink(code: string): string {
@@ -119,8 +120,11 @@ export function LobbyScreen({ ctl }: { ctl: RoomController }) {
               <li key={p.id} className="lobby-player">
                 <span className={`presence ${online ? 'presence-on' : ''}`} title={online ? t('conn.online') : t('game.offline')} />
                 <span className="lobby-player-name">
-                  {p.name}
-                  {p.id === me && <span className="muted"> ({t('common.you')})</span>}
+                  <span className="lobby-player-line">
+                    {p.name}
+                    {p.id === me && <span className="muted"> ({t('common.you')})</span>}
+                  </span>
+                  <TitleTag title={p.title} />
                 </span>
                 {p.id === room.hostId && (
                   <span className="badge badge-host" title={t('lobby.host')}>

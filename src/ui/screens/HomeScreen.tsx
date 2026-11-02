@@ -2,9 +2,11 @@ import { useEffect } from 'react';
 import { t } from '../../i18n';
 import { onlineAvailable } from '../../net/supabase';
 import { Card } from '../components/Card';
-import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon } from '../components/Icons';
+import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon, TrophyIcon } from '../components/Icons';
+import { TitleTag } from '../components/Progression';
 import { CoinBadge } from '../components/Resources';
-import { equippedCardDesign, refreshProfile, useProfile } from '../profile';
+import { usePrefs } from '../prefs';
+import { equippedCardDesign, equippedTitle, refreshProfile, useProfile } from '../profile';
 
 interface Props {
   message: string | null;
@@ -16,11 +18,16 @@ interface Props {
   onHistory: () => void;
   onShop: () => void;
   onCollection: () => void;
+  onAchievements: () => void;
+  onProfile: () => void;
 }
 
 export function HomeScreen(p: Props) {
   const { profile, loading } = useProfile();
   const design = equippedCardDesign(profile);
+  const title = equippedTitle(profile);
+  const name = usePrefs().name.trim();
+  const newAchievements = profile?.unseen?.length ?? 0;
   useEffect(() => {
     void refreshProfile();
   }, []);
@@ -30,6 +37,15 @@ export function HomeScreen(p: Props) {
       <div className="home-main">
         {onlineAvailable && (
           <div className="home-topbar">
+            <button type="button" className="profile-chip" onClick={p.onProfile} aria-label={t('home.profile')}>
+              <span className="profile-chip-avatar" aria-hidden>
+                {(name || '?').charAt(0).toUpperCase()}
+              </span>
+              <span className="profile-chip-text">
+                <span className="profile-chip-name">{name || t('home.profile')}</span>
+                <TitleTag title={title} />
+              </span>
+            </button>
             <button type="button" className="coin-link" onClick={p.onShop} aria-label={t('home.shop')}>
               <CoinBadge coins={profile?.coins ?? null} loading={loading} />
             </button>
@@ -67,6 +83,15 @@ export function HomeScreen(p: Props) {
             <button type="button" className="btn btn-secondary home-shop-btn" onClick={p.onCollection} disabled={!onlineAvailable}>
               <CardsIcon size={20} />
               {t('home.collection')}
+            </button>
+            <button type="button" className="btn btn-secondary home-shop-btn" onClick={p.onAchievements} disabled={!onlineAvailable}>
+              <TrophyIcon size={20} />
+              {t('home.achievements')}
+              {newAchievements > 0 && (
+                <span className="dot-count" aria-label={t('home.unseen', { n: newAchievements })}>
+                  {newAchievements}
+                </span>
+              )}
             </button>
           </div>
         </nav>

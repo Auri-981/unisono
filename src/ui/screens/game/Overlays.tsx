@@ -5,7 +5,9 @@ import { COMODIN_KINDS, type MistakePayload, type RoomSnapshot } from '../../../
 import { t } from '../../../i18n';
 import { CheckIcon, CoinIcon, ComodinKindIcon, CrownIcon, FinalIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
 import { getPrefs } from '../../prefs';
-import { refreshProfile } from '../../profile';
+import { refreshProfile, useProfile } from '../../profile';
+import { CategoryIcon, TitleTag } from '../../components/Progression';
+import type { Achievement } from '../../../net/api';
 import { rich } from '../../rich';
 import { LIFE_SYMBOL, rewardText, upcomingReward } from '../../rewards';
 
@@ -300,6 +302,58 @@ export function LevelComplete({ ctl, snap }: { ctl: RoomController; snap: RoomSn
 }
 
 /** Monedas de la partida: llegan del servidor junto con el resultado (nunca se calculan aquí). */
+/** El equipo de la partida, cada uno con su título (si lleva). */
+function EndTeam({ snap }: { snap: RoomSnapshot }) {
+  return (
+    <section className="end-team" aria-label={t('end.team')}>
+      <span className="field-label">{t('end.team')}</span>
+      <ul>
+        {snap.players.map((p) => (
+          <li key={p.id} className={p.id === snap.me ? 'is-me' : ''}>
+            <span className="end-team-name">{p.name}</span>
+            <TitleTag title={p.title} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Logros conseguidos en esta partida. Salen de los «no vistos» del servidor al cargar el perfil
+ * tras la partida; se guardan aquí porque el aviso los marca como vistos en cuanto los enseña.
+ */
+function EndAchievements() {
+  const { profile } = useProfile();
+  const [got, setGot] = useState<string[]>([]);
+  useEffect(() => {
+    const unseen = profile?.unseen ?? [];
+    if (unseen.length) setGot((prev) => [...prev, ...unseen.filter((id) => !prev.includes(id))]);
+  }, [profile?.unseen]);
+  const list = got.map((id) => profile?.achievements?.find((a) => a.id === id)).filter((a): a is Achievement => Boolean(a));
+  if (list.length === 0) return null;
+  return (
+    <section className="end-achievements">
+      <span className="field-label">{t('end.achievements')}</span>
+      <ul>
+        {list.map((a) => (
+          <li key={a.id} className={`cat-${a.category}`}>
+            <span className="ach-badge ach-badge-sm" aria-hidden>
+              <CategoryIcon category={a.category} size={16} />
+            </span>
+            <span className="end-ach-name">{a.name}</span>
+            {a.rewardCoins > 0 && (
+              <span className="end-ach-coins">
+                <CoinIcon size={14} />+{a.rewardCoins}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function EndRewards({ ctl, snap }: { ctl: RoomController; snap: RoomSnapshot }) {
   const { room } = snap;
   const reward = snap.myReward;
@@ -419,6 +473,8 @@ export function EndScreen({ ctl, snap, onExit }: { ctl: RoomController; snap: Ro
           </p>
         )}
         <EndRewards ctl={ctl} snap={snap} />
+        {ctl.kind === 'online' && <EndAchievements />}
+        {ctl.kind === 'online' && <EndTeam snap={snap} />}
         {isHost || ctl.kind === 'practice' ? (
           <button type="button" className="btn btn-primary btn-large btn-block" disabled={ctl.busy} onClick={() => void ctl.actions.rematch()}>
             {t('end.rematch')}

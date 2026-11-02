@@ -3,7 +3,18 @@
  * posee qué, en el servidor). Para añadir un diseño de cartas: fila en `public.cosmetics` (SQL)
  * + su id aquí + su bloque `.design-<id>` en global.css. Un id desconocido se ve como el clásico.
  */
-export const CARD_DESIGNS = ['classic', 'galaxy', 'neon', 'emerald'] as const;
+export const CARD_DESIGNS = [
+  'classic',
+  'galaxy',
+  'neon',
+  'emerald',
+  // Exclusivos de logros.
+  'obsidian',
+  'aurora',
+  'chrono',
+  'phoenix',
+  'transcendence',
+] as const;
 export type CardDesign = (typeof CARD_DESIGNS)[number];
 
 export const isCardDesign = (id: string | null | undefined): id is CardDesign =>

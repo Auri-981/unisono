@@ -78,7 +78,8 @@ export async function createTestDb(): Promise<TestDb> {
       const call = `select public.${fn}(${names.map((n, i) => `${n} => $${i + 1}`).join(', ')}) as r`;
       const values = names.map((n) => {
         const v = args[n];
-        return v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
+        // Listas → array de Postgres (p. ej. text[]); objetos → JSON (parámetros jsonb).
+        return Array.isArray(v) ? v : v !== null && typeof v === 'object' ? JSON.stringify(v) : v;
       });
       try {
         const rows = await run<{ r: any }>('authenticated', uid, call, values);

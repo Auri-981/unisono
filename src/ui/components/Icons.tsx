@@ -148,6 +148,67 @@ export const CardsIcon = ({ size, ...p }: P) => (
   </svg>
 );
 
+/** Logros: una copa con asas. */
+export const TrophyIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M7.5 4.5h9v4.2a4.5 4.5 0 0 1-9 0V4.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <path d="M7.5 6.5H5a2.6 2.6 0 0 0 2.9 3.7M16.5 6.5H19a2.6 2.6 0 0 1-2.9 3.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    <path d="M12 13.2V17m-3.5 2.5h7M9.8 17h4.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+/** Habilidad: una diana con su centro. */
+export const TargetIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.7" />
+    <circle cx="12" cy="12" r="4.4" stroke="currentColor" strokeWidth="1.7" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+  </svg>
+);
+
+/** Cooperación: dos personas juntas. */
+export const TeamIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="9" cy="8.5" r="3" stroke="currentColor" strokeWidth="1.7" />
+    <path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    <circle cx="16.2" cy="9.3" r="2.4" stroke="currentColor" strokeWidth="1.6" opacity="0.75" />
+    <path d="M15.6 14.2c2.4-.3 4.3 1.2 4.9 4.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" opacity="0.75" />
+  </svg>
+);
+
+/** Especiales: un destello de cuatro puntas con otro pequeño. */
+export const SparkIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M10.5 3.5c.5 4.1 2.3 6 6.5 6.5-4.2.5-6 2.4-6.5 6.5-.5-4.1-2.3-6-6.5-6.5 4.2-.5 6-2.4 6.5-6.5Z" fill="currentColor" />
+    <path d="M17.5 14.5c.2 1.8 1 2.6 2.8 2.8-1.8.2-2.6 1-2.8 2.8-.2-1.8-1-2.6-2.8-2.8 1.8-.2 2.6-1 2.8-2.8Z" fill="currentColor" opacity="0.7" />
+  </svg>
+);
+
+/** Bloqueado: un candado. */
+export const LockIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="5.5" y="10.5" width="13" height="9.5" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="12" cy="15.2" r="1.3" fill="currentColor" />
+  </svg>
+);
+
+/** Perfil: la silueta de una persona. */
+export const ProfileIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="12" cy="8.5" r="3.6" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M5 20c.8-3.8 3.6-6 7-6s6.2 2.2 7 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+/** Títulos: una etiqueta con su ojal. */
+export const TitleIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M3.5 12.6V5.5a2 2 0 0 1 2-2h7.1l8 8a2 2 0 0 1 0 2.8l-6.3 6.3a2 2 0 0 1-2.8 0l-8-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <circle cx="8.3" cy="8.3" r="1.6" fill="currentColor" />
+  </svg>
+);
+
 /** Ronda final: dos espadas cruzadas (el «jefe final»). */
 export const FinalIcon = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}>

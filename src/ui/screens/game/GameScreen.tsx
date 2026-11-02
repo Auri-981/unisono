@@ -15,6 +15,7 @@ import { BlindPile, FinalAlert, FinalBadge } from './FinalRound';
 import { LightningAlert, LightningTimer } from './Lightning';
 import { Countdown, EndScreen, LevelComplete, RewindVote, VoteBanner } from './Overlays';
 import { useHoldUpdates } from '../../update';
+import { useHoldNotices } from '../../components/AchievementNotices';
 import { useAfterPause } from './useAfterPause';
 import { useEventFeed } from './useEventFeed';
 
@@ -25,6 +26,8 @@ export function GameScreen({ ctl, onExit }: { ctl: RoomController; onExit: () =>
   const feed = useEventFeed(snap, ctl.clockOffset);
   // Una versión nueva no recarga la app a mitad de partida: espera a la sala de espera o al inicio.
   useHoldUpdates();
+  // Los avisos de logros esperan al final de la partida (no distraen a mitad de nivel).
+  useHoldNotices(!['won', 'lost', 'abandoned'].includes(room.status));
   const [pendingCard, setPendingCard] = useState<number | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [seenChat, setSeenChat] = useState(ctl.chat.length);

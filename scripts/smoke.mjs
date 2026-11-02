@@ -172,8 +172,25 @@ async function main() {
   ok(reward?.coins > 0 && reward.breakdown?.won === true, `monedas por la victoria: +${reward?.coins} (${JSON.stringify(reward?.breakdown)})`);
   const again = await b.rpc('get_room_state', { p_room: room });
   const profileB = await b.rpc('get_my_profile', {});
-  ok(again.myReward?.coins === reward?.coins && profileB.coins === reward?.balanceAfter, `saldo guardado en el servidor: ${profileB.coins}`);
-  ok(profileB.catalog.filter((c) => c.unlock === 'coins').map((c) => c.price).join(',') === '10,30,50', 'tienda: Galaxia 10, Neón 30, Esmeralda 50');
+  // El saldo es la suma de todos sus movimientos (partida + logros), y la partida se cobra una vez.
+  const history = await b.rpc('get_my_coin_history', {});
+  const summed = history.reduce((s, m) => s + m.amount, 0);
+  ok(again.myReward?.coins === reward?.coins && profileB.coins === summed && profileB.coins >= reward?.balanceAfter, `saldo guardado en el servidor: ${profileB.coins}`);
+  ok(
+    profileB.catalog.filter((c) => c.kind === 'card_design' && c.unlock === 'coins').map((c) => c.price).join(',') === '10,30,50',
+    'tienda: Galaxia 10, Neón 30, Esmeralda 50',
+  );
+
+  // Logros: se han contado solos al jugar, con sus monedas apuntadas.
+  const unlockedB = (profileB.achievements ?? []).filter((x) => x.unlockedAt).map((x) => x.id);
+  ok((profileB.achievements ?? []).length === 25, `catálogo de logros: ${(profileB.achievements ?? []).length}`);
+  ok(unlockedB.includes('games_1') && unlockedB.includes('wins_1') && unlockedB.includes('levels_10'), `logros conseguidos al jugar: ${unlockedB.join(', ')}`);
+  ok(profileB.stats?.games >= 1 && profileB.stats?.wins >= 1 && profileB.stats?.levels >= 10, `estadísticas: ${JSON.stringify(profileB.stats)}`);
+  ok(history.some((m) => m.kind === 'achievement'), 'las monedas de los logros quedan apuntadas');
+  ok(profileB.unseen?.includes('wins_1'), 'los logros nuevos esperan su aviso');
+  const seen = await b.rpc('mark_achievements_seen', { p_ids: profileB.unseen });
+  ok(seen.unseen.length === 0 && seen.achievements.filter((x) => x.unlockedAt).length === unlockedB.length, 'marcar como vistos no quita los logros');
+  ok(profileB.catalog.filter((c) => c.kind === 'card_design' && c.unlock === 'achievement').length === 5, 'cinco cartas exclusivas en el catálogo');
   const fail = (p) => p.then(() => 'OK', (e) => e.message);
   ok((await fail(b.rpc('equip_cosmetic', { p_cosmetic: 'neon' }))) === 'NOT_OWNED', 'no se puede equipar lo que no se tiene');
   const bought = await b.rpc('buy_cosmetic', { p_cosmetic: 'galaxy' });
@@ -185,6 +202,22 @@ async function main() {
   const { error: giftErr } = await b.sb.from('player_cosmetics').insert({ user_id: b.id, cosmetic_id: 'emerald', source: 'purchase' });
   const afterHack = await b.rpc('get_my_profile', {});
   ok(afterHack.coins === bought.coins && Boolean(giftErr) && !afterHack.owned.includes('emerald'), 'no se pueden regalar monedas ni diseños desde el cliente');
+
+  // Títulos: se compran, se equipan y se quitan; nadie se regala un logro ni una carta exclusiva.
+  const titles = afterHack.catalog.filter((c) => c.kind === 'title');
+  ok(titles.length === 12 && titles[0].price === 10 && titles[11].price === 500, `títulos a la venta: ${titles.length}`);
+  const withTitle = await b.rpc('buy_cosmetic', { p_cosmetic: 'title_apprentice' });
+  ok(withTitle.coins === afterHack.coins - 10 && withTitle.owned.includes('title_apprentice'), `compra del título Aprendiz: ${afterHack.coins} → ${withTitle.coins}`);
+  ok((await b.rpc('equip_cosmetic', { p_cosmetic: 'title_apprentice' })).equipped.title === 'title_apprentice', 'título equipado');
+  ok((await b.rpc('unequip_cosmetic', { p_kind: 'title' })).equipped.title === undefined, 'título quitado (sigue siendo suyo)');
+  ok((await fail(b.rpc('buy_cosmetic', { p_cosmetic: 'phoenix' }))) === 'NOT_FOR_SALE', 'las cartas exclusivas no se venden');
+  const { error: achErr } = await b.sb.from('player_achievements').insert({ user_id: b.id, achievement_id: 'wins_50' });
+  await b.sb.from('player_stats').update({ wins: 999 }).eq('user_id', b.id);
+  const afterAchHack = await b.rpc('get_my_profile', {});
+  ok(
+    Boolean(achErr) && afterAchHack.stats.wins === profileB.stats.wins && !afterAchHack.achievements.find((x) => x.id === 'wins_50').unlockedAt,
+    'no se pueden falsear logros ni estadísticas desde el cliente',
+  );
 
   for (const p of players) await p.rpc('leave_room', { p_room: room }).catch(() => {});
   await b.sb.removeChannel(channel);

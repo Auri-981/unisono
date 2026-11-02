@@ -62,6 +62,12 @@ alter table public.rooms add column if not exists lightning_ends_at timestamptz;
 alter table public.rooms add column if not exists pile_at timestamptz;
 -- Añadida después: jugadores al empezar la partida (para calcular las monedas de la recompensa).
 alter table public.rooms add column if not exists start_players int not null default 0;
+-- Añadidas después (logros): errores y vidas perdidas del nivel en juego (vuelven a 0 al repartir) y
+-- vistazos usados y vidas perdidas en toda la partida (vuelven a 0 al empezarla).
+alter table public.rooms add column if not exists level_mistakes int not null default 0;
+alter table public.rooms add column if not exists level_lives_lost int not null default 0;
+alter table public.rooms add column if not exists game_shurikens_used int not null default 0;
+alter table public.rooms add column if not exists game_lives_lost int not null default 0;
 -- Quitada después: la opción de vistazo «clásico» (descartes ocultos); ahora siempre se muestran.
 update public.rooms set config = config - 'shurikenVariant' where config ? 'shurikenVariant';
 
@@ -173,15 +179,41 @@ create table if not exists public.cosmetics (
   check (unlock <> 'coins' or price is not null)
 );
 
--- Catálogo inicial. Para cambiar un precio o un texto, se cambia aquí y se vuelve a ejecutar.
-insert into public.cosmetics (id, kind, name, description, price, unlock, sort) values
-  ('classic', 'card_design', 'Clásico', 'El diseño de siempre: papel cálido y el color de cada número.', null, 'default', 0),
-  ('galaxy', 'card_design', 'Galaxia', 'Cartas llegadas del espacio profundo: nebulosas, estrellas y polvo cósmico.', 10, 'coins', 1),
-  ('neon', 'card_design', 'Neón', 'Rejilla futurista, bordes eléctricos y números que brillan en la oscuridad.', 30, 'coins', 2),
-  ('emerald', 'card_design', 'Esmeralda', 'Terciopelo verde, filigrana dorada y acabado de joya. El más exclusivo.', 50, 'coins', 3)
+-- Añadidos después: los títulos (otro tipo de cosmético, en el mismo inventario) y la rareza,
+-- que solo cambia cómo se ven en la app.
+alter table public.cosmetics drop constraint if exists cosmetics_kind_check;
+alter table public.cosmetics add constraint cosmetics_kind_check check (kind in ('card_design', 'title'));
+alter table public.cosmetics add column if not exists rarity text not null default 'common'
+  check (rarity in ('common', 'rare', 'epic', 'legendary'));
+
+-- Catálogo. Para cambiar un precio o un texto, se cambia aquí y se vuelve a ejecutar.
+-- Los diseños con unlock = 'achievement' no se venden: los da el logro que los tiene de premio
+-- (tabla achievement_cosmetics, más abajo).
+insert into public.cosmetics (id, kind, name, description, price, unlock, rarity, sort) values
+  ('classic', 'card_design', 'Clásico', 'El diseño de siempre: papel cálido y el color de cada número.', null, 'default', 'common', 0),
+  ('galaxy', 'card_design', 'Galaxia', 'Cartas llegadas del espacio profundo: nebulosas, estrellas y polvo cósmico.', 10, 'coins', 'common', 1),
+  ('neon', 'card_design', 'Neón', 'Rejilla futurista, bordes eléctricos y números que brillan en la oscuridad.', 30, 'coins', 'rare', 2),
+  ('emerald', 'card_design', 'Esmeralda', 'Terciopelo verde, filigrana dorada y acabado de joya. El más exclusivo de la tienda.', 50, 'coins', 'epic', 3),
+  ('obsidian', 'card_design', 'Obsidiana', 'Piedra volcánica pulida, vetas de magma y filos de acero. Solo para quien ya es de la casa.', null, 'achievement', 'rare', 10),
+  ('aurora', 'card_design', 'Aurora', 'Cortinas de luz boreal sobre un cielo polar. Brilla como cada victoria.', null, 'achievement', 'epic', 11),
+  ('chrono', 'card_design', 'Crono', 'Esfera de reloj, engranajes de plata y el tiempo bajo control. El tiempo no espera a nadie; tú tampoco.', null, 'achievement', 'epic', 12),
+  ('phoenix', 'card_design', 'Fénix', 'Plumas de fuego y oro que renacen en cada partida. Para quien nunca se rinde.', null, 'achievement', 'legendary', 13),
+  ('transcendence', 'card_design', 'Trascendencia', 'Geometría celeste, marfil y oro. El diseño más difícil de conseguir.', null, 'achievement', 'legendary', 14),
+  ('title_apprentice', 'title', 'Aprendiz', 'Todos empezamos por la primera carta.', 10, 'coins', 'common', 100),
+  ('title_observer', 'title', 'Observador', 'Nada se le escapa: ni una mirada, ni un titubeo.', 20, 'coins', 'common', 101),
+  ('title_strategist', 'title', 'Estratega', 'Cada carta, en su momento justo.', 35, 'coins', 'common', 102),
+  ('title_visionary', 'title', 'Visionario', 'Ve venir el siguiente número antes que nadie.', 50, 'coins', 'rare', 103),
+  ('title_mastermind', 'title', 'Mente Maestra', 'Piensa tres jugadas por delante.', 75, 'coins', 'rare', 104),
+  ('title_unstoppable', 'title', 'Imparable', 'Nivel tras nivel, sin pisar el freno.', 100, 'coins', 'rare', 105),
+  ('title_legend', 'title', 'Leyenda', 'Sus partidas se cuentan en la sala de espera.', 150, 'coins', 'epic', 106),
+  ('title_chosen', 'title', 'El Elegido', 'Las cartas parecen buscarle.', 200, 'coins', 'epic', 107),
+  ('title_oracle', 'title', 'Oráculo', 'Sabe qué número viene sin que nadie lo diga.', 250, 'coins', 'epic', 108),
+  ('title_timekeeper', 'title', 'Maestro del Tiempo', 'Domina el silencio entre carta y carta.', 300, 'coins', 'legendary', 109),
+  ('title_sync', 'title', 'Sincronía Perfecta', 'Cuando juega, el equipo late a la vez.', 400, 'coins', 'legendary', 110),
+  ('title_last_mind', 'title', 'La Última Mente', 'La leyenda que cierra cada partida.', 500, 'coins', 'legendary', 111)
 on conflict (id) do update
   set kind = excluded.kind, name = excluded.name, description = excluded.description,
-      price = excluded.price, unlock = excluded.unlock, sort = excluded.sort;
+      price = excluded.price, unlock = excluded.unlock, rarity = excluded.rarity, sort = excluded.sort;
 
 -- Saldo de cada jugador (nunca negativo).
 create table if not exists public.player_wallets (
@@ -224,6 +256,10 @@ create table if not exists public.coin_transactions (
   created_at    timestamptz not null default now()
 );
 create index if not exists coin_transactions_user_idx on public.coin_transactions (user_id, id desc);
+-- Añadido después: las monedas de los logros.
+alter table public.coin_transactions drop constraint if exists coin_transactions_kind_check;
+alter table public.coin_transactions add constraint coin_transactions_kind_check
+  check (kind in ('match_reward', 'purchase', 'adjustment', 'achievement'));
 
 -- Recompensa de cada jugador en cada partida. UNA como mucho (match_id, user_id): no se puede
 -- cobrar dos veces. Se guarda aunque sea 0, con el desglose, para la pantalla final.
@@ -239,6 +275,138 @@ create table if not exists public.match_rewards (
   unique (match_id, user_id)
 );
 create index if not exists match_rewards_user_idx on public.match_rewards (user_id);
+
+-- ───────────────────────────── Logros y estadísticas ─────────────────────────────
+-- Todo lo cuenta el servidor a partir de las partidas online (la práctica no cuenta):
+--   * player_stats: los contadores de cada jugador (acumulados, rachas y récords).
+--   * achievements: el catálogo. Cada logro es «métrica >= objetivo» (game_private.metric_value),
+--     así que añadir uno nuevo es añadir una fila (y, si hace falta, una métrica).
+--   * achievement_cosmetics: cosméticos (cartas o títulos) que da cada logro, además de monedas.
+--   * player_achievements: los conseguidos (una vez por jugador) y si ya se han enseñado.
+--   * progress_events: cada nivel superado y cada partida terminada se apunta UNA vez por jugador;
+--     un reintento o una reconexión no pueden sumar dos veces.
+create table if not exists public.achievements (
+  id           text primary key check (id ~ '^[a-z0-9_]{2,40}$'),
+  category     text not null check (category in ('games', 'wins', 'progress', 'skill', 'team', 'special')),
+  name         text not null,
+  description  text not null,
+  condition    text not null,
+  metric       text not null,
+  target       int not null check (target >= 1),
+  reward_coins int not null default 0 check (reward_coins >= 0),
+  sort         int not null default 0,
+  is_secret    boolean not null default false,
+  is_available boolean not null default true
+);
+
+create table if not exists public.achievement_cosmetics (
+  achievement_id text not null references public.achievements (id) on delete cascade,
+  cosmetic_id    text not null references public.cosmetics (id),
+  primary key (achievement_id, cosmetic_id)
+);
+
+create table if not exists public.player_stats (
+  user_id           uuid primary key references auth.users (id) on delete cascade,
+  games_completed   int not null default 0, -- partidas terminadas (ganadas o perdidas) habiendo jugado
+  wins              int not null default 0,
+  win_streak        int not null default 0, -- victorias seguidas (una derrota la corta)
+  best_win_streak   int not null default 0,
+  levels_completed  int not null default 0, -- niveles superados estando en la sala
+  team_levels       int not null default 0, -- niveles superados en partidas de 3 o más jugadores
+  clean_streak      int not null default 0, -- niveles superados seguidos sin NINGÚN error
+  best_clean_streak int not null default 0,
+  safe_streak       int not null default 0, -- niveles superados seguidos sin perder vidas
+  best_safe_streak  int not null default 0,
+  wins_duo          int not null default 0, -- victorias a 2 (en partidas de featMinLevels niveles o más)
+  wins_full_team    int not null default 0, -- victorias a 4 (ídem)
+  wins_no_vistazo   int not null default 0, -- victorias sin usar ningún vistazo (ídem)
+  flawless_wins     int not null default 0, -- victorias sin perder ninguna vida (ídem)
+  hard_wins         int not null default 0, -- victorias en dificultad Difícil
+  long_wins         int not null default 0, -- victorias en partidas de 12 niveles
+  best_group_wins   int not null default 0, -- más victorias con un mismo grupo de jugadores
+  early_games       int not null default 0, -- partidas terminadas de madrugada
+  updated_at        timestamptz not null default now()
+);
+
+-- Victorias con cada grupo exacto de jugadores (clave: sus ids ordenados).
+create table if not exists public.player_group_wins (
+  user_id   uuid not null references auth.users (id) on delete cascade,
+  group_key text not null,
+  wins      int not null default 0,
+  primary key (user_id, group_key)
+);
+
+create table if not exists public.player_achievements (
+  user_id        uuid not null references auth.users (id) on delete cascade,
+  achievement_id text not null references public.achievements (id),
+  coins          int not null default 0,
+  unlocked_at    timestamptz not null default now(),
+  seen_at        timestamptz,
+  primary key (user_id, achievement_id)
+);
+
+create table if not exists public.progress_events (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  event      text not null check (event in ('level', 'match')),
+  ref        text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, event, ref)
+);
+
+-- Catálogo de logros. Para cambiar un texto, un objetivo o un premio: aquí, y volver a ejecutar.
+insert into public.achievements (id, category, name, description, condition, metric, target, reward_coins, sort) values
+  ('games_1', 'games', 'Primera conexión', 'Toda gran aventura empieza con una partida.', 'Termina tu primera partida online', 'games', 1, 5, 10),
+  ('games_15', 'games', 'Ya eres de la casa', 'Parece que esto empieza a gustarte.', 'Termina 15 partidas online', 'games', 15, 15, 11),
+  ('games_50', 'games', 'Adicto a las cartas', 'Una partida más nunca hace daño.', 'Termina 50 partidas online', 'games', 50, 30, 12),
+  ('games_100', 'games', 'Veterano', 'Ya conoces cada rincón de este juego.', 'Termina 100 partidas online', 'games', 100, 50, 13),
+  ('wins_1', 'wins', 'Primera victoria', 'El primer «¡lo conseguimos!» nunca se olvida.', 'Gana una partida', 'wins', 1, 10, 20),
+  ('wins_10', 'wins', 'Coleccionista de victorias', 'Ganar ya no es casualidad.', 'Gana 10 partidas', 'wins', 10, 25, 21),
+  ('wins_25', 'wins', 'Imparable', 'Cuando os ponéis, no hay quien os pare.', 'Gana 25 partidas', 'wins', 25, 50, 22),
+  ('wins_50', 'wins', 'Máquina de ganar', 'Medio centenar de victorias. Casi da miedo.', 'Gana 50 partidas', 'wins', 50, 100, 23),
+  ('win_streak_3', 'wins', 'En racha', 'Una, dos y tres. ¿Quién os para?', 'Gana 3 partidas seguidas (una derrota corta la racha)', 'win_streak', 3, 20, 24),
+  ('levels_10', 'progress', 'Paso a paso', 'Cada nivel es un escalón más.', 'Supera 10 niveles en total', 'levels', 10, 5, 30),
+  ('levels_50', 'progress', 'Mente en crecimiento', 'Tu intuición ya no es la del primer día.', 'Supera 50 niveles en total', 'levels', 50, 20, 31),
+  ('levels_100', 'progress', 'Nivel tras nivel', 'Cien niveles a tus espaldas.', 'Supera 100 niveles en total', 'levels', 100, 35, 32),
+  ('long_win', 'progress', 'Hasta el final', 'Doce niveles, de la primera carta a la última.', 'Gana una partida de 12 niveles', 'long_wins', 1, 15, 33),
+  ('hard_win', 'progress', 'Mente extraordinaria', 'Una vida, sin vistazos y la ronda final a muerte súbita. Y aun así.', 'Gana una partida en dificultad Difícil', 'hard_wins', 1, 50, 34),
+  ('safe_5', 'skill', 'Sin margen de error', 'Ni una vida perdida en cinco niveles.', 'Supera 5 niveles seguidos sin perder ninguna vida', 'safe_streak', 5, 15, 40),
+  ('clean_10', 'skill', 'Precisión absoluta', 'Diez niveles seguidos sin un solo error. Ni siquiera con escudo.', 'Supera 10 niveles seguidos sin ningún error', 'clean_streak', 10, 30, 41),
+  ('no_vistazo_win', 'skill', 'Pulso de acero', 'Sin mirar las cartas de nadie. Pura intuición.', 'Gana una partida de 5 niveles o más sin usar ningún vistazo', 'wins_no_vistazo', 1, 20, 42),
+  ('flawless_win', 'skill', 'Intuición perfecta', 'Todas las vidas intactas de principio a fin.', 'Gana una partida de 5 niveles o más sin perder ninguna vida', 'flawless_wins', 1, 30, 43),
+  ('duo_win', 'team', 'Dos mentes, una', 'Solo vosotros dos, en perfecta sintonía.', 'Gana una partida de 5 niveles o más con 2 jugadores', 'wins_duo', 1, 10, 50),
+  ('full_team_win', 'team', 'El equipo completo', 'Cuatro cabezas, un solo ritmo.', 'Gana una partida de 5 niveles o más con 4 jugadores', 'wins_full_team', 1, 20, 51),
+  ('group_5', 'team', 'Unidos hasta el final', 'Este grupo ya no necesita palabras.', 'Gana 5 partidas con exactamente el mismo grupo de jugadores', 'group_wins', 5, 30, 52),
+  ('team_levels_25', 'team', 'Sincronización', 'Ponerse de acuerdo entre muchos tiene su mérito.', 'Supera 25 niveles en partidas de 3 o 4 jugadores', 'team_levels', 25, 20, 53),
+  ('early_bird', 'special', 'Madrugador', 'Mientras otros duermen, tú juegas.', 'Termina una partida entre las 6:00 y las 9:00 (hora de España)', 'early_games', 1, 10, 60),
+  ('collector_5', 'special', 'Coleccionista', 'Un diseño para cada ocasión.', 'Consigue 5 diseños de cartas (sin contar el Clásico)', 'designs', 5, 25, 61),
+  ('achievements_20', 'special', 'La mente definitiva', 'Lo has visto todo. O casi.', 'Consigue 20 logros', 'achievements', 20, 100, 62)
+on conflict (id) do update
+  set category = excluded.category, name = excluded.name, description = excluded.description,
+      condition = excluded.condition, metric = excluded.metric, target = excluded.target,
+      reward_coins = excluded.reward_coins, sort = excluded.sort;
+
+-- Cartas exclusivas: solo se consiguen con estos logros.
+insert into public.achievement_cosmetics (achievement_id, cosmetic_id) values
+  ('games_15', 'obsidian'),
+  ('wins_10', 'aurora'),
+  ('clean_10', 'chrono'),
+  ('wins_25', 'phoenix'),
+  ('achievements_20', 'transcendence')
+on conflict do nothing;
+
+-- Al crear las estadísticas se rellenan con las partidas que ya estaban en el historial, para no
+-- empezar de cero. Solo para quien aún no tiene fila: volver a ejecutar no suma nada.
+insert into public.player_stats (user_id, games_completed, wins, levels_completed)
+select u.uid,
+       count(*) filter (where g.result in ('won', 'lost')),
+       count(*) filter (where g.result = 'won'),
+       coalesce(sum(case when g.result = 'won' then g.max_level
+                         when g.result = 'lost' then greatest(g.level - 1, 0) else 0 end), 0)
+from public.game_results g
+cross join lateral unnest(g.player_ids) as u (uid)
+where exists (select 1 from auth.users au where au.id = u.uid)
+group by u.uid
+on conflict (user_id) do nothing;
 
 -- ───────────────────────────── Seguridad de tablas ─────────────────────────────
 
@@ -287,6 +455,31 @@ create policy player_equipped_select_own on public.player_equipped
 drop policy if exists coin_transactions_select_own on public.coin_transactions;
 create policy coin_transactions_select_own on public.coin_transactions
   for select to authenticated using (user_id = (select auth.uid()));
+-- Logros: igual que la economía. Catálogos para todos; progreso y conseguidos, solo lo propio.
+-- progress_events y player_group_wins son internos (sin acceso desde la app).
+alter table public.achievements          enable row level security;
+alter table public.achievement_cosmetics enable row level security;
+alter table public.player_stats          enable row level security;
+alter table public.player_group_wins     enable row level security;
+alter table public.player_achievements   enable row level security;
+alter table public.progress_events       enable row level security;
+revoke all on table public.achievements, public.achievement_cosmetics, public.player_stats,
+  public.player_group_wins, public.player_achievements, public.progress_events
+  from public, anon, authenticated;
+grant select on table public.achievements, public.achievement_cosmetics, public.player_stats,
+  public.player_achievements to authenticated;
+
+drop policy if exists achievements_select_all on public.achievements;
+create policy achievements_select_all on public.achievements for select to authenticated using (true);
+drop policy if exists achievement_cosmetics_select_all on public.achievement_cosmetics;
+create policy achievement_cosmetics_select_all on public.achievement_cosmetics for select to authenticated using (true);
+drop policy if exists player_stats_select_own on public.player_stats;
+create policy player_stats_select_own on public.player_stats
+  for select to authenticated using (user_id = (select auth.uid()));
+drop policy if exists player_achievements_select_own on public.player_achievements;
+create policy player_achievements_select_own on public.player_achievements
+  for select to authenticated using (user_id = (select auth.uid()));
+
 drop policy if exists match_rewards_select_own on public.match_rewards;
 create policy match_rewards_select_own on public.match_rewards
   for select to authenticated using (user_id = (select auth.uid()));
@@ -549,6 +742,10 @@ as $$
                'id', p.user_id, 'name', p.name, 'seat', p.seat, 'ready', p.ready,
                'lastSeenAt', p.last_seen_at,
                'cardDesign', p.card_design,
+               -- Título equipado (al momento: si lo cambia, los demás lo ven en la sala de espera).
+               'title', (select jsonb_build_object('id', c.id, 'name', c.name, 'rarity', c.rarity)
+                           from public.player_equipped e join public.cosmetics c on c.id = e.cosmetic_id
+                          where e.user_id = p.user_id and e.kind = 'title'),
                'cardsLeft', case when v.blind and p.user_id <> p_uid then null else
                  (select count(*) from public.hands h where h.room_id = p.room_id and h.user_id = p.user_id) end
              ) order by p.seat), '[]'::jsonb)
@@ -610,6 +807,7 @@ begin
   -- contar tras el aviso y la cuenta atrás (6 s): 60 s en el nivel 1, +3 s por nivel, hasta 90 s.
   update public.rooms set pile = '[]'::jsonb, pile_at = null, revealed = '[]'::jsonb, vote = null, offer = null, last_reward = null,
                           shield_active = false, shuriken_blocked = '[]'::jsonb,
+                          level_mistakes = 0, level_lives_lost = 0,
                           lightning_ends_at = case when level = lightning_level
                                                    then now() + make_interval(secs => 6 + least(90, 57 + 3 * level))
                                               end
@@ -644,6 +842,10 @@ begin
     v_match, p_room,
     case when p_status = 'won' then r.max_level when v_prev = 'level_complete' then r.level else r.level - 1 end,
     p_status = 'won');
+  -- Estadísticas y logros (también en esta transacción). Una partida abandonada no cuenta.
+  if p_status in ('won', 'lost') then
+    perform game_private.record_match_progress(v_match, p_room, p_status = 'won');
+  end if;
 end;
 $$;
 
@@ -741,6 +943,8 @@ begin
   select * into r from public.rooms where id = p_room;
   if r.status <> 'playing' then return; end if;
   if exists (select 1 from public.hands where room_id = p_room) then return; end if;
+  -- Nivel superado: cuenta para las estadísticas y los logros de quienes siguen en la sala.
+  perform game_private.record_level_done(p_room);
   if r.level >= r.max_level then
     perform game_private.end_game(p_room, 'won');
     return;
@@ -889,7 +1093,9 @@ begin
        select coalesce(jsonb_agg(jsonb_build_object('c', e -> 'c', 'p', e -> 'p', 'r', 'shuriken') order by ord), '[]'::jsonb)
        from jsonb_array_elements(v_discarded) with ordinality as t (e, ord))
    where id = p_room;
-  update public.rooms set shurikens = shurikens - 1, vote = null, shuriken_blocked = '[]'::jsonb where id = p_room;
+  update public.rooms set shurikens = shurikens - 1, game_shurikens_used = game_shurikens_used + 1,
+                          vote = null, shuriken_blocked = '[]'::jsonb
+   where id = p_room;
   perform game_private.emit(p_room, 'shuriken_used', null, jsonb_build_object('discarded', v_discarded));
   perform game_private.check_level_end(p_room);
 end;
@@ -1117,8 +1323,218 @@ begin
 end;
 $$;
 
--- Lo que la app necesita del jugador: saldo, lo equipado, lo que posee y el catálogo a la venta
--- (más lo que ya posea aunque deje de venderse).
+-- ───────────────────────────── Logros ─────────────────────────────
+
+-- Los números de los logros, en un único sitio.
+--   * featMinLevels: las hazañas de una partida (ganar a 2, a 4, sin vistazos, sin perder vidas)
+--     solo cuentan en partidas de al menos estos niveles (ganar una de 1 nivel no es una hazaña).
+--   * longGameLevels: niveles de la partida para «Hasta el final».
+--   * earlyFrom / earlyTo / timeZone: franja de «Madrugador» (de earlyFrom:00 a earlyTo:00).
+create or replace function game_private.achievement_settings()
+returns jsonb language sql immutable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'featMinLevels', 5,
+    'longGameLevels', 12,
+    'earlyFrom', 6,
+    'earlyTo', 9,
+    'timeZone', 'Europe/Madrid');
+$$;
+
+-- Valor de una métrica para un jugador (lo que se compara con el objetivo de cada logro). Las
+-- rachas usan el récord, para que conseguirlo una vez baste aunque luego se corte.
+create or replace function game_private.metric_value(p_uid uuid, p_metric text)
+returns int language sql stable set search_path = ''
+as $$
+  select case p_metric
+    when 'games' then coalesce(s.games_completed, 0)
+    when 'wins' then coalesce(s.wins, 0)
+    when 'win_streak' then coalesce(s.best_win_streak, 0)
+    when 'levels' then coalesce(s.levels_completed, 0)
+    when 'team_levels' then coalesce(s.team_levels, 0)
+    when 'clean_streak' then coalesce(s.best_clean_streak, 0)
+    when 'safe_streak' then coalesce(s.best_safe_streak, 0)
+    when 'wins_duo' then coalesce(s.wins_duo, 0)
+    when 'wins_full_team' then coalesce(s.wins_full_team, 0)
+    when 'wins_no_vistazo' then coalesce(s.wins_no_vistazo, 0)
+    when 'flawless_wins' then coalesce(s.flawless_wins, 0)
+    when 'hard_wins' then coalesce(s.hard_wins, 0)
+    when 'long_wins' then coalesce(s.long_wins, 0)
+    when 'group_wins' then coalesce(s.best_group_wins, 0)
+    when 'early_games' then coalesce(s.early_games, 0)
+    when 'designs' then (select count(*)::int from public.player_cosmetics pc
+                           join public.cosmetics c on c.id = pc.cosmetic_id
+                          where pc.user_id = p_uid and c.kind = 'card_design' and c.unlock <> 'default')
+    when 'achievements' then (select count(*)::int from public.player_achievements where user_id = p_uid)
+    else 0 end
+  from (select 1) x
+  left join public.player_stats s on s.user_id = p_uid;
+$$;
+
+-- Racha EN CURSO de las métricas de racha (para enseñar «llevas 6 de 10»); null en las demás.
+create or replace function game_private.metric_current(p_uid uuid, p_metric text)
+returns int language sql stable set search_path = ''
+as $$
+  select case p_metric
+    when 'win_streak' then coalesce(s.win_streak, 0)
+    when 'clean_streak' then coalesce(s.clean_streak, 0)
+    when 'safe_streak' then coalesce(s.safe_streak, 0)
+    end
+  from (select 1) x
+  left join public.player_stats s on s.user_id = p_uid;
+$$;
+
+-- Desbloquea los logros que ya se cumplen y entrega sus premios (monedas con add_coins, que lo
+-- apunta; cosméticos al inventario con origen «achievement»). Cada logro, una sola vez (clave
+-- primaria). Se repite mientras salga alguno nuevo: hay logros que cuentan logros o diseños.
+create or replace function game_private.evaluate_achievements(p_uid uuid)
+returns int language plpgsql set search_path = ''
+as $$
+declare
+  a record;
+  v_new int;
+  v_total int := 0;
+begin
+  perform game_private.ensure_player(p_uid);
+  loop
+    v_new := 0;
+    for a in
+      select ach.* from public.achievements ach
+       where ach.is_available
+         and not exists (select 1 from public.player_achievements pa where pa.user_id = p_uid and pa.achievement_id = ach.id)
+       order by ach.sort, ach.id
+    loop
+      continue when game_private.metric_value(p_uid, a.metric) < a.target;
+      insert into public.player_achievements (user_id, achievement_id, coins)
+      values (p_uid, a.id, a.reward_coins) on conflict do nothing;
+      continue when not found;
+      v_new := v_new + 1;
+      if a.reward_coins > 0 then
+        perform game_private.add_coins(p_uid, a.reward_coins, 'achievement', 'Logro: ' || a.name);
+      end if;
+      insert into public.player_cosmetics (user_id, cosmetic_id, source)
+      select p_uid, ac.cosmetic_id, 'achievement' from public.achievement_cosmetics ac where ac.achievement_id = a.id
+      on conflict do nothing;
+    end loop;
+    v_total := v_total + v_new;
+    exit when v_new = 0;
+  end loop;
+  return v_total;
+end;
+$$;
+
+-- Fila de estadísticas (y monedero) de un jugador, si aún no existe.
+create or replace function game_private.ensure_stats(p_uid uuid)
+returns void language plpgsql set search_path = ''
+as $$
+begin
+  perform game_private.ensure_player(p_uid);
+  insert into public.player_stats (user_id) values (p_uid) on conflict do nothing;
+end;
+$$;
+
+-- Nivel superado (se llama al vaciarse las manos, ANTES de pasar al siguiente o de ganar).
+-- Suma para todos los que siguen en la sala, una sola vez por jugador, sala, partida y nivel.
+create or replace function game_private.record_level_done(p_room uuid)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  r public.rooms;
+  p record;
+  v_clean boolean;
+  v_safe boolean;
+begin
+  select * into r from public.rooms where id = p_room;
+  v_clean := r.level_mistakes = 0;
+  v_safe := r.level_lives_lost = 0;
+  for p in select user_id from public.room_players where room_id = p_room order by seat loop
+    insert into public.progress_events (user_id, event, ref)
+    values (p.user_id, 'level', r.id || ':' || r.game_no || ':' || r.level) on conflict do nothing;
+    continue when not found;
+    perform game_private.ensure_stats(p.user_id);
+    update public.player_stats
+       set levels_completed = levels_completed + 1,
+           team_levels = team_levels + (r.start_players >= 3)::int,
+           clean_streak = case when v_clean then clean_streak + 1 else 0 end,
+           best_clean_streak = greatest(best_clean_streak, case when v_clean then clean_streak + 1 else 0 end),
+           safe_streak = case when v_safe then safe_streak + 1 else 0 end,
+           best_safe_streak = greatest(best_safe_streak, case when v_safe then safe_streak + 1 else 0 end),
+           updated_at = now()
+     where user_id = p.user_id;
+    perform game_private.evaluate_achievements(p.user_id);
+  end loop;
+end;
+$$;
+
+-- Partida terminada (ganada o perdida). Cuenta para quien cobra monedas por ella: sigue en la
+-- sala y ha jugado alguna carta. Si se pierde, además, se cortan las rachas de TODOS los que
+-- siguen en la sala (hayan jugado o no). Una sola vez por jugador y partida (progress_events).
+create or replace function game_private.record_match_progress(p_match bigint, p_room uuid, p_won boolean)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  s jsonb := game_private.achievement_settings();
+  r public.rooms;
+  p record;
+  v_feat boolean;
+  v_long boolean;
+  v_hard boolean;
+  v_early boolean;
+  v_hour int;
+  v_group text;
+  v_group_wins int;
+begin
+  select * into r from public.rooms where id = p_room;
+  v_feat := r.max_level >= (s ->> 'featMinLevels')::int;
+  v_long := r.max_level >= (s ->> 'longGameLevels')::int;
+  v_hard := r.config ->> 'difficulty' = 'hard';
+  v_hour := extract(hour from now() at time zone (s ->> 'timeZone'))::int;
+  v_early := v_hour >= (s ->> 'earlyFrom')::int and v_hour < (s ->> 'earlyTo')::int;
+  select string_agg(user_id::text, ',' order by user_id) into v_group from public.room_players where room_id = p_room;
+  for p in select user_id, cards_played from public.room_players where room_id = p_room order by seat loop
+    insert into public.progress_events (user_id, event, ref) values (p.user_id, 'match', p_match::text)
+    on conflict do nothing;
+    continue when not found;
+    perform game_private.ensure_stats(p.user_id);
+    if p.cards_played < (game_private.reward_settings() ->> 'minCardsPlayed')::int then
+      if not p_won then
+        update public.player_stats set win_streak = 0, clean_streak = 0, safe_streak = 0, updated_at = now()
+         where user_id = p.user_id;
+      end if;
+      continue;
+    end if;
+    v_group_wins := 0;
+    if p_won then
+      insert into public.player_group_wins (user_id, group_key, wins) values (p.user_id, v_group, 1)
+      on conflict (user_id, group_key) do update set wins = public.player_group_wins.wins + 1
+      returning wins into v_group_wins;
+    end if;
+    update public.player_stats
+       set games_completed = games_completed + 1,
+           wins = wins + p_won::int,
+           win_streak = case when p_won then win_streak + 1 else 0 end,
+           best_win_streak = greatest(best_win_streak, case when p_won then win_streak + 1 else 0 end),
+           wins_duo = wins_duo + (p_won and v_feat and r.start_players = 2)::int,
+           wins_full_team = wins_full_team + (p_won and v_feat and r.start_players = 4)::int,
+           wins_no_vistazo = wins_no_vistazo + (p_won and v_feat and r.game_shurikens_used = 0)::int,
+           flawless_wins = flawless_wins + (p_won and v_feat and r.game_lives_lost = 0)::int,
+           hard_wins = hard_wins + (p_won and v_hard)::int,
+           long_wins = long_wins + (p_won and v_long)::int,
+           best_group_wins = greatest(best_group_wins, v_group_wins),
+           early_games = early_games + v_early::int,
+           -- Perder corta las rachas de niveles: el nivel en que se pierde no se ha superado.
+           clean_streak = case when p_won then clean_streak else 0 end,
+           safe_streak = case when p_won then safe_streak else 0 end,
+           updated_at = now()
+     where user_id = p.user_id;
+    perform game_private.evaluate_achievements(p.user_id);
+  end loop;
+end;
+$$;
+
+-- Lo que la app necesita del jugador: saldo, lo equipado, lo que posee (y cómo lo consiguió), el
+-- catálogo (a la venta, por logro y lo que ya posea aunque deje de estar disponible), sus
+-- estadísticas, los logros con su progreso y los conseguidos que aún no se le han enseñado.
 create or replace function game_private.profile(p_uid uuid)
 returns jsonb language sql stable set search_path = ''
 as $$
@@ -1126,14 +1542,43 @@ as $$
     'coins', (select coins from public.player_wallets where user_id = p_uid),
     'equipped', coalesce((select jsonb_object_agg(kind, cosmetic_id) from public.player_equipped where user_id = p_uid), '{}'::jsonb),
     'owned', coalesce((select jsonb_agg(cosmetic_id order by acquired_at, cosmetic_id) from public.player_cosmetics where user_id = p_uid), '[]'::jsonb),
+    'sources', coalesce((select jsonb_object_agg(cosmetic_id, source) from public.player_cosmetics where user_id = p_uid), '{}'::jsonb),
     'catalog', coalesce((
       select jsonb_agg(jsonb_build_object('id', c.id, 'kind', c.kind, 'name', c.name, 'description', c.description,
-                                          'price', c.price, 'unlock', c.unlock, 'available', c.is_available)
+                                          'price', c.price, 'unlock', c.unlock, 'rarity', c.rarity, 'available', c.is_available,
+                                          'achievement', (select ac.achievement_id from public.achievement_cosmetics ac
+                                                           where ac.cosmetic_id = c.id order by ac.achievement_id limit 1))
                        order by c.sort, c.id)
       from public.cosmetics c
       where c.is_available or exists (select 1 from public.player_cosmetics o where o.user_id = p_uid and o.cosmetic_id = c.id)
     ), '[]'::jsonb),
-    'rewards', game_private.reward_settings());
+    'rewards', game_private.reward_settings(),
+    'stats', (
+      select jsonb_build_object(
+        'games', coalesce(st.games_completed, 0), 'wins', coalesce(st.wins, 0),
+        'levels', coalesce(st.levels_completed, 0), 'bestWinStreak', coalesce(st.best_win_streak, 0),
+        'bestCleanStreak', coalesce(st.best_clean_streak, 0))
+      from (select 1) x left join public.player_stats st on st.user_id = p_uid),
+    'achievements', coalesce((
+      select jsonb_agg(jsonb_build_object(
+               'id', a.id, 'category', a.category, 'name', a.name, 'description', a.description,
+               'condition', a.condition, 'target', a.target,
+               'progress', least(a.target, game_private.metric_value(p_uid, a.metric)),
+               'streak', game_private.metric_current(p_uid, a.metric),
+               'rewardCoins', a.reward_coins,
+               'rewardCosmetics', coalesce((select jsonb_agg(ac.cosmetic_id order by ac.cosmetic_id)
+                                             from public.achievement_cosmetics ac where ac.achievement_id = a.id), '[]'::jsonb),
+               'unlockedAt', pa.unlocked_at, 'secret', a.is_secret)
+             order by a.sort, a.id)
+      from public.achievements a
+      left join public.player_achievements pa on pa.achievement_id = a.id and pa.user_id = p_uid
+      where a.is_available or pa.user_id is not null
+    ), '[]'::jsonb),
+    'unseen', coalesce((
+      select jsonb_agg(pa.achievement_id order by pa.unlocked_at, a.sort)
+      from public.player_achievements pa join public.achievements a on a.id = pa.achievement_id
+      where pa.user_id = p_uid and pa.seen_at is null
+    ), '[]'::jsonb));
 $$;
 
 create or replace function game_private.new_code()
@@ -1290,6 +1735,7 @@ begin
          lives = (v_res ->> 'lives')::int,
          shurikens = (v_res ->> 'shurikens')::int,
          rewinds = 0, shields = 0, shield_active = false, offer = null,
+         game_shurikens_used = 0, game_lives_lost = 0,
          lives_cap = (v_res ->> 'livesCap')::int,
          shurikens_cap = (v_res ->> 'shurikensCap')::int,
          -- Ronda relámpago: un nivel al azar, nunca el último (sin ronda si solo hay uno).
@@ -1376,12 +1822,17 @@ begin
      where id = p_room;
     if r.shield_active then
       -- El escudo absorbe este error: se descartan las cartas, pero no se pierde vida.
-      update public.rooms set shield_active = false where id = p_room returning lives into v_lives;
+      update public.rooms set shield_active = false, level_mistakes = level_mistakes + 1
+       where id = p_room returning lives into v_lives;
       perform game_private.emit(p_room, 'mistake', v_uid,
         jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives, 'shielded', true));
     else
       v_sudden := r.level = r.max_level and r.config ->> 'difficulty' = 'hard';
-      update public.rooms set lives = case when v_sudden then 0 else lives - 1 end
+      -- (En el SET, `lives` es el valor de antes: con muerte súbita se pierden todas esas.)
+      update public.rooms set lives = case when v_sudden then 0 else lives - 1 end,
+                              level_mistakes = level_mistakes + 1,
+                              level_lives_lost = level_lives_lost + case when v_sudden then lives else 1 end,
+                              game_lives_lost = game_lives_lost + case when v_sudden then lives else 1 end
        where id = p_room returning lives into v_lives;
       perform game_private.emit(p_room, 'mistake', v_uid,
         jsonb_build_object('card', p_card, 'discarded', v_lower, 'lives', v_lives)
@@ -1696,6 +2147,8 @@ as $$
 declare v_uid uuid := game_private.require_uid();
 begin
   perform game_private.ensure_player(v_uid);
+  -- Por si se ha añadido un logro nuevo que ya cumple (p. ej. con su historial).
+  perform game_private.evaluate_achievements(v_uid);
   return game_private.profile(v_uid);
 end;
 $$;
@@ -1722,6 +2175,8 @@ begin
   if v_coins < c.price then raise exception 'NOT_ENOUGH_COINS'; end if;
   insert into public.player_cosmetics (user_id, cosmetic_id, source) values (v_uid, c.id, 'purchase');
   perform game_private.add_coins(v_uid, -c.price, 'purchase', 'Compra: ' || c.name, null, c.id);
+  -- Comprar diseños cuenta para «Coleccionista».
+  perform game_private.evaluate_achievements(v_uid);
   return game_private.profile(v_uid);
 end;
 $$;
@@ -1743,6 +2198,32 @@ begin
   end if;
   insert into public.player_equipped (user_id, kind, cosmetic_id) values (v_uid, v_kind, p_cosmetic)
   on conflict (user_id, kind) do update set cosmetic_id = excluded.cosmetic_id, updated_at = now();
+  return game_private.profile(v_uid);
+end;
+$$;
+
+-- Quita el título (jugar sin título). El diseño de cartas no se puede quitar: se equipa otro
+-- (el Clásico, por ejemplo).
+create or replace function public.unequip_cosmetic(p_kind text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  perform game_private.ensure_player(v_uid);
+  if p_kind is distinct from 'title' then raise exception 'CANNOT_UNEQUIP'; end if;
+  delete from public.player_equipped where user_id = v_uid and kind = p_kind;
+  return game_private.profile(v_uid);
+end;
+$$;
+
+-- Marca como enseñados los logros conseguidos (la app ya ha mostrado su aviso).
+create or replace function public.mark_achievements_seen(p_ids text[])
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  update public.player_achievements set seen_at = now()
+   where user_id = v_uid and achievement_id = any (coalesce(p_ids, '{}')) and seen_at is null;
   return game_private.profile(v_uid);
 end;
 $$;
@@ -1795,6 +2276,8 @@ revoke all on function
   public.get_my_profile(),
   public.buy_cosmetic(text),
   public.equip_cosmetic(text),
+  public.unequip_cosmetic(text),
+  public.mark_achievements_seen(text[]),
   public.get_my_coin_history()
 from public, anon;
 
@@ -1825,6 +2308,8 @@ grant execute on function
   public.get_my_profile(),
   public.buy_cosmetic(text),
   public.equip_cosmetic(text),
+  public.unequip_cosmetic(text),
+  public.mark_achievements_seen(text[]),
   public.get_my_coin_history()
 to authenticated;
 

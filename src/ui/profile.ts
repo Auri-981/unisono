@@ -1,11 +1,11 @@
 /**
- * Perfil de la economía (monedas y cosméticos) compartido por toda la app.
+ * Perfil del jugador (monedas, cosméticos, títulos y logros) compartido por toda la app.
  * La verdad está en el servidor: aquí solo se guarda la última respuesta, para pintarla al
  * instante (y para que la práctica, sin servidor, use el diseño equipado). Nunca se suman
  * monedas en el cliente: tras cada compra, equipamiento o partida se usa lo que devuelve el servidor.
  */
 import { useSyncExternalStore } from 'react';
-import { api, ApiError, type Profile } from '../net/api';
+import { api, ApiError, type CatalogItem, type CosmeticKind, type Profile } from '../net/api';
 import { onlineAvailable } from '../net/supabase';
 
 export interface ProfileState {
@@ -79,7 +79,7 @@ export async function buyCosmetic(id: string): Promise<string | null> {
   if (frozen) return simulate((p) => {
     const price = p.catalog.find((c) => c.id === id)?.price ?? 0;
     if (p.coins < price) return 'NOT_ENOUGH_COINS';
-    return { ...p, coins: p.coins - price, owned: [...p.owned, id] };
+    return { ...p, coins: p.coins - price, owned: [...p.owned, id], sources: { ...p.sources, [id]: 'purchase' } };
   });
   try {
     set({ profile: await api.buyCosmetic(id) });
@@ -97,7 +97,10 @@ export async function buyCosmetic(id: string): Promise<string | null> {
 
 /** Equipa un cosmético que ya se posee. Devuelve null si ha ido bien o el código de error. */
 export async function equipCosmetic(id: string): Promise<string | null> {
-  if (frozen) return simulate((p) => ({ ...p, equipped: { ...p.equipped, card_design: id } }));
+  if (frozen) return simulate((p) => {
+    const kind = p.catalog.find((c) => c.id === id)?.kind ?? 'card_design';
+    return { ...p, equipped: { ...p.equipped, [kind]: id } };
+  });
   try {
     set({ profile: await api.equipCosmetic(id) });
     return null;
@@ -106,9 +109,47 @@ export async function equipCosmetic(id: string): Promise<string | null> {
   }
 }
 
+/** Quita lo equipado de un tipo (solo los títulos: jugar sin título). */
+export async function unequipCosmetic(kind: CosmeticKind): Promise<string | null> {
+  if (frozen) return simulate((p) => {
+    const equipped = { ...p.equipped };
+    delete equipped[kind];
+    return { ...p, equipped };
+  });
+  try {
+    set({ profile: await api.unequipCosmetic(kind) });
+    return null;
+  } catch (e) {
+    return codeOf(e);
+  }
+}
+
+/** Avisa al servidor de que estos logros ya se han enseñado (si falla, se enseñarán otra vez). */
+export async function markAchievementsSeen(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const forget = (p: Profile): Profile => ({ ...p, unseen: (p.unseen ?? []).filter((x) => !ids.includes(x)) });
+  if (frozen) {
+    set({ profile: forget(state.profile!) });
+    return;
+  }
+  // Se quitan ya en local para no repetir el aviso mientras llega la respuesta.
+  if (state.profile) set({ profile: forget(state.profile) });
+  try {
+    set({ profile: await api.markAchievementsSeen(ids) });
+  } catch {
+    // Sin red: el servidor los seguirá dando como no vistos y se enseñarán la próxima vez.
+  }
+}
+
 /** Diseño de cartas equipado según la última respuesta del servidor (clásico si no se sabe). */
 export function equippedCardDesign(profile: Profile | null = state.profile): string {
   return profile?.equipped.card_design ?? 'classic';
+}
+
+/** Título equipado (o null si no lleva ninguno). */
+export function equippedTitle(profile: Profile | null = state.profile): CatalogItem | null {
+  const id = profile?.equipped.title;
+  return (id && profile?.catalog.find((c) => c.id === id)) || null;
 }
 
 // ── Solo para las pantallas de ejemplo de desarrollo (src/dev/Preview.tsx) ──

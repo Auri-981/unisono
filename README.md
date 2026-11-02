@@ -11,7 +11,10 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
   (el último nivel: sin comodines, mesa a ciegas y manos ocultas; en Difícil, además, muerte súbita), orden ascendente o descendente, revancha, historial, chat opcional.
   (En el código y la base de datos el vistazo se llama internamente «shuriken».)
 - Monedas por jugar online (más por cada nivel superado y mucho más por ganar partidas largas),
-  tienda con diseños de cartas (Galaxia, Neón, Esmeralda) y «Mis cartas» para equiparlos.
+  tienda con diseños de cartas (Galaxia, Neón, Esmeralda) y 12 títulos que se ven bajo el nombre.
+- 25 logros en 6 categorías que se cuentan solos al jugar online, con monedas de premio y cinco
+  cartas exclusivas que solo se consiguen con logros (Obsidiana, Aurora, Crono, Fénix, Trascendencia).
+  Colección (cartas y títulos) y perfil con estadísticas.
 - Modo práctica contra bots, sin conexión.
 - Web móvil instalable (PWA). Interfaz en español, preparada para otros idiomas.
 

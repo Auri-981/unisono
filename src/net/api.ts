@@ -2,7 +2,7 @@
  * Llamadas a las funciones del servidor (RPC de Supabase), con tiempo límite,
  * reintentos seguros y errores traducidos a códigos del juego.
  */
-import { isGameErrorCode, type ComodinKind, type RoomConfig, type RoomSnapshot } from '../game/types';
+import { isGameErrorCode, type ComodinKind, type Rarity, type RoomConfig, type RoomSnapshot } from '../game/types';
 import { ensureSession, getSupabase } from './supabase';
 
 const TIMEOUT_MS = 8000;
@@ -45,16 +45,51 @@ async function rpc<T>(fn: string, args: Record<string, unknown>, retries = 0): P
   }
 }
 
-/** Cosmético del catálogo (lo que se vende y lo que ya se posee). */
+export type CosmeticKind = 'card_design' | 'title';
+
+/** Cosmético del catálogo (lo que se vende, lo que se consigue con logros y lo que ya se posee). */
 export interface CatalogItem {
   id: string;
-  kind: 'card_design';
+  kind: CosmeticKind;
   name: string;
   description: string;
-  /** Precio en monedas (null: no se compra, p. ej. el clásico). */
+  /** Precio en monedas (null: no se compra, p. ej. el clásico o los de logros). */
   price: number | null;
   unlock: 'default' | 'coins' | 'achievement' | 'event';
+  /** Opcional en perfiles guardados de versiones anteriores. */
+  rarity?: Rarity;
   available: boolean;
+  /** Logro que lo da (solo los que se consiguen con logros). */
+  achievement?: string | null;
+}
+
+export type AchievementCategory = 'games' | 'wins' | 'progress' | 'skill' | 'team' | 'special';
+
+/** Logro con el progreso del jugador (todo lo calcula el servidor). */
+export interface Achievement {
+  id: string;
+  category: AchievementCategory;
+  name: string;
+  description: string;
+  /** Qué hay que hacer, en una frase. */
+  condition: string;
+  target: number;
+  /** Progreso (récord en las rachas), como mucho `target`. */
+  progress: number;
+  /** Racha en curso (solo en los logros de racha; null en los demás). */
+  streak: number | null;
+  rewardCoins: number;
+  rewardCosmetics: string[];
+  unlockedAt: string | null;
+  secret: boolean;
+}
+
+export interface PlayerStats {
+  games: number;
+  wins: number;
+  levels: number;
+  bestWinStreak: number;
+  bestCleanStreak: number;
 }
 
 /** Números de las recompensas (los decide el servidor: game_private.reward_settings). */
@@ -68,17 +103,23 @@ export interface RewardSettings {
 
 export interface Profile {
   coins: number;
-  /** Equipado por tipo: { card_design: 'galaxy' }. */
+  /** Equipado por tipo: { card_design: 'galaxy', title: 'title_legend' } (sin `title`: ninguno). */
   equipped: Record<string, string>;
   owned: string[];
+  /** Cómo se consiguió cada cosmético: default, purchase, achievement… (opcional: perfiles antiguos). */
+  sources?: Record<string, string>;
   catalog: CatalogItem[];
   rewards: RewardSettings;
+  stats?: PlayerStats;
+  achievements?: Achievement[];
+  /** Logros conseguidos que aún no se han enseñado (en orden). */
+  unseen?: string[];
 }
 
 export interface CoinMovement {
   amount: number;
   balanceAfter: number;
-  kind: 'match_reward' | 'purchase' | 'adjustment';
+  kind: 'match_reward' | 'purchase' | 'adjustment' | 'achievement';
   reason: string;
   cosmeticId: string | null;
   at: string;
@@ -113,6 +154,10 @@ export const api = {
   /** Compra (todo o nada en el servidor). Sin reintentos automáticos: el usuario decide. */
   buyCosmetic: (id: string) => rpc<Profile>('buy_cosmetic', { p_cosmetic: id }),
   equipCosmetic: (id: string) => rpc<Profile>('equip_cosmetic', { p_cosmetic: id }, 1),
+  /** Quita el título equipado (solo los títulos se pueden quitar). */
+  unequipCosmetic: (kind: CosmeticKind) => rpc<Profile>('unequip_cosmetic', { p_kind: kind }, 1),
+  /** Los avisos de estos logros ya se han enseñado. */
+  markAchievementsSeen: (ids: string[]) => rpc<Profile>('mark_achievements_seen', { p_ids: ids }, 1),
   coinHistory: () => rpc<CoinMovement[]>('get_my_coin_history', {}, 1),
   history: () =>
     rpc<{

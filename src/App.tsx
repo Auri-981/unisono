@@ -8,6 +8,7 @@ import type { RoomConfig, RoomSnapshot } from './game/types';
 import { t } from './i18n';
 import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
+import { AchievementNotices } from './ui/components/AchievementNotices';
 import { AutoUpdate } from './ui/components/AutoUpdate';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
@@ -15,7 +16,8 @@ import { HomeScreen } from './ui/screens/HomeScreen';
 import { KickedScreen } from './ui/screens/KickedScreen';
 import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
 import { OnlineRoom, PracticeRoom } from './ui/screens/RoomScreens';
-import { CollectionScreen, ShopScreen } from './ui/screens/ShopScreens';
+import { AchievementsScreen, ProfileScreen } from './ui/screens/ProgressScreens';
+import { CollectionScreen, ShopScreen, type CosmeticTab } from './ui/screens/ShopScreens';
 import { TutorialScreen } from './ui/screens/TutorialScreen';
 
 type Screen =
@@ -29,8 +31,10 @@ type Screen =
   | { name: 'tutorial' }
   | { name: 'settings' }
   | { name: 'history' }
-  | { name: 'shop' }
-  | { name: 'collection' };
+  | { name: 'shop'; tab?: CosmeticTab }
+  | { name: 'collection'; tab?: CosmeticTab }
+  | { name: 'achievements' }
+  | { name: 'profile' };
 
 function codeFromUrl(): string | undefined {
   try {
@@ -85,6 +89,7 @@ export function App() {
   return (
     <>
       <Screens screen={screen} setScreen={setScreen} />
+      {onlineAvailable && <AchievementNotices />}
       <AutoUpdate blocked={HOLD_UPDATE_SCREENS.has(screen.name)} />
     </>
   );
@@ -126,6 +131,8 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
           onHistory={() => setScreen({ name: 'history' })}
           onShop={() => setScreen({ name: 'shop' })}
           onCollection={() => setScreen({ name: 'collection' })}
+          onAchievements={() => setScreen({ name: 'achievements' })}
+          onProfile={() => setScreen({ name: 'profile' })}
         />
       );
     case 'kicked':
@@ -177,8 +184,35 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
     case 'history':
       return <HistoryScreen onBack={() => home()} />;
     case 'shop':
-      return <ShopScreen onBack={() => home()} onCollection={() => setScreen({ name: 'collection' })} />;
+      return (
+        <ShopScreen
+          key={screen.tab}
+          initialTab={screen.tab}
+          onBack={() => home()}
+          onCollection={() => setScreen({ name: 'collection', tab: screen.tab })}
+          onAchievements={() => setScreen({ name: 'achievements' })}
+        />
+      );
     case 'collection':
-      return <CollectionScreen onBack={() => home()} onShop={() => setScreen({ name: 'shop' })} />;
+      return (
+        <CollectionScreen
+          key={screen.tab}
+          initialTab={screen.tab}
+          onBack={() => home()}
+          onShop={(tab) => setScreen({ name: 'shop', tab })}
+          onAchievements={() => setScreen({ name: 'achievements' })}
+        />
+      );
+    case 'achievements':
+      return <AchievementsScreen onBack={() => home()} />;
+    case 'profile':
+      return (
+        <ProfileScreen
+          onBack={() => home()}
+          onCollection={(tab) => setScreen({ name: 'collection', tab })}
+          onAchievements={() => setScreen({ name: 'achievements' })}
+          onSettings={() => setScreen({ name: 'settings' })}
+        />
+      );
   }
 }
