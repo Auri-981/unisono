@@ -343,6 +343,7 @@ export const es = {
   'account.noticeDeleted': 'Cuenta borrada',
   'account.noticeDeletedText': 'Hemos borrado tu progreso. Si vuelves a jugar, empezarás como invitado nuevo.',
   'account.ok': 'Entendido',
+  'account.detail': 'Motivo: {detail}',
 
   'privacy.title': 'Privacidad',
 

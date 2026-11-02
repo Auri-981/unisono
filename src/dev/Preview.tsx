@@ -6,7 +6,7 @@
  *      | lobbyguest | shop | shoptitles | shoprich | collection | collectiontitles | achievements | profile | achtoast | achunlock
  *      | designs | gallery | wonreward | lostreward | noreward | kicked
  *      | profileguest | profilegoogle | settingsguest | settingsgoogle | homeguest | privacy
- *      | accmerged | accsignedin | acccancelled | accsignedout  (ventanas al volver de Google)
+ *      | accmerged | accsignedin | acccancelled | accfailed | accsignedout  (ventanas al volver de Google)
  * No se incluye en la web publicada.
  */
 import type { RoomController } from '../game/controller';
@@ -327,6 +327,7 @@ function accountPreview(kind: string) {
     accmerged: { kind: 'signedIn', merged: { coins: 85, cards: 2, titles: 1, achievements: 6, games: 9 } },
     accsignedin: { kind: 'signedIn', merged: null },
     acccancelled: { kind: 'cancelled' },
+    accfailed: { kind: 'failed', detail: 'unexpected_failure: Unable to exchange external code: 4/0AVG7fiQ' },
     accsignedout: { kind: 'signedOut' },
   } as const;
   previewAccount({ kind: 'google', notice: notices[kind as keyof typeof notices] });
@@ -338,7 +339,7 @@ function accountPreview(kind: string) {
   );
 }
 
-const ACCOUNT_PREVIEWS = ['profileguest', 'profilegoogle', 'settingsguest', 'settingsgoogle', 'homeguest', 'privacy', 'accmerged', 'accsignedin', 'acccancelled', 'accsignedout'];
+const ACCOUNT_PREVIEWS = ['profileguest', 'profilegoogle', 'settingsguest', 'settingsgoogle', 'homeguest', 'privacy', 'accmerged', 'accsignedin', 'acccancelled', 'accfailed', 'accsignedout'];
 
 export function Preview({ kind }: { kind: string }) {
   if (ACCOUNT_PREVIEWS.includes(kind)) return accountPreview(kind);

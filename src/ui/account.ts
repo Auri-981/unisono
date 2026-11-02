@@ -18,7 +18,8 @@ import { acceptProfile, forgetProfile, refreshProfile } from './profile';
 export type AccountNotice =
   | { kind: 'signedIn'; merged: MergeSummary | null }
   | { kind: 'cancelled' }
-  | { kind: 'failed' }
+  /** detail: el motivo técnico (lo que devuelven Google o Supabase), para poder arreglarlo. */
+  | { kind: 'failed'; detail: string | null }
   | { kind: 'signedOut' }
   | { kind: 'deleted' };
 
@@ -99,15 +100,16 @@ function fromSession(session: Session | null) {
 }
 
 /** ¿Vuelve de Google? Se mira antes de que supabase-js limpie la dirección. */
-function readReturn(): { kind: 'none' | 'code' | 'error'; error: string | null } {
+function readReturn(): { kind: 'none' | 'code' | 'error'; error: string | null; detail: string | null } {
   try {
     const query = new URLSearchParams(window.location.search);
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const error = query.get('error') ?? hash.get('error');
-    if (error) return { kind: 'error', error };
-    return { kind: query.has('code') ? 'code' : 'none', error: null };
+    const get = (k: string) => query.get(k) ?? hash.get(k);
+    const error = get('error');
+    if (error) return { kind: 'error', error, detail: [get('error_code'), get('error_description')].filter(Boolean).join(': ') || error };
+    return { kind: query.has('code') ? 'code' : 'none', error: null, detail: null };
   } catch {
-    return { kind: 'none', error: null };
+    return { kind: 'none', error: null, detail: null };
   }
 }
 
@@ -146,6 +148,8 @@ export async function initAccount(): Promise<void> {
   if (!onlineAvailable) return;
   const back = readReturn();
   const sb = getSupabase();
+  // Si el canje del código de Google falla, supabase-js lo devuelve aquí (y deja la sesión de invitado).
+  const started = sb.auth.initialize();
   sb.auth.onAuthStateChange((_event, session) => fromSession(session));
   void googleEnabled().then(
     (googleReady) => set({ googleReady }),
@@ -173,10 +177,11 @@ export async function initAccount(): Promise<void> {
   }
   if (back.kind === 'error') {
     storage(PENDING_KEY, null);
-    set({ notice: { kind: back.error === 'access_denied' ? 'cancelled' : 'failed' } });
+    set({ notice: back.error === 'access_denied' ? { kind: 'cancelled' } : { kind: 'failed', detail: back.detail } });
   } else if (back.kind === 'code') {
     storage(PENDING_KEY, null);
-    set({ notice: { kind: 'failed' } });
+    const { error } = await started;
+    set({ notice: { kind: 'failed', detail: error?.message ?? 'no_session_after_code' } });
   }
 }
 

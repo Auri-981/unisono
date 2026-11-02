@@ -163,7 +163,10 @@ export function AccountNoticeDialog() {
             <p className="muted">{t('account.noticeSaved')}</p>
           )
         ) : (
-          <p className="muted">{t(text!)}</p>
+          <>
+            <p className="muted">{t(text!)}</p>
+            {notice.kind === 'failed' && notice.detail && <p className="account-detail">{t('account.detail', { detail: notice.detail })}</p>}
+          </>
         )}
         <button ref={okRef} type="button" className="btn btn-primary btn-block" onClick={clearAccountNotice}>
           {t('account.ok')}

@@ -6677,6 +6677,17 @@ html {
   border-color: rgb(245 185 113 / 0.45);
 }
 
+.account-detail {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 .account-merged {
   display: grid;
   gap: 6px;
