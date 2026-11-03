@@ -42,6 +42,7 @@ src/
 supabase/migrations/       Base de datos, seguridad (RLS) y lógica autoritativa del servidor (SQL)
 tests/                     Escenarios compartidos + pruebas de integración contra Postgres real
 scripts/smoke.mjs          Prueba de extremo a extremo contra tu Supabase real
+scripts/security.mjs       Prueba de seguridad: un «atacante» intenta leer y cambiar datos ajenos
 .github/workflows/         Publicación automática en GitHub Pages
 ```
 
@@ -67,9 +68,13 @@ npm run build
 npm run smoke
 ```
 
+```bash
+npm run security
+```
+
 - `npm run dev`: web local en <http://localhost:5173> (sin `.env.local` solo funciona el modo práctica).
 - `npm test`: motor de reglas + servidor SQL real en memoria (PGlite).
-- `npm run smoke`: requiere `.env.local` con tu proyecto de Supabase (ver `.env.example`).
+- `npm run smoke` y `npm run security`: requieren `.env.local` con tu proyecto de Supabase (ver `.env.example`).
 
 ## Licencia y marca
 

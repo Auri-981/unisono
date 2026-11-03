@@ -31,6 +31,7 @@ Problemas encontrados con el servidor real y corregidos:
 | Conformidad | Los **mismos 19 escenarios** se ejecutan contra el motor TS y contra el SQL del servidor; también se compara la normalización de la configuración | `tests/scenarios.ts`, `tests/integration/conformance.test.ts` |
 | Integración | La migración real sobre Postgres real (PGlite) con los roles, privilegios por defecto y `auth.uid()` de Supabase; cada llamada como un usuario distinto | `tests/integration/server.test.ts` |
 | Extremo a extremo | 3 clientes reales contra tu Supabase: tiempo real, privacidad, permisos, partida completa | `npm run smoke` |
+| Seguridad | Un «atacante» contra tu Supabase: sin sesión no lee nada; con sesión solo lo suyo; no escribe en ninguna tabla (ni se da monedas, cartas o logros); sin acceso a cuentas y correos (`auth`), a `game_private`, a salas o perfiles ajenos ni por GraphQL. Las tablas salen de la migración. Ejecutar tras cada cambio del SQL | `npm run security` |
 | Manual | Navegador en tamaño móvil (375×812) | ver abajo |
 
 Se comprobó además que las pruebas detectan fallos: al introducir a propósito un error en la regla de

@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs",
+    "security": "node scripts/security.mjs",
     "bot": "node scripts/bot.mjs"
   },
   "engines": {
