@@ -6703,28 +6703,6 @@ html {
   font-weight: 600;
 }
 
-.settings-account {
-  display: grid;
-  gap: 8px;
-}
-
-.settings-account h2 {
-  margin: 0;
-}
-
-.settings-delete,
-.settings-privacy {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 0;
-}
-
-.link-danger {
-  color: var(--danger);
-}
-
 .privacy {
   display: grid;
   gap: 4px;
@@ -6750,4 +6728,152 @@ html {
 
 .privacy a {
   color: var(--cool);
+}
+
+/* ───────────── Ajustes ───────────── */
+
+.settings,
+.settings-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.settings-group {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-group .section-title {
+  margin: 0 0 0 4px;
+}
+
+.settings-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.settings-name {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px 16px;
+}
+
+.settings-name .field-label {
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text);
+}
+
+.settings-list > * {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 16px;
+}
+
+.settings-list > * + * {
+  border-top: 1px solid var(--line);
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.toggle-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.settings-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.settings-link:first-child {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
+.settings-link:last-child {
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+}
+
+.settings-link > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-link + .settings-link {
+  border-top: 1px solid var(--line);
+}
+
+.settings-link:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.settings-chevron {
+  flex: none;
+  color: var(--muted);
+  transform: scaleX(-1);
+}
+
+.settings-link-danger,
+.settings-link-danger .settings-icon {
+  color: var(--danger);
+}
+
+.settings-version {
+  margin: 0;
+  text-align: center;
+}
+
+/* En pantallas anchas, dos columnas: cuenta y jugador a un lado; preferencias y datos al otro. */
+@media (min-width: 860px) {
+  .page-settings {
+    max-width: 960px;
+  }
+
+  .page-settings .side-decor-col {
+    width: calc((100vw - 960px) / 2);
+  }
+
+  .settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px 28px;
+    align-items: start;
+  }
+
+  .settings-version {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1499px) {
+  .page-settings .side-decor {
+    display: none;
+  }
 }

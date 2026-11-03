@@ -357,3 +357,24 @@ export const TrashIcon = ({ size, ...p }: P) => (
     <path d="M10.2 10.2v6.6M13.8 10.2v6.6" stroke="var(--bg)" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
+
+export const SoundIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <path d="M4 9.5v5h3.6L12.5 19V5L7.6 9.5H4Z" fill="currentColor" />
+    <path d="M15.6 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const VibrationIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <rect x="8" y="4" width="8" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M4.8 9v6M19.2 9v6M2 10.8v2.4M22 10.8v2.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const MotionIcon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}>
+    <circle cx="15" cy="12" r="5" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M3 8.5h4.5M2 12h3.5M3 15.5h4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);

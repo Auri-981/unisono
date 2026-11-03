@@ -295,13 +295,18 @@ export const es = {
   'kicked.create': 'Crear mi partida',
 
   'settings.title': 'Ajustes',
+  'settings.player': 'Tu jugador',
   'settings.name': 'Alias por defecto',
+  'settings.nameHint': 'Es el nombre con el que te verán en las salas.',
+  'settings.experience': 'Sonido y movimiento',
   'settings.sound': 'Efectos de sonido',
   'settings.vibration': 'Vibración en los errores',
   'settings.reducedMotion': 'Reducir animaciones',
+  'settings.reducedMotionHint': 'Quita casi todo el movimiento de la pantalla.',
   'settings.version': 'Versión {v} · publicada el {date}',
   'update.applying': 'Actualizando a la última versión…',
   'settings.account': 'Cuenta',
+  'settings.data': 'Privacidad y datos',
   'settings.privacy': 'Privacidad',
   'settings.delete': 'Borrar mi cuenta y mis datos',
 

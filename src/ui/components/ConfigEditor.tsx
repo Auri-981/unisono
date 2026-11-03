@@ -147,16 +147,26 @@ export function Switch({
   checked,
   onChange,
   disabled,
+  icon,
+  hint,
 }: {
   label: string;
   checked: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
+  icon?: ReactNode;
+  hint?: string;
 }) {
   return (
     <label className="toggle">
       <input type="checkbox" role="switch" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-      <span>{label}</span>
+      <span className="toggle-label">
+        {icon && <span className="settings-icon">{icon}</span>}
+        <span className="toggle-text">
+          {label}
+          {hint && <span className="muted small">{hint}</span>}
+        </span>
+      </span>
     </label>
   );
 }
