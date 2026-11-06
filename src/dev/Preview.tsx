@@ -5,11 +5,12 @@
  *      | final | finalpeek | finalalert | finalnext | finallost  (+ «hard»: finalalerthard, finalnexthard, finallosthard)
  *      | lobbyguest | shop | shoptitles | shoprich | collection | collectiontitles | achievements | profile | achtoast | achunlock
  *      | designs | gallery | wonreward | lostreward | noreward | kicked
- *      | friends | friendsempty | friendinvite | lobbyfriends
+ *      | friends | friendsempty | friendinvite | invitename | lobbyfriends
  *      | profileguest | profilegoogle | settingsguest | settingsgoogle | homeguest | privacy
  *      | accmerged | accsignedin | acccancelled | accfailed | accsignedout  (ventanas al volver de Google)
  * No se incluye en la web publicada.
  */
+import { useEffect } from 'react';
 import type { RoomController } from '../game/controller';
 import * as E from '../game/engine';
 import { seededRng } from '../game/testing';
@@ -346,6 +347,14 @@ function accountPreview(kind: string) {
 
 const ACCOUNT_PREVIEWS = ['profileguest', 'profilegoogle', 'settingsguest', 'settingsgoogle', 'homeguest', 'privacy', 'accmerged', 'accsignedin', 'acccancelled', 'accfailed', 'accsignedout'];
 
+/** Pulsa «Unirme» al abrir el ejemplo, para ver la ventana de elegir nombre. */
+function ClickJoin() {
+  useEffect(() => {
+    document.querySelector<HTMLButtonElement>('.invite-banner .btn-primary')?.click();
+  }, []);
+  return null;
+}
+
 const DEMO_FRIENDS: FriendsState = {
   code: 'K7MQ2XPA',
   serverTime: new Date().toISOString(),
@@ -367,7 +376,7 @@ export function Preview({ kind }: { kind: string }) {
     previewFriends(kind === 'friends' ? DEMO_FRIENDS : { ...DEMO_FRIENDS, friends: [], incoming: [], outgoing: [], invites: [] });
     return <FriendsScreen onBack={noop} onJoined={noop} />;
   }
-  if (kind === 'friendinvite') {
+  if (kind === 'friendinvite' || kind === 'invitename') {
     previewProfile(demoProfile('shop'));
     previewFriends(DEMO_FRIENDS);
     return (
@@ -387,6 +396,7 @@ export function Preview({ kind }: { kind: string }) {
           onFriends={noop}
         />
         <InviteBanner hidden={false} onJoined={noop} />
+        {kind === 'invitename' && <ClickJoin />}
       </>
     );
   }

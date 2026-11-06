@@ -151,11 +151,14 @@ export async function inviteFriend(room: string, friend: string): Promise<string
   }
 }
 
-/** Entra en la sala de la invitación. */
-export async function acceptInvite(id: number): Promise<{ snapshot?: RoomSnapshot; error?: string }> {
-  if (frozen) return {};
+/** Nombre con el que se entra si no se elige otro. */
+export const defaultName = () => cleanName(getPrefs().name) || 'Jugador';
+
+/** Entra en la sala de la invitación (si el nombre ya está en la sala, la invitación sigue viva). */
+export async function acceptInvite(id: number, name = defaultName()): Promise<{ snapshot?: RoomSnapshot; error?: string }> {
+  if (frozen) return name === defaultName() ? { error: 'NAME_TAKEN' } : {};
   try {
-    const snapshot = await api.acceptInvite(id, cleanName(getPrefs().name) || 'Jugador');
+    const snapshot = await api.acceptInvite(id, name);
     void refreshFriends();
     return { snapshot };
   } catch (e) {

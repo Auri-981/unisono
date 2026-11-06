@@ -9,11 +9,10 @@ import type { FriendCard, FriendsState } from '../../net/api';
 import { useAccount } from '../account';
 import { AccountCard } from '../components/Account';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { FriendAvatar, FriendLine, showCode } from '../components/Friends';
+import { FriendAvatar, FriendLine, showCode, useJoinInvite } from '../components/Friends';
 import { CheckIcon, CloseIcon, CopyIcon, ShareIcon, TeamIcon } from '../components/Icons';
 import { Page, Toast } from '../components/Layout';
 import {
-  acceptInvite,
   addFriendByCode,
   cancelRequest,
   declineInvite,
@@ -59,6 +58,7 @@ export function FriendsScreen({
     if (code) setToast({ tone: 'danger', text: errorMessage(code) });
   };
   const invites = liveInvites(store);
+  const { join, dialog } = useJoinInvite(onJoined);
 
   return (
     <Page title={t('friends.title')} onBack={onBack} className="page-friends">
@@ -91,11 +91,7 @@ export function FriendsScreen({
                       <button
                         type="button"
                         className="btn btn-primary btn-small"
-                        onClick={async () => {
-                          const res = await acceptInvite(i.id);
-                          if (res.snapshot) onJoined(res.snapshot);
-                          else fail(res.error ?? null);
-                        }}
+                        onClick={() => void join(i.id).then(fail)}
                       >
                         {t('friends.join')}
                       </button>
@@ -111,6 +107,7 @@ export function FriendsScreen({
           {guest && <AccountCard />}
         </div>
       )}
+      {dialog}
       {toast && (
         <div className="toast-layer">
           <Toast tone={toast.tone} title={toast.text} />

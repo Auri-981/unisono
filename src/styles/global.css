@@ -7126,6 +7126,12 @@ html:not([data-ui-wide]) .page-settings .side-decor {
   margin-left: auto;
 }
 
+.name-dialog .input,
+.name-dialog .notice {
+  width: 100%;
+  margin: 0;
+}
+
 /* Aviso de invitación: arriba, sin tapar lo que estás haciendo. */
 .invite-banner {
   position: fixed;

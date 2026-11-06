@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { DEFAULT_CONFIG, NAME_MAX_LENGTH } from '../../config/gameConfig';
 import { cleanName } from '../../game/engine';
 import type { RoomSnapshot } from '../../game/types';
@@ -19,6 +19,8 @@ export function EntryScreen({ mode, initialCode = '', onBack, onEntered }: Props
   const [code, setCode] = useState(initialCode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Un nombre elegido porque el tuyo ya estaba en la sala es solo para esa sala: no cambia tu alias.
+  const nameTaken = useRef(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -35,12 +37,14 @@ export function EntryScreen({ mode, initialCode = '', onBack, onEntered }: Props
     }
     setBusy(true);
     setError(null);
-    setPrefs({ name: clean });
+    if (!nameTaken.current) setPrefs({ name: clean });
     try {
       const snap = mode === 'create' ? await api.createRoom(clean, DEFAULT_CONFIG) : await api.joinRoom(cleanCode, clean);
       onEntered(snap);
     } catch (err) {
-      setError(errorMessage(err instanceof ApiError ? err.code : 'NETWORK'));
+      const errCode = err instanceof ApiError ? err.code : 'NETWORK';
+      if (errCode === 'NAME_TAKEN') nameTaken.current = true;
+      setError(errorMessage(errCode));
       setBusy(false);
     }
   };

@@ -2,11 +2,13 @@
  * Piezas de los amigos que se usan fuera de su pantalla: el aviso de invitación, la lista para
  * invitar desde la sala y el botón para añadir a alguien con quien estás jugando.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { NAME_MAX_LENGTH } from '../../config/gameConfig';
+import { cleanName } from '../../game/engine';
 import type { PublicPlayer, RoomSnapshot } from '../../game/types';
 import { errorMessage, t } from '../../i18n';
 import type { FriendCard } from '../../net/api';
-import { acceptInvite, addFriendFromRoom, declineInvite, inviteFriend, liveInvites, refreshFriends, useFriends } from '../friends';
+import { acceptInvite, addFriendFromRoom, declineInvite, defaultName, inviteFriend, liveInvites, refreshFriends, useFriends } from '../friends';
 import { CheckIcon, PlusIcon, TeamIcon } from './Icons';
 import { TitleTag } from './Progression';
 
@@ -22,12 +24,115 @@ export function FriendAvatar({ name, status }: { name: string; status?: FriendCa
   );
 }
 
+/** Si tu nombre ya está en la sala de la invitación: elige con cuál entras. */
+function NameDialog({
+  taken,
+  onSubmit,
+  onCancel,
+}: {
+  taken: string;
+  onSubmit: (name: string) => Promise<string | null>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => inputRef.current?.focus(), []);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    const clean = cleanName(name);
+    if (!clean) {
+      setError(errorMessage('INVALID_NAME'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const code = await onSubmit(clean);
+    setBusy(false);
+    if (code) setError(errorMessage(code));
+  };
+
+  return (
+    <div className="overlay overlay-confirm" role="dialog" aria-modal="true" aria-labelledby="name-dialog-title">
+      <form className="overlay-card name-dialog" onSubmit={submit} noValidate>
+        <h2 id="name-dialog-title" className="overlay-title confirm-title">
+          {t('friends.nameTakenTitle', { name: taken })}
+        </h2>
+        <p className="muted">{t('friends.nameTakenText')}</p>
+        <input
+          ref={inputRef}
+          className="input input-large"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={NAME_MAX_LENGTH + 5}
+          autoComplete="off"
+          autoCapitalize="words"
+          aria-label={t('entry.name')}
+        />
+        {error && (
+          <p className="notice notice-danger small" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="confirm-actions">
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            {t('common.cancel')}
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
+            {t('friends.join')}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * Aceptar una invitación. Si el nombre ya está en la sala, pregunta con cuál quieres entrar:
+ * ese nombre es solo para esa sala, tu alias no cambia. `dialog` se pinta junto al botón.
+ */
+export function useJoinInvite(onJoined: (snapshot: RoomSnapshot) => void) {
+  const [asking, setAsking] = useState<number | null>(null);
+
+  const join = async (id: number): Promise<string | null> => {
+    const res = await acceptInvite(id);
+    if (res.snapshot) onJoined(res.snapshot);
+    if (res.error === 'NAME_TAKEN') {
+      setAsking(id);
+      return null;
+    }
+    return res.error ?? null;
+  };
+
+  const dialog: ReactNode =
+    asking === null ? null : (
+      <NameDialog
+        taken={defaultName()}
+        onCancel={() => setAsking(null)}
+        onSubmit={async (name) => {
+          const res = await acceptInvite(asking, name);
+          if (res.snapshot) onJoined(res.snapshot);
+          if (res.error === 'NAME_TAKEN') return res.error;
+          setAsking(null);
+          return res.error ?? null;
+        }}
+      />
+    );
+
+  return { join, dialog };
+}
+
 /** Aviso cuando un amigo te invita a su sala. No sale mientras juegas (`hidden`). */
 export function InviteBanner({ hidden, onJoined }: { hidden: boolean; onJoined: (snapshot: RoomSnapshot) => void }) {
   const store = useFriends();
   const invite = liveInvites(store)[0];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { join: joinInvite, dialog } = useJoinInvite(onJoined);
 
   // Al caducar desaparece aunque no llegue ninguna señal.
   const expiresAt = invite?.expiresAt;
@@ -40,14 +145,13 @@ export function InviteBanner({ hidden, onJoined }: { hidden: boolean; onJoined: 
 
   useEffect(() => setError(null), [invite?.id]);
 
-  if (hidden || !invite) return null;
+  if (hidden || !invite || dialog) return <>{dialog}</>;
   const join = async () => {
     setBusy(true);
     setError(null);
-    const res = await acceptInvite(invite.id);
+    const code = await joinInvite(invite.id);
     setBusy(false);
-    if (res.snapshot) onJoined(res.snapshot);
-    else if (res.error) setError(errorMessage(res.error));
+    if (code) setError(errorMessage(code));
   };
   return (
     <div className="invite-banner" role="alertdialog" aria-labelledby="invite-banner-text">

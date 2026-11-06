@@ -207,6 +207,9 @@ describe('salas', () => {
 
     const open = await lobby(2);
     expect(await errorOf(t.rpc(u, 'join_room', { p_code: open.code, p_name: '   ' }))).toBe('INVALID_NAME');
+    // En una sala no hay dos nombres iguales, ni cambiando mayúsculas o espacios.
+    expect(await errorOf(t.rpc(u, 'join_room', { p_code: open.code, p_name: 'J1' }))).toBe('NAME_TAKEN');
+    expect(await errorOf(t.rpc(u, 'join_room', { p_code: open.code, p_name: '  j1 ' }))).toBe('NAME_TAKEN');
     // El código admite minúsculas y separadores.
     const snap: RoomSnapshot = await t.rpc(u, 'join_room', { p_code: ` ${open.code.toLowerCase().slice(0, 2)}-${open.code.toLowerCase().slice(2)} `, p_name: 'Eva' });
     expect(snap.players.map((p) => p.name)).toEqual(['Ana', 'J1', 'Eva']);

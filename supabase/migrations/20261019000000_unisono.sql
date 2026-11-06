@@ -1747,6 +1747,10 @@ begin
   if r.status <> 'lobby' then raise exception 'GAME_IN_PROGRESS'; end if;
   select count(*), coalesce(max(seat), 0) + 1 into v_count, v_seat from public.room_players where room_id = r.id;
   if v_count >= (r.config ->> 'maxPlayers')::int then raise exception 'ROOM_FULL'; end if;
+  -- En una sala no puede haber dos con el mismo nombre (mayúsculas aparte): la app pide otro.
+  if exists (select 1 from public.room_players where room_id = r.id and lower(name) = lower(v_name)) then
+    raise exception 'NAME_TAKEN';
+  end if;
 
   insert into public.room_players (room_id, user_id, name, seat) values (r.id, v_uid, v_name, v_seat);
   perform game_private.emit(r.id, 'player_joined', v_uid, jsonb_build_object('name', v_name));

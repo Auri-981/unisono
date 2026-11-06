@@ -306,6 +306,17 @@ describe('invitar a una sala', () => {
     expect(await errorOf(t.rpc(b, 'accept_invite', { p_invite: id, p_name: 'Beto' }))).toBe('GAME_IN_PROGRESS');
   });
 
+  it('si tu nombre ya está en la sala, la invitación sigue viva y entras con otro', async () => {
+    const { a, b } = await friends();
+    const room = await lobby(a, 'Ana');
+    await t.rpc(a, 'invite_friend', { p_room: room, p_friend: b });
+    const id = (await state(b)).invites[0]!.id;
+    expect(await errorOf(t.rpc(b, 'accept_invite', { p_invite: id, p_name: 'ana' }))).toBe('NAME_TAKEN');
+    expect((await state(b)).invites).toHaveLength(1);
+    const snap: RoomSnapshot = await t.rpc(b, 'accept_invite', { p_invite: id, p_name: 'Anita' });
+    expect(snap.players.map((p) => p.name)).toEqual(['Ana', 'Anita']);
+  });
+
   it('si la sala desaparece, la invitación también', async () => {
     const { a, b } = await friends();
     const room = await lobby(a);

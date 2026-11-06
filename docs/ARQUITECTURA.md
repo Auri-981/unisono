@@ -384,6 +384,10 @@ su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.
 - **Conectado**: mientras la app está visible llama a `touch_presence` cada 45 s, con el alias actual
   (el alias vive en el móvil, y así el servidor lo tiene para enseñarlo a los amigos). Conectado =
   señal hace menos de 90 s; «en partida» = además está en una sala jugando.
+- **Nombres en la sala**: `join_room` rechaza un nombre que ya esté en esa sala (`NAME_TAKEN`,
+  sin distinguir mayúsculas) y la app pregunta otro. Ese nombre es solo para esa sala: no cambia el
+  alias. Quien vuelve a su sitio (reconexión) no pasa por esta comprobación. Solo online: en la
+  práctica, los bots no cuentan.
 - **Invitaciones**: salen en un aviso arriba, salvo en una sala, la práctica o el tutorial, y siguen
   en Amigos hasta caducar. Con la app cerrada no llega nada: no son notificaciones.
 - **Cuentas**: `merge_account` pasa amigos y solicitudes a la cuenta, que conserva su código (o toma
