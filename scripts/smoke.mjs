@@ -243,10 +243,10 @@ async function main() {
   ok(accepted.friends.some((f) => f.id === a.id && f.name === 'Ana' && f.status === 'online'), 'amistad aceptada y amigo conectado');
   ok((await b.rpc('add_friend', { p_code: 'ZZZZZZZZ' })).error === 'FRIEND_NOT_FOUND', 'un código de amigo inventado no sirve');
 
-  let signals = 0;
+  let friendSignals = 0;
   const signalChannel = b.sb
     .channel(`player:${b.id}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'player_signals', filter: `user_id=eq.${b.id}` }, () => signals++);
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'player_signals', filter: `user_id=eq.${b.id}` }, () => friendSignals++);
   await new Promise((resolve, reject) => {
     signalChannel.on('system', {}, (msg) => {
       if (msg.extension === 'postgres_changes' && msg.status === 'ok') resolve();
@@ -258,11 +258,11 @@ async function main() {
   const lobby = await a.rpc('create_room', { p_name: 'Ana', p_config: {} });
   await a.rpc('invite_friend', { p_room: lobby.room.id, p_friend: b.id });
   await sleep(2500);
-  ok(signals >= 1, `la invitación avisa al amigo por tiempo real (señales: ${signals})`);
+  ok(friendSignals >= 1, `la invitación avisa al amigo por tiempo real (señales: ${friendSignals})`);
   const invites = (await b.rpc('get_friends', {})).invites;
   ok(invites.length === 1 && invites[0].fromName === 'Ana', 'la invitación aparece en su lista');
-  const joined = await b.rpc('accept_invite', { p_invite: invites[0].id, p_name: 'Beto' });
-  ok(joined.room.id === lobby.room.id && joined.players.length === 2, 'entra en la sala sin escribir el código');
+  const viaInvite = await b.rpc('accept_invite', { p_invite: invites[0].id, p_name: 'Beto' });
+  ok(viaInvite.room.id === lobby.room.id && viaInvite.players.length === 2, 'entra en la sala sin escribir el código');
   ok((await a.rpc('remove_friend', { p_friend: b.id })).friends.length === 0, 'eliminar amigo');
   await b.sb.removeChannel(signalChannel);
   for (const p of [a, b]) await p.rpc('leave_room', { p_room: lobby.room.id }).catch(() => {});
