@@ -388,3 +388,12 @@ su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.
   en Amigos hasta caducar. Con la app cerrada no llega nada: no son notificaciones.
 - **Cuentas**: `merge_account` pasa amigos y solicitudes a la cuenta, que conserva su código (o toma
   el del invitado si no tenía). `delete_my_account` borra todo y avisa a sus amigos.
+
+## 16. Tamaño en ordenador
+
+`src/ui/scale.ts` agranda la interfaz en proporción a la pantalla (propiedad `zoom` de `#root`) para que
+siempre se vea como en una de 1440 × 800: en monitores grandes o con el navegador alejado no queda un
+bloque pequeño en el centro. Nunca encoge, y en pantallas de menos de 1024 × 620 no hace nada. Como
+`zoom` escalaría de más las unidades de pantalla, el CSS usa `--vh` y `--vw` en vez de `dvh` y `vw`.
+Las media queries siguen viendo el tamaño real; para lo que depende del ancho útil están los
+atributos `data-ui-wide` y `data-ui-extra-wide` de `<html>`.

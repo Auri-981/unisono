@@ -37,6 +37,10 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --gutter: 16px;
+  /* Tamaño de pantalla para el CSS. En ordenador lo ajusta src/ui/scale.ts junto con --ui-scale. */
+  --vh: 1dvh;
+  --vw: 1vw;
+  --ui-scale: 1;
 }
 
 *,
@@ -49,6 +53,10 @@ html,
 body,
 #root {
   height: 100%;
+}
+
+#root {
+  zoom: var(--ui-scale);
 }
 
 body {
@@ -582,7 +590,8 @@ h3 {
   flex-direction: column;
   justify-content: space-between;
   gap: 28px;
-  padding: calc(var(--safe-top) + 40px) calc(var(--safe-right) + 24px) calc(var(--safe-bottom) + 16px)
+  /* Arriba queda sitio para el perfil y las monedas: el logo nunca se pega a ellos. */
+  padding: calc(var(--safe-top) + 76px) calc(var(--safe-right) + 24px) calc(var(--safe-bottom) + 16px)
     calc(var(--safe-left) + 24px);
 }
 
@@ -600,7 +609,7 @@ h3 {
 
 .home-title {
   font-family: var(--font-num);
-  font-size: clamp(2.6rem, 12vw, 3.6rem);
+  font-size: clamp(2.6rem, calc(12 * var(--vw)), 3.6rem);
   font-weight: 600;
   letter-spacing: 0.02em;
   background: linear-gradient(90deg, var(--cool), var(--warm));
@@ -647,20 +656,20 @@ h3 {
 /* Ordenador: dos columnas, a la izquierda el menú y a la derecha una presentación del juego. */
 @media (min-width: 960px) and (min-height: 560px) {
   .home {
-    max-width: 1080px;
-    min-height: 100dvh;
+    max-width: clamp(1080px, calc(88 * var(--vw)), 1500px);
+    min-height: calc(100 * var(--vh));
     display: grid;
-    grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+    grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
     align-items: center;
-    column-gap: clamp(40px, 6vw, 96px);
-    padding-top: calc(var(--safe-top) + 32px);
-    padding-bottom: calc(var(--safe-bottom) + 32px);
+    column-gap: clamp(40px, calc(6 * var(--vw)), 96px);
+    padding-top: calc(var(--safe-top) + 72px);
+    padding-bottom: calc(var(--safe-bottom) + 20px);
   }
 
   .home-main {
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: clamp(14px, calc(2.6 * var(--vh)), 28px);
   }
 
   .home-hero {
@@ -669,7 +678,12 @@ h3 {
   }
 
   .home-title {
-    font-size: 4rem;
+    font-size: clamp(2.8rem, calc(8 * var(--vh)), 4rem);
+  }
+
+  .home-logo {
+    width: clamp(60px, calc(11 * var(--vh)), 88px);
+    height: clamp(60px, calc(11 * var(--vh)), 88px);
   }
 
   .home-tagline {
@@ -776,7 +790,7 @@ h3 {
   gap: 8px;
   margin: 4px 0;
   font-family: var(--font-num);
-  font-size: clamp(2rem, 11vw, 2.8rem);
+  font-size: clamp(2rem, calc(11 * var(--vw)), 2.8rem);
   font-weight: 600;
 }
 
@@ -1076,14 +1090,14 @@ h3 {
 /* La carta grande se ajusta a la ALTURA de la pantalla para que todo quepa sin solaparse
    (en un iPhone con las barras de Safari visibles queda muy poco alto útil). */
 .card-xl {
-  height: clamp(118px, 21dvh, 210px);
+  height: clamp(118px, calc(21 * var(--vh)), 210px);
   width: auto;
   aspect-ratio: 5 / 7;
   border-radius: 16px;
 }
 
 .card-xl .card-value {
-  font-size: clamp(2.6rem, 7dvh, 4.4rem);
+  font-size: clamp(2.6rem, calc(7 * var(--vh)), 4.4rem);
 }
 
 .card-xs {
@@ -1140,7 +1154,7 @@ h3 {
 /* Ningún bloque de la partida puede encogerse: si algo no cabe, la página se desplaza
    en lugar de montar unos elementos encima de otros. */
 .game {
-  min-height: 100dvh;
+  min-height: calc(100 * var(--vh));
   display: flex;
   flex-direction: column;
   max-width: 720px;
@@ -1308,7 +1322,7 @@ h3 {
 }
 
 .pile-empty {
-  height: clamp(118px, 21dvh, 210px);
+  height: clamp(118px, calc(21 * var(--vh)), 210px);
   aspect-ratio: 5 / 7;
   border-radius: 16px;
   border: 2px dashed var(--line);
@@ -2080,7 +2094,7 @@ h3 {
   right: 0;
   bottom: 0;
   z-index: 25;
-  max-height: 70dvh;
+  max-height: calc(70 * var(--vh));
   display: flex;
   flex-direction: column;
   background: var(--surface);
@@ -3007,8 +3021,8 @@ html {
 
 @media (min-width: 1024px) and (min-height: 620px) {
   .game {
-    max-width: 1320px;
-    height: 100dvh;
+    max-width: clamp(1320px, calc(92 * var(--vw)), 1700px);
+    height: calc(100 * var(--vh));
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(220px, 270px) minmax(0, 1fr) minmax(250px, 300px);
@@ -3081,11 +3095,11 @@ html {
 
   .card-xl,
   .pile-empty {
-    height: clamp(150px, 30dvh, 280px);
+    height: clamp(150px, calc(30 * var(--vh)), 280px);
   }
 
   .card-xl .card-value {
-    font-size: clamp(3rem, 9dvh, 5.6rem);
+    font-size: clamp(3rem, calc(9 * var(--vh)), 5.6rem);
   }
 
   .hand {
@@ -3101,11 +3115,11 @@ html {
 
   /* La carta de tu mano, algo menor que la de la mesa para que la mesa sea lo principal. */
   .hand .card-xl {
-    height: clamp(130px, 22dvh, 210px);
+    height: clamp(130px, calc(22 * var(--vh)), 210px);
   }
 
   .hand .card-xl .card-value {
-    font-size: clamp(2.6rem, 7dvh, 4.2rem);
+    font-size: clamp(2.6rem, calc(7 * var(--vh)), 4.2rem);
   }
 
   .hand-rest .card-sm {
@@ -3196,7 +3210,7 @@ html {
    configuración a la derecha (así no hay que desplazarse para empezar). */
 @media (min-width: 1000px) {
   .page-lobby {
-    max-width: 1120px;
+    max-width: clamp(1120px, calc(88 * var(--vw)), 1400px);
   }
 
   .page-lobby .page-body {
@@ -3241,9 +3255,18 @@ html {
   }
 }
 
-@media (max-width: 1599px) {
-  .page-lobby .side-decor {
-    display: none;
+html:not([data-ui-extra-wide]) .page-lobby .side-decor {
+  display: none;
+}
+
+/* Páginas de una columna: algo más anchas en ordenador. */
+@media (min-width: 1024px) and (min-height: 620px) {
+  .page:not(.page-lobby) {
+    max-width: 760px;
+  }
+
+  .side-decor-col {
+    --decor-width: 760px;
   }
 }
 
@@ -3251,13 +3274,13 @@ html {
   position: fixed;
   top: 0;
   bottom: 0;
-  width: calc((100vw - 640px) / 2);
+  width: calc((calc(100 * var(--vw)) - var(--decor-width, 640px)) / 2);
   pointer-events: none;
   z-index: 0;
 }
 
 .page-lobby .side-decor-col {
-  width: calc((100vw - 1120px) / 2);
+  --decor-width: clamp(1120px, calc(88 * var(--vw)), 1400px);
 }
 
 .side-decor-left {
@@ -3512,7 +3535,7 @@ html {
 
 .lightning-alert-title {
   font-family: var(--font-num);
-  font-size: clamp(2.2rem, 11vw, 3.6rem);
+  font-size: clamp(2.2rem, calc(11 * var(--vw)), 3.6rem);
   font-weight: 700;
   line-height: 1.05;
   text-transform: uppercase;
@@ -3632,7 +3655,7 @@ html {
 
 .blind-stack {
   position: relative;
-  height: clamp(118px, 21dvh, 210px);
+  height: clamp(118px, calc(21 * var(--vh)), 210px);
   aspect-ratio: 5 / 7;
   display: grid;
   place-items: center;
@@ -3743,7 +3766,7 @@ html {
 
 .final-alert-title {
   font-family: var(--font-num);
-  font-size: clamp(2.2rem, 11vw, 3.6rem);
+  font-size: clamp(2.2rem, calc(11 * var(--vw)), 3.6rem);
   font-weight: 700;
   line-height: 1.05;
   text-transform: uppercase;
@@ -6858,10 +6881,6 @@ html {
     max-width: 960px;
   }
 
-  .page-settings .side-decor-col {
-    width: calc((100vw - 960px) / 2);
-  }
-
   .settings {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6874,10 +6893,53 @@ html {
   }
 }
 
-@media (max-width: 1499px) {
-  .page-settings .side-decor {
-    display: none;
+/* Ordenador: Ajustes llena la pantalla en vez de quedarse arriba con el fondo vacío. */
+@media (min-width: 1024px) and (min-height: 620px) {
+  .page.page-settings {
+    max-width: 1120px;
+    min-height: calc(100 * var(--vh));
   }
+
+  .page-settings .side-decor-col {
+    --decor-width: 1120px;
+  }
+
+  .page-settings .page-body {
+    flex: 1;
+    justify-content: center;
+    padding-bottom: 60px;
+  }
+
+  .settings {
+    gap: 32px 36px;
+  }
+
+  .settings-col {
+    gap: 32px;
+  }
+
+  .settings-group {
+    gap: 12px;
+  }
+
+  .settings-list > * {
+    min-height: 74px;
+    padding: 12px 20px;
+  }
+
+  .settings-name {
+    gap: 10px;
+    padding: 20px;
+  }
+
+  .page-settings .account-card {
+    gap: 16px;
+    padding: 20px;
+  }
+}
+
+html:not([data-ui-wide]) .page-settings .side-decor {
+  display: none;
 }
 
 /* ───────────── Amigos ───────────── */
@@ -6902,7 +6964,7 @@ html {
 .friend-code-value {
   margin: 0;
   font-family: var(--font-num);
-  font-size: clamp(1.9rem, 9vw, 2.4rem);
+  font-size: clamp(1.9rem, calc(9 * var(--vw)), 2.4rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   user-select: text;
@@ -7074,7 +7136,7 @@ html {
   grid-template-columns: auto minmax(0, 1fr);
   gap: 8px 12px;
   align-items: center;
-  width: min(420px, calc(100vw - 2 * var(--gutter)));
+  width: min(420px, calc(calc(100 * var(--vw)) - 2 * var(--gutter)));
   padding: 12px 14px;
   border-radius: var(--radius);
   border: 1px solid rgb(126 166 255 / 0.55);

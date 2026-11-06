@@ -357,11 +357,21 @@ export function TutorialScreen({
     window.scrollTo({ top: 0 });
   }, [index]);
 
-  // Flechas del teclado (ordenador).
+  // Teclado (ordenador): flechas, Intro para avanzar y Borrar para retroceder.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') setIndex((i) => Math.min(STEPS.length - 1, i + 1));
       if (e.key === 'ArrowLeft') setIndex((i) => Math.max(0, i - 1));
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        setIndex((i) => Math.max(0, i - 1));
+      }
+      // Intro siempre avanza, aunque el botón «Anterior» siga seleccionado. En el orden de las
+      // cartas, los puntos y los botones del último paso hace lo normal: pulsar lo seleccionado.
+      if (e.key === 'Enter' && !(e.target instanceof HTMLElement && e.target.closest('.segmented, .tut-dots, .tut-actions-end, .page-header'))) {
+        e.preventDefault();
+        if (!e.repeat) setIndex((i) => Math.min(STEPS.length - 1, i + 1));
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

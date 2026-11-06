@@ -4,10 +4,12 @@ import { App } from './App';
 import { setLanguage } from './i18n';
 import { initAccount } from './ui/account';
 import { applyMotionPref } from './ui/prefs';
+import { startUiScale } from './ui/scale';
 import './styles/global.css';
 
 setLanguage('es');
 applyMotionPref();
+startUiScale();
 
 const root = createRoot(document.getElementById('root')!);
 const preview = import.meta.env.DEV ? new URLSearchParams(location.search).get('preview') : null;
