@@ -2,7 +2,7 @@
  * Llamadas a las funciones del servidor (RPC de Supabase), con tiempo límite,
  * reintentos seguros y errores traducidos a códigos del juego.
  */
-import { isGameErrorCode, type ComodinKind, type Rarity, type RoomConfig, type RoomSnapshot } from '../game/types';
+import { isGameErrorCode, type ComodinKind, type PlayerTitle, type Rarity, type RoomConfig, type RoomSnapshot } from '../game/types';
 import { ensureSession, getSupabase } from './supabase';
 
 const TIMEOUT_MS = 8000;
@@ -125,6 +125,33 @@ export interface CoinMovement {
   at: string;
 }
 
+/** Un amigo (o quien te ha pedido o a quien has pedido amistad). */
+export interface FriendCard {
+  id: string;
+  name: string;
+  title: PlayerTitle | null;
+  /** Solo en la lista de amigos. */
+  status?: 'online' | 'playing' | 'offline';
+}
+
+export interface RoomInvite {
+  id: number;
+  fromName: string;
+  expiresAt: string;
+}
+
+export interface FriendsState {
+  /** Tu código de amigo (8 caracteres, sin guion). */
+  code: string;
+  friends: FriendCard[];
+  incoming: FriendCard[];
+  outgoing: FriendCard[];
+  invites: RoomInvite[];
+  serverTime: string;
+  /** Solo al añadir: si ya sois amigos o queda la solicitud enviada. */
+  result?: 'friends' | 'requested';
+}
+
 /** Lo que se ha pasado del invitado a la cuenta al iniciar sesión. */
 export interface MergeSummary {
   coins: number;
@@ -179,4 +206,15 @@ export const api = {
   claimAccountMerge: (token: string) => rpc<{ merged: MergeSummary; profile: Profile }>('claim_account_merge', { p_token: token }),
   /** Borra al jugador y todo su progreso. */
   deleteMyAccount: () => rpc<{ deleted: boolean; account: boolean }>('delete_my_account', {}),
+  getFriends: () => rpc<FriendsState>('get_friends', {}, 1),
+  /** «Sigo aquí», con el alias actual. */
+  touchPresence: (name: string | null) => rpc<{ ok: boolean }>('touch_presence', { p_name: name }),
+  addFriend: (code: string) => rpc<FriendsState>('add_friend', { p_code: code }),
+  addFriendFromRoom: (room: string, target: string) => rpc<FriendsState>('add_friend_from_room', { p_room: room, p_target: target }),
+  respondFriendRequest: (from: string, accepted: boolean) => rpc<FriendsState>('respond_friend_request', { p_from: from, p_accept: accepted }),
+  cancelFriendRequest: (to: string) => rpc<FriendsState>('cancel_friend_request', { p_to: to }),
+  removeFriend: (friend: string) => rpc<FriendsState>('remove_friend', { p_friend: friend }),
+  inviteFriend: (room: string, friend: string) => rpc<{ invited: boolean }>('invite_friend', { p_room: room, p_friend: friend }),
+  acceptInvite: (id: number, name: string) => rpc<RoomSnapshot>('accept_invite', { p_invite: id, p_name: name }),
+  declineInvite: (id: number) => rpc<FriendsState>('decline_invite', { p_invite: id }),
 };

@@ -5,6 +5,7 @@
  *      | final | finalpeek | finalalert | finalnext | finallost  (+ «hard»: finalalerthard, finalnexthard, finallosthard)
  *      | lobbyguest | shop | shoptitles | shoprich | collection | collectiontitles | achievements | profile | achtoast | achunlock
  *      | designs | gallery | wonreward | lostreward | noreward | kicked
+ *      | friends | friendsempty | friendinvite | lobbyfriends
  *      | profileguest | profilegoogle | settingsguest | settingsgoogle | homeguest | privacy
  *      | accmerged | accsignedin | acccancelled | accfailed | accsignedout  (ventanas al volver de Google)
  * No se incluye en la web publicada.
@@ -17,11 +18,14 @@ import { LobbyScreen } from '../ui/screens/LobbyScreen';
 import { KickedScreen } from '../ui/screens/KickedScreen';
 import { CollectionScreen, ShopScreen } from '../ui/screens/ShopScreens';
 import type { MatchReward, PlayerTitle } from '../game/types';
-import type { Achievement, CatalogItem, Profile } from '../net/api';
+import type { Achievement, CatalogItem, FriendsState, Profile } from '../net/api';
 import { AchievementNotices } from '../ui/components/AchievementNotices';
 import { AchievementsScreen, ProfileScreen } from '../ui/screens/ProgressScreens';
 import { previewProfile } from '../ui/profile';
 import { previewAccount } from '../ui/account';
+import { previewFriends } from '../ui/friends';
+import { InviteBanner } from '../ui/components/Friends';
+import { FriendsScreen } from '../ui/screens/FriendsScreen';
 import { AccountNoticeDialog } from '../ui/components/Account';
 import { HomeScreen } from '../ui/screens/HomeScreen';
 import { SettingsScreen } from '../ui/screens/InfoScreens';
@@ -140,7 +144,7 @@ function build(variant: string): E.EngineState {
     const r = E.addPlayer(s, id, name, NOW);
     if (r.ok) s = r.state;
   }
-  if (kind === 'lobby' || kind === 'lobbyguest') {
+  if (kind === 'lobby' || kind === 'lobbyguest' || kind === 'lobbyfriends') {
     s.players[1]!.ready = true;
     // lobbyguest: la sala vista por quien no es anfitrión (Lucía crea la sala).
     if (kind === 'lobbyguest') s.hostId = 'a';
@@ -320,6 +324,7 @@ function accountPreview(kind: string) {
         onCollection={noop}
         onAchievements={noop}
         onProfile={noop}
+        onFriends={noop}
       />
     );
   }
@@ -341,8 +346,50 @@ function accountPreview(kind: string) {
 
 const ACCOUNT_PREVIEWS = ['profileguest', 'profilegoogle', 'settingsguest', 'settingsgoogle', 'homeguest', 'privacy', 'accmerged', 'accsignedin', 'acccancelled', 'accfailed', 'accsignedout'];
 
+const DEMO_FRIENDS: FriendsState = {
+  code: 'K7MQ2XPA',
+  serverTime: new Date().toISOString(),
+  friends: [
+    { id: 'f1', name: 'Marcos', status: 'online', title: { id: 'title_legend', name: 'Leyenda', rarity: 'epic' } },
+    { id: 'f2', name: 'Lucía', status: 'playing', title: null },
+    { id: 'f3', name: 'Sara', status: 'online', title: { id: 'title_observer', name: 'Observador', rarity: 'common' } },
+    { id: 'f4', name: 'Alejandro Fernández', status: 'offline', title: null },
+  ],
+  incoming: [{ id: 'f5', name: 'Pablo', title: { id: 'title_sync', name: 'Sincronía Perfecta', rarity: 'legendary' } }],
+  outgoing: [{ id: 'f6', name: 'Elena', title: null }],
+  invites: [{ id: 1, fromName: 'Marcos', expiresAt: new Date(Date.now() + 100_000).toISOString() }],
+};
+
 export function Preview({ kind }: { kind: string }) {
   if (ACCOUNT_PREVIEWS.includes(kind)) return accountPreview(kind);
+  if (kind === 'friends' || kind === 'friendsempty') {
+    previewAccount({ kind: 'guest', googleReady: true });
+    previewFriends(kind === 'friends' ? DEMO_FRIENDS : { ...DEMO_FRIENDS, friends: [], incoming: [], outgoing: [], invites: [] });
+    return <FriendsScreen onBack={noop} onJoined={noop} />;
+  }
+  if (kind === 'friendinvite') {
+    previewProfile(demoProfile('shop'));
+    previewFriends(DEMO_FRIENDS);
+    return (
+      <>
+        <HomeScreen
+          message={null}
+          onCreate={noop}
+          onJoin={noop}
+          onPractice={noop}
+          onTutorial={noop}
+          onSettings={noop}
+          onHistory={noop}
+          onShop={noop}
+          onCollection={noop}
+          onAchievements={noop}
+          onProfile={noop}
+          onFriends={noop}
+        />
+        <InviteBanner hidden={false} onJoined={noop} />
+      </>
+    );
+  }
   if (kind === 'kicked') return <KickedScreen code="J7S7E" onHome={noop} onCreate={noop} />;
   if (kind === 'gallery') {
     // Todos los diseños, con números de una y dos cifras, fríos y cálidos, en cada tamaño.
@@ -413,5 +460,6 @@ export function Preview({ kind }: { kind: string }) {
       sendChat: noop,
     },
   };
-  return kind === 'lobby' || kind === 'lobbyguest' ? <LobbyScreen ctl={ctl} /> : <GameScreen ctl={ctl} onExit={() => {}} />;
+  if (kind === 'lobbyfriends') previewFriends({ ...DEMO_FRIENDS, outgoing: [] });
+  return kind === 'lobby' || kind === 'lobbyguest' || kind === 'lobbyfriends' ? <LobbyScreen ctl={ctl} /> : <GameScreen ctl={ctl} onExit={() => {}} />;
 }

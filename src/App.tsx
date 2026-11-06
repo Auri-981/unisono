@@ -10,9 +10,11 @@ import { api } from './net/api';
 import { onlineAvailable } from './net/supabase';
 import { AccountNoticeDialog } from './ui/components/Account';
 import { AchievementNotices } from './ui/components/AchievementNotices';
+import { InviteBanner } from './ui/components/Friends';
 import { AutoUpdate } from './ui/components/AutoUpdate';
 import { getPrefs, storedRoom } from './ui/prefs';
 import { EntryScreen } from './ui/screens/EntryScreen';
+import { FriendsScreen } from './ui/screens/FriendsScreen';
 import { HomeScreen } from './ui/screens/HomeScreen';
 import { KickedScreen } from './ui/screens/KickedScreen';
 import { HistoryScreen, PracticeSetup, SettingsScreen } from './ui/screens/InfoScreens';
@@ -37,7 +39,8 @@ type Screen =
   | { name: 'shop'; tab?: CosmeticTab }
   | { name: 'collection'; tab?: CosmeticTab }
   | { name: 'achievements' }
-  | { name: 'profile' };
+  | { name: 'profile' }
+  | { name: 'friends'; code?: string };
 
 function codeFromUrl(): string | undefined {
   try {
@@ -83,26 +86,23 @@ function initialScreen(): Screen {
     storedRoom.set(null);
   }
   if (urlCode) return { name: 'join', code: urlCode };
+  // Enlace que comparte alguien para que le añadas a amigos.
+  const friend = new URLSearchParams(window.location.search).get('amigo');
+  if (friend) {
+    setUrlCode(null);
+    return { name: 'friends', code: friend };
+  }
   return { name: 'home' };
 }
 
 /** Pantallas donde recargar haría perder algo (la partida online la retiene GameScreen). */
 const HOLD_UPDATE_SCREENS = new Set<Screen['name']>(['practice', 'tutorial', 'create', 'join']);
 
+/** Pantallas donde no sale el aviso de invitación (sigue en Amigos hasta que caduque). */
+const HOLD_INVITE_SCREENS = new Set<Screen['name']>(['room', 'practice', 'tutorial', 'friends']);
+
 export function App() {
   const [screen, setScreen] = useState<Screen>(initialScreen);
-  return (
-    <>
-      <Screens screen={screen} setScreen={setScreen} />
-      {onlineAvailable && <AchievementNotices />}
-      {onlineAvailable && <AccountNoticeDialog />}
-      <AutoUpdate blocked={HOLD_UPDATE_SCREENS.has(screen.name)} />
-    </>
-  );
-}
-
-function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen) => void }) {
-  const home = useCallback((message?: string) => setScreen({ name: 'home', message }), []);
 
   const enterRoom = useCallback((snap: RoomSnapshot) => {
     // Si entras en otra sala distinta, se abandona la anterior para no quedar como jugador fantasma.
@@ -112,6 +112,28 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
     setUrlCode(null);
     setScreen({ name: 'room', roomId: snap.room.id, initial: snap });
   }, []);
+
+  return (
+    <>
+      <Screens screen={screen} setScreen={setScreen} enterRoom={enterRoom} />
+      {onlineAvailable && <AchievementNotices />}
+      {onlineAvailable && <AccountNoticeDialog />}
+      {onlineAvailable && <InviteBanner hidden={HOLD_INVITE_SCREENS.has(screen.name)} onJoined={enterRoom} />}
+      <AutoUpdate blocked={HOLD_UPDATE_SCREENS.has(screen.name)} />
+    </>
+  );
+}
+
+function Screens({
+  screen,
+  setScreen,
+  enterRoom,
+}: {
+  screen: Screen;
+  setScreen: (s: Screen) => void;
+  enterRoom: (snap: RoomSnapshot) => void;
+}) {
+  const home = useCallback((message?: string) => setScreen({ name: 'home', message }), []);
 
   const exitRoom = useCallback(
     (reason: ExitReason) => {
@@ -139,6 +161,7 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
           onCollection={() => setScreen({ name: 'collection' })}
           onAchievements={() => setScreen({ name: 'achievements' })}
           onProfile={() => setScreen({ name: 'profile' })}
+          onFriends={() => setScreen({ name: 'friends' })}
         />
       );
     case 'kicked':
@@ -185,6 +208,8 @@ function Screens({ screen, setScreen }: { screen: Screen; setScreen: (s: Screen)
           canCreate={onlineAvailable}
         />
       );
+    case 'friends':
+      return <FriendsScreen initialCode={screen.code} onBack={() => home()} onJoined={enterRoom} />;
     case 'settings':
       return <SettingsScreen onBack={() => home()} onPrivacy={() => setScreen({ name: 'privacy', from: 'settings' })} />;
     case 'privacy':

@@ -12,6 +12,7 @@ import { useSyncExternalStore } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { api, ApiError, type MergeSummary } from '../net/api';
 import { dropSession, ensureSession, getSupabase, googleEnabled, onlineAvailable } from '../net/supabase';
+import { startFriends, stopFriends } from './friends';
 import { getPrefs, setPrefs } from './prefs';
 import { acceptProfile, forgetProfile, refreshProfile } from './profile';
 
@@ -173,8 +174,11 @@ export async function initAccount(): Promise<void> {
   if (state.kind === 'google') {
     if (pending) await claim(pending);
     else if (back.kind === 'code') set({ notice: { kind: 'signedIn', merged: null } });
+    // Después de unir: los amigos del invitado ya están en la cuenta.
+    void startFriends();
     return;
   }
+  void startFriends();
   if (back.kind === 'error') {
     storage(PENDING_KEY, null);
     set({ notice: back.error === 'access_denied' ? { kind: 'cancelled' } : { kind: 'failed', detail: back.detail } });
@@ -212,6 +216,7 @@ export async function signInWithGoogle(): Promise<string | null> {
 
 /** Vuelve a un invitado nuevo en este navegador (tras cerrar sesión o borrar la cuenta). */
 async function startOver(notice: AccountNotice) {
+  stopFriends();
   await dropSession().catch(() => {});
   storage(PENDING_KEY, null);
   forgetProfile();
@@ -224,6 +229,7 @@ async function startOver(notice: AccountNotice) {
     // Sin red: se creará el invitado al volver a intentarlo.
   }
   void refreshProfile();
+  void startFriends();
   set({ busy: false, notice });
 }
 

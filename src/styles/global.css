@@ -3212,7 +3212,7 @@ html {
     align-items: start;
   }
 
-  .page-lobby .invite {
+  .page-lobby .lobby-invites {
     grid-area: invite;
   }
 
@@ -6512,7 +6512,8 @@ html {
 }
 
 .home-shop-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .home-shop-btn {
@@ -6520,7 +6521,8 @@ html {
   flex-direction: column;
   gap: 4px;
   min-height: 62px;
-  font-size: 0.86rem;
+  padding: 8px 2px;
+  font-size: 0.8rem;
 }
 
 .dot-count {
@@ -6876,4 +6878,240 @@ html {
   .page-settings .side-decor {
     display: none;
   }
+}
+
+/* ───────────── Amigos ───────────── */
+
+.friends {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.friend-code {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  background:
+    radial-gradient(90% 120% at 50% 0%, rgb(126 166 255 / 0.12), transparent 70%),
+    var(--surface);
+}
+
+.friend-code-value {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: clamp(1.9rem, 9vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  user-select: text;
+}
+
+.friend-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.friend-code-actions .btn {
+  flex: 1 1 130px;
+}
+
+.friend-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.friend-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.friend-list-card .friend-row {
+  padding: 10px 12px 10px 14px;
+}
+
+.friend-list-card .friend-row + .friend-row {
+  border-top: 1px solid var(--line);
+}
+
+.friend-invites .friend-row + .friend-row {
+  margin-top: 10px;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+}
+
+.friend-avatar {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #f7cf9c, #e89a5c);
+  color: var(--accent-ink);
+  font-family: var(--font-num);
+  font-weight: 700;
+}
+
+.friend-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  background: var(--line);
+}
+
+.friend-dot-online {
+  background: var(--success);
+}
+
+.friend-dot-playing {
+  background: var(--warm);
+}
+
+.friend-info {
+  flex: 1;
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.friend-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-status {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.friend-remove {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+}
+
+.friend-add,
+.friend-sent {
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+.friend-sent {
+  display: grid;
+  place-items: center;
+  color: var(--success);
+}
+
+.friend-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.friend-empty p {
+  margin: 0;
+}
+
+.lobby-invites {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Con muchos amigos, la sala sigue a la vista. */
+.friend-invites .friend-list {
+  max-height: 236px;
+  overflow-y: auto;
+}
+
+/* Dos botones: si no caben junto al nombre, bajan a su propia línea. */
+.friend-row-wide {
+  flex-wrap: wrap;
+}
+
+.friend-row-wide .friend-info {
+  flex: 1 1 84px;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Aviso de invitación: arriba, sin tapar lo que estás haciendo. */
+.invite-banner {
+  position: fixed;
+  top: calc(var(--safe-top) + 10px);
+  left: 50%;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 12px;
+  align-items: center;
+  width: min(420px, calc(100vw - 2 * var(--gutter)));
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid rgb(126 166 255 / 0.55);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+  transform: translateX(-50%);
+  animation: invite-in 0.3s ease;
+}
+
+@keyframes invite-in {
+  from {
+    opacity: 0;
+    translate: 0 -14px;
+  }
+}
+
+.invite-banner-icon {
+  display: grid;
+  place-items: center;
+  color: var(--cool);
+}
+
+.invite-banner-text {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.invite-banner-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.86rem;
+}
+
+.invite-banner-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }

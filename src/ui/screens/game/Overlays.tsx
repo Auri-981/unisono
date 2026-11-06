@@ -6,6 +6,7 @@ import { t } from '../../../i18n';
 import { CheckIcon, CoinIcon, ComodinKindIcon, CrownIcon, FinalIcon, LifeIcon, LightningIcon, RewindIcon } from '../../components/Icons';
 import { getPrefs } from '../../prefs';
 import { refreshProfile, useProfile } from '../../profile';
+import { AddFriendButton } from '../../components/Friends';
 import { CategoryIcon, TitleTag } from '../../components/Progression';
 import type { Achievement } from '../../../net/api';
 import { rich } from '../../rich';
@@ -312,6 +313,7 @@ function EndTeam({ snap }: { snap: RoomSnapshot }) {
           <li key={p.id} className={p.id === snap.me ? 'is-me' : ''}>
             <span className="end-team-name">{p.name}</span>
             <TitleTag title={p.title} />
+            {p.id !== snap.me && <AddFriendButton roomId={snap.room.id} player={p} />}
           </li>
         ))}
       </ul>

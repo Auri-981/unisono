@@ -232,7 +232,40 @@ async function main() {
   const { data: afterDelete } = await c.sb.auth.getUser();
   ok(!afterDelete?.user, 'la sesión borrada ya no sirve');
 
+  // Amigos: código, solicitud, invitación por tiempo real y entrar sin el código de la sala.
   for (const p of [a, b]) await p.rpc('leave_room', { p_room: room }).catch(() => {});
+  await a.rpc('touch_presence', { p_name: 'Ana' });
+  await b.rpc('touch_presence', { p_name: 'Beto' });
+  const codeB = (await b.rpc('get_friends', {})).code;
+  ok(/^[A-Z2-9]{8}$/.test(codeB), 'cada jugador tiene su código de amigo');
+  ok((await a.rpc('add_friend', { p_code: codeB })).result === 'requested', 'solicitud de amistad enviada');
+  const accepted = await b.rpc('respond_friend_request', { p_from: a.id, p_accept: true });
+  ok(accepted.friends.some((f) => f.id === a.id && f.name === 'Ana' && f.status === 'online'), 'amistad aceptada y amigo conectado');
+  ok((await b.rpc('add_friend', { p_code: 'ZZZZZZZZ' })).error === 'FRIEND_NOT_FOUND', 'un código de amigo inventado no sirve');
+
+  let signals = 0;
+  const signalChannel = b.sb
+    .channel(`player:${b.id}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'player_signals', filter: `user_id=eq.${b.id}` }, () => signals++);
+  await new Promise((resolve, reject) => {
+    signalChannel.on('system', {}, (msg) => {
+      if (msg.extension === 'postgres_changes' && msg.status === 'ok') resolve();
+    });
+    signalChannel.subscribe((s) => {
+      if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') reject(new Error(`Canal de amigos: ${s}`));
+    });
+  });
+  const lobby = await a.rpc('create_room', { p_name: 'Ana', p_config: {} });
+  await a.rpc('invite_friend', { p_room: lobby.room.id, p_friend: b.id });
+  await sleep(2500);
+  ok(signals >= 1, `la invitación avisa al amigo por tiempo real (señales: ${signals})`);
+  const invites = (await b.rpc('get_friends', {})).invites;
+  ok(invites.length === 1 && invites[0].fromName === 'Ana', 'la invitación aparece en su lista');
+  const joined = await b.rpc('accept_invite', { p_invite: invites[0].id, p_name: 'Beto' });
+  ok(joined.room.id === lobby.room.id && joined.players.length === 2, 'entra en la sala sin escribir el código');
+  ok((await a.rpc('remove_friend', { p_friend: b.id })).friends.length === 0, 'eliminar amigo');
+  await b.sb.removeChannel(signalChannel);
+  for (const p of [a, b]) await p.rpc('leave_room', { p_room: lobby.room.id }).catch(() => {});
   await b.sb.removeChannel(channel);
   for (const p of players) await p.sb.auth.signOut().catch(() => {});
 

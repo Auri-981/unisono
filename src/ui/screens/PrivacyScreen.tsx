@@ -5,7 +5,7 @@
 import { t } from '../../i18n';
 import { Page } from '../components/Layout';
 
-const UPDATED = '2 de noviembre de 2026';
+const UPDATED = '6 de noviembre de 2026';
 const PROJECT = 'https://github.com/Auri-981/unisono';
 
 export function PrivacyScreen({ onBack }: { onBack: () => void }) {
@@ -38,6 +38,11 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
           <li>
             <strong>Si inicias sesión con Google:</strong> además, el correo, el nombre y la foto de perfil que Google
             comparte, para reconocer tu cuenta. Nunca vemos ni guardamos tu contraseña de Google.
+          </li>
+          <li>
+            <strong>Tus amigos:</strong> tu código de amigo, tu lista de amigos y solicitudes, y la última vez que
+            tuviste la app abierta. Tus amigos ven tu alias, tu título y si estás conectado o en partida. Nadie puede
+            buscarte: solo se llega a ti con tu código o habiendo coincidido en una sala.
           </li>
           <li>
             <strong>El chat de la sala:</strong> los mensajes se borran junto con la sala, como mucho 12 horas después de
@@ -80,7 +85,7 @@ export function PrivacyScreen({ onBack }: { onBack: () => void }) {
         <h2>Cuánto tiempo</h2>
         <p>
           Mientras sigas jugando. Puedes borrarlo todo cuando quieras en Ajustes → «Borrar mi cuenta y mis datos»: se
-          borran al momento tus monedas, cartas, títulos, logros, estadísticas y tu cuenta. En el historial de quienes
+          borran al momento tus monedas, cartas, títulos, logros, estadísticas, amigos y tu cuenta. En el historial de quienes
           jugaron contigo queda el alias que usaste en esas partidas, ya sin relación con ninguna cuenta.
         </p>
 

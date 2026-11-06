@@ -370,6 +370,58 @@ create table if not exists public.account_merges (
   used_at    timestamptz
 );
 
+-- ───────────────────────────── Amigos ─────────────────────────────
+-- Cada jugador tiene un código de amigo. Con él se manda una solicitud (o desde una sala, a quien
+-- esté contigo) y, al aceptarla, se puede invitar directamente a una sala. Nadie puede buscar
+-- jugadores: solo se llega a alguien con su código o habiendo coincidido en una sala.
+--   * player_public: lo que ven tus amigos (alias y cuándo estuviste conectado).
+--   * friendships: dos filas por amistad (una en cada sentido), para consultar siempre igual.
+--   * room_invites: caducan a los 2 minutos; no llevan el código de la sala.
+--   * player_signals: como room_signals, pero por jugador. Solo dice «algo ha cambiado» y la app
+--     pide entonces su lista con get_friends. Es lo único de esta parte que lee la app directamente.
+create table if not exists public.player_public (
+  user_id      uuid primary key references auth.users (id) on delete cascade,
+  friend_code  text not null unique,
+  name         text not null default 'Jugador',
+  last_seen_at timestamptz not null default now()
+);
+
+create table if not exists public.friendships (
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  friend_id  uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, friend_id),
+  check (user_id <> friend_id)
+);
+create index if not exists friendships_friend_idx on public.friendships (friend_id);
+
+create table if not exists public.friend_requests (
+  from_user  uuid not null references auth.users (id) on delete cascade,
+  to_user    uuid not null references auth.users (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (from_user, to_user),
+  check (from_user <> to_user)
+);
+create index if not exists friend_requests_to_idx on public.friend_requests (to_user);
+
+create table if not exists public.room_invites (
+  id         bigint generated always as identity primary key,
+  room_id    uuid not null references public.rooms (id) on delete cascade,
+  from_user  uuid not null references auth.users (id) on delete cascade,
+  to_user    uuid not null references auth.users (id) on delete cascade,
+  from_name  text not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  unique (room_id, to_user)
+);
+create index if not exists room_invites_to_idx on public.room_invites (to_user);
+
+create table if not exists public.player_signals (
+  user_id    uuid primary key references auth.users (id) on delete cascade,
+  version    bigint not null default 0,
+  updated_at timestamptz not null default now()
+);
+
 -- Catálogo de logros. Para cambiar un texto, un objetivo o un premio: aquí, y volver a ejecutar.
 insert into public.achievements (id, category, name, description, condition, metric, target, reward_coins, sort) values
   ('games_1', 'games', 'Primera conexión', 'Toda gran aventura empieza con una partida.', 'Termina tu primera partida online', 'games', 1, 5, 10),
@@ -496,6 +548,21 @@ create policy player_stats_select_own on public.player_stats
 -- Los vales para unir cuentas son internos (solo las funciones los leen).
 alter table public.account_merges enable row level security;
 revoke all on table public.account_merges from public, anon, authenticated;
+
+-- Amigos: todo pasa por funciones. Solo se lee la señal propia (para el tiempo real).
+alter table public.player_public   enable row level security;
+alter table public.friendships     enable row level security;
+alter table public.friend_requests enable row level security;
+alter table public.room_invites    enable row level security;
+alter table public.player_signals  enable row level security;
+revoke all on table public.player_public, public.friendships, public.friend_requests, public.room_invites,
+  public.player_signals
+  from public, anon, authenticated;
+grant select on table public.player_signals to authenticated;
+
+drop policy if exists player_signals_select_own on public.player_signals;
+create policy player_signals_select_own on public.player_signals
+  for select to authenticated using (user_id = (select auth.uid()));
 
 drop policy if exists player_achievements_select_own on public.player_achievements;
 create policy player_achievements_select_own on public.player_achievements
@@ -1637,6 +1704,7 @@ begin
   -- Limpieza oportunista: salas inactivas y registros antiguos.
   delete from public.rooms where updated_at < now() - interval '12 hours';
   delete from public.join_attempts where created_at < now() - interval '1 day';
+  delete from public.room_invites where expires_at < now();
   delete from public.processed_actions where created_at < now() - interval '1 day';
 
   insert into public.rooms (code, host_id, created_by, config)
@@ -2356,6 +2424,32 @@ begin
   update public.game_results set player_ids = array_replace(player_ids, p_from, p_to)
    where p_from = any (player_ids);
 
+  -- Amigos y solicitudes pasan a la cuenta. Si la cuenta aún no tenía código, se queda el del invitado.
+  if not exists (select 1 from public.player_public where user_id = p_to) then
+    update public.player_public set user_id = p_to where user_id = p_from;
+  end if;
+  delete from public.player_public where user_id = p_from;
+  insert into public.friendships (user_id, friend_id, created_at)
+  select p_to, friend_id, created_at from public.friendships where user_id = p_from and friend_id <> p_to
+  on conflict do nothing;
+  insert into public.friendships (user_id, friend_id, created_at)
+  select user_id, p_to, created_at from public.friendships where friend_id = p_from and user_id <> p_to
+  on conflict do nothing;
+  delete from public.friendships where user_id = p_from or friend_id = p_from;
+  insert into public.friend_requests (from_user, to_user, created_at)
+  select p_to, to_user, created_at from public.friend_requests r
+   where from_user = p_from and to_user <> p_to
+     and not exists (select 1 from public.friendships fr where fr.user_id = p_to and fr.friend_id = r.to_user)
+  on conflict do nothing;
+  insert into public.friend_requests (from_user, to_user, created_at)
+  select from_user, p_to, created_at from public.friend_requests r
+   where to_user = p_from and from_user <> p_to
+     and not exists (select 1 from public.friendships fr where fr.user_id = p_to and fr.friend_id = r.from_user)
+  on conflict do nothing;
+  delete from public.friend_requests where from_user = p_from or to_user = p_from;
+  delete from public.room_invites where from_user = p_from or to_user = p_from;
+  perform game_private.bump_signal(fr.friend_id) from public.friendships fr where fr.user_id = p_to;
+
   -- Con lo unido puede cumplir logros nuevos (p. ej. coleccionar 5 diseños).
   perform game_private.evaluate_achievements(p_to);
 
@@ -2434,6 +2528,14 @@ begin
   delete from public.player_wallets where user_id = v_uid;
   delete from public.chat_messages where user_id = v_uid;
   delete from public.join_attempts where user_id = v_uid;
+  -- Sus amigos dejan de verle al momento.
+  perform game_private.bump_signal(f.friend_id) from public.friendships f where f.user_id = v_uid;
+  perform game_private.bump_signal(r.to_user) from public.friend_requests r where r.from_user = v_uid;
+  delete from public.friendships where user_id = v_uid or friend_id = v_uid;
+  delete from public.friend_requests where from_user = v_uid or to_user = v_uid;
+  delete from public.room_invites where from_user = v_uid or to_user = v_uid;
+  delete from public.player_public where user_id = v_uid;
+  delete from public.player_signals where user_id = v_uid;
   -- La cuenta en sí (con el correo, si inició sesión con Google).
   begin
     delete from auth.users where id = v_uid;
@@ -2441,6 +2543,278 @@ begin
     v_auth := false;
   end;
   return jsonb_build_object('deleted', true, 'account', v_auth);
+end;
+$$;
+
+-- ── Amigos (API) ──
+
+-- Aviso de tiempo real a un jugador: su lista ha cambiado (nueva solicitud, amigo, invitación…).
+create or replace function game_private.bump_signal(p_uid uuid)
+returns void language sql set search_path = ''
+as $$
+  insert into public.player_signals (user_id, version) values (p_uid, 1)
+  on conflict (user_id) do update set version = public.player_signals.version + 1, updated_at = now();
+$$;
+
+-- Crea la ficha pública con su código la primera vez. Sin I, O, 0, 1, como los códigos de sala.
+create or replace function game_private.ensure_public(p_uid uuid)
+returns void language plpgsql set search_path = ''
+as $$
+declare
+  alphabet constant text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  v text;
+begin
+  if exists (select 1 from public.player_public where user_id = p_uid) then return; end if;
+  for attempt in 1..30 loop
+    select string_agg(substr(alphabet, 1 + floor(random() * 32)::int, 1), '')
+      into v from generate_series(1, 8);
+    insert into public.player_public (user_id, friend_code) values (p_uid, v) on conflict do nothing;
+    if found then return; end if;
+    if exists (select 1 from public.player_public where user_id = p_uid) then return; end if;
+  end loop;
+  raise exception 'INVALID_STATE';
+end;
+$$;
+
+-- Una persona vista por otra: alias y título. Para quien no ha abierto la app desde que existen
+-- los amigos (sin ficha pública) sirve el nombre por defecto.
+create or replace function game_private.friend_card(p_uid uuid)
+returns jsonb language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', p_uid,
+    'name', coalesce((select pp.name from public.player_public pp where pp.user_id = p_uid), 'Jugador'),
+    'title', (select jsonb_build_object('id', c.id, 'name', c.name, 'rarity', c.rarity)
+                from public.player_equipped e join public.cosmetics c on c.id = e.cosmetic_id
+               where e.user_id = p_uid and e.kind = 'title'));
+$$;
+
+-- Todo lo que la app necesita de los amigos. «Conectado» = la app ha dado señal hace menos de 90 s.
+create or replace function game_private.friends_state(p_uid uuid)
+returns jsonb language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'code', (select friend_code from public.player_public where user_id = p_uid),
+    'friends', coalesce((
+      select jsonb_agg(game_private.friend_card(s.friend_id) || jsonb_build_object('status', s.status)
+                       order by s.status = 'offline', lower(s.name))
+      from (
+        select f.friend_id, coalesce(pp.name, 'Jugador') as name,
+               case when coalesce(pp.last_seen_at, 'epoch') < now() - interval '90 seconds' then 'offline'
+                    when exists (select 1 from public.room_players rp join public.rooms r on r.id = rp.room_id
+                                  where rp.user_id = f.friend_id and r.status in ('playing', 'level_complete')) then 'playing'
+                    else 'online' end as status
+        from public.friendships f
+        left join public.player_public pp on pp.user_id = f.friend_id
+        where f.user_id = p_uid
+      ) s), '[]'::jsonb),
+    'incoming', coalesce((select jsonb_agg(game_private.friend_card(r.from_user) order by r.created_at desc)
+                            from public.friend_requests r where r.to_user = p_uid), '[]'::jsonb),
+    'outgoing', coalesce((select jsonb_agg(game_private.friend_card(r.to_user) order by r.created_at desc)
+                            from public.friend_requests r where r.from_user = p_uid), '[]'::jsonb),
+    'invites', coalesce((select jsonb_agg(jsonb_build_object('id', i.id, 'fromName', i.from_name, 'expiresAt', i.expires_at)
+                                          order by i.created_at desc)
+                           from public.room_invites i where i.to_user = p_uid and i.expires_at > now()), '[]'::jsonb),
+    'serverTime', now());
+$$;
+
+create or replace function game_private.make_friends(p_a uuid, p_b uuid)
+returns void language plpgsql set search_path = ''
+as $$
+begin
+  insert into public.friendships (user_id, friend_id) values (p_a, p_b), (p_b, p_a) on conflict do nothing;
+  delete from public.friend_requests where (from_user = p_a and to_user = p_b) or (from_user = p_b and to_user = p_a);
+  perform game_private.bump_signal(p_a);
+  perform game_private.bump_signal(p_b);
+end;
+$$;
+
+-- Solicitud de p_from a p_to. Si p_to ya se la había pedido, son amigos directamente.
+create or replace function game_private.request_friend(p_from uuid, p_to uuid)
+returns text language plpgsql set search_path = ''
+as $$
+begin
+  if p_from = p_to then raise exception 'CANNOT_ADD_SELF'; end if;
+  if exists (select 1 from public.friendships where user_id = p_from and friend_id = p_to) then
+    raise exception 'ALREADY_FRIENDS';
+  end if;
+  if exists (select 1 from public.friend_requests where from_user = p_to and to_user = p_from) then
+    perform game_private.make_friends(p_from, p_to);
+    return 'friends';
+  end if;
+  if (select count(*) from public.friend_requests where from_user = p_from) >= 50 then
+    raise exception 'TOO_MANY_ATTEMPTS';
+  end if;
+  insert into public.friend_requests (from_user, to_user) values (p_from, p_to) on conflict do nothing;
+  perform game_private.bump_signal(p_to);
+  return 'requested';
+end;
+$$;
+
+-- Lista de amigos, solicitudes e invitaciones.
+create or replace function public.get_friends()
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  perform game_private.ensure_public(v_uid);
+  return game_private.friends_state(v_uid);
+end;
+$$;
+
+-- «Sigo aquí»: la app lo llama mientras está abierta, con el alias actual (vive en el móvil).
+create or replace function public.touch_presence(p_name text default null)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  perform game_private.ensure_public(v_uid);
+  update public.player_public
+     set last_seen_at = now(), name = coalesce(game_private.clean_name(p_name), name)
+   where user_id = v_uid;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+-- Añadir con un código. Los códigos erróneos cuentan como los de sala: no se pueden probar a lo loco.
+create or replace function public.add_friend(p_code text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_code text := upper(regexp_replace(coalesce(p_code, ''), '[^A-Za-z0-9]', '', 'g'));
+  v_target uuid;
+  v_result text;
+begin
+  perform game_private.ensure_public(v_uid);
+  if (select count(*) from public.join_attempts
+      where user_id = v_uid and created_at > now() - interval '10 minutes') >= 20 then
+    raise exception 'TOO_MANY_ATTEMPTS';
+  end if;
+  select user_id into v_target from public.player_public where friend_code = v_code;
+  if not found then
+    -- Se devuelve (en vez de lanzar) para que el intento fallido quede registrado.
+    insert into public.join_attempts (user_id) values (v_uid);
+    return jsonb_build_object('error', 'FRIEND_NOT_FOUND');
+  end if;
+  v_result := game_private.request_friend(v_uid, v_target);
+  return game_private.friends_state(v_uid) || jsonb_build_object('result', v_result);
+end;
+$$;
+
+-- Añadir a alguien que está contigo en la sala (sin necesitar su código).
+create or replace function public.add_friend_from_room(p_room uuid, p_target uuid)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_result text;
+begin
+  perform game_private.ensure_public(v_uid);
+  if (select count(*) from public.room_players
+      where room_id = p_room and user_id in (v_uid, p_target)) < 2 and v_uid <> coalesce(p_target, v_uid) then
+    raise exception 'NOT_MEMBER';
+  end if;
+  v_result := game_private.request_friend(v_uid, p_target);
+  return game_private.friends_state(v_uid) || jsonb_build_object('result', v_result);
+end;
+$$;
+
+create or replace function public.respond_friend_request(p_from uuid, p_accept boolean)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  if not exists (select 1 from public.friend_requests where from_user = p_from and to_user = v_uid) then
+    raise exception 'REQUEST_NOT_FOUND';
+  end if;
+  if p_accept then
+    perform game_private.make_friends(v_uid, p_from);
+  else
+    delete from public.friend_requests where from_user = p_from and to_user = v_uid;
+    perform game_private.bump_signal(p_from);
+  end if;
+  return game_private.friends_state(v_uid);
+end;
+$$;
+
+create or replace function public.cancel_friend_request(p_to uuid)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  delete from public.friend_requests where from_user = v_uid and to_user = p_to;
+  perform game_private.bump_signal(p_to);
+  return game_private.friends_state(v_uid);
+end;
+$$;
+
+create or replace function public.remove_friend(p_friend uuid)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  delete from public.friendships where (user_id = v_uid and friend_id = p_friend) or (user_id = p_friend and friend_id = v_uid);
+  delete from public.room_invites where (from_user = v_uid and to_user = p_friend) or (from_user = p_friend and to_user = v_uid);
+  perform game_private.bump_signal(p_friend);
+  return game_private.friends_state(v_uid);
+end;
+$$;
+
+-- Invita a un amigo a la sala en la que estás, en espera. Repetirla solo renueva la invitación.
+create or replace function public.invite_friend(p_room uuid, p_friend uuid)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  r public.rooms := game_private.lock_room(p_room, v_uid);
+  v_expires timestamptz := now() + interval '2 minutes';
+begin
+  if r.status <> 'lobby' then raise exception 'NOT_IN_LOBBY'; end if;
+  if not exists (select 1 from public.friendships where user_id = v_uid and friend_id = p_friend) then
+    raise exception 'NOT_FRIENDS';
+  end if;
+  if exists (select 1 from public.room_players where room_id = p_room and user_id = p_friend) then
+    raise exception 'ALREADY_IN_ROOM';
+  end if;
+  if (select count(*) from public.room_players where room_id = p_room) >= (r.config ->> 'maxPlayers')::int then
+    raise exception 'ROOM_FULL';
+  end if;
+  insert into public.room_invites (room_id, from_user, to_user, from_name, expires_at)
+  select p_room, v_uid, p_friend, p.name, v_expires from public.room_players p
+   where p.room_id = p_room and p.user_id = v_uid
+  on conflict (room_id, to_user) do update
+    set from_user = excluded.from_user, from_name = excluded.from_name,
+        created_at = now(), expires_at = excluded.expires_at;
+  perform game_private.bump_signal(p_friend);
+  return jsonb_build_object('invited', true, 'expiresAt', v_expires);
+end;
+$$;
+
+-- Entra en la sala de la invitación (con las mismas comprobaciones que un código normal).
+create or replace function public.accept_invite(p_invite bigint, p_name text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_uid uuid := game_private.require_uid();
+  v_code text;
+begin
+  select r.code into v_code
+    from public.room_invites i join public.rooms r on r.id = i.room_id
+   where i.id = p_invite and i.to_user = v_uid and i.expires_at > now();
+  if not found then raise exception 'INVITE_EXPIRED'; end if;
+  delete from public.room_invites where id = p_invite;
+  return public.join_room(v_code, p_name);
+end;
+$$;
+
+create or replace function public.decline_invite(p_invite bigint)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_uid uuid := game_private.require_uid();
+begin
+  delete from public.room_invites where id = p_invite and to_user = v_uid;
+  return game_private.friends_state(v_uid);
 end;
 $$;
 
@@ -2497,7 +2871,17 @@ revoke all on function
   public.get_my_coin_history(),
   public.start_account_merge(),
   public.claim_account_merge(text),
-  public.delete_my_account()
+  public.delete_my_account(),
+  public.get_friends(),
+  public.touch_presence(text),
+  public.add_friend(text),
+  public.add_friend_from_room(uuid, uuid),
+  public.respond_friend_request(uuid, boolean),
+  public.cancel_friend_request(uuid),
+  public.remove_friend(uuid),
+  public.invite_friend(uuid, uuid),
+  public.accept_invite(bigint, text),
+  public.decline_invite(bigint)
 from public, anon;
 
 revoke all on function public.ping() from public;
@@ -2532,11 +2916,21 @@ grant execute on function
   public.get_my_coin_history(),
   public.start_account_merge(),
   public.claim_account_merge(text),
-  public.delete_my_account()
+  public.delete_my_account(),
+  public.get_friends(),
+  public.touch_presence(text),
+  public.add_friend(text),
+  public.add_friend_from_room(uuid, uuid),
+  public.respond_friend_request(uuid, boolean),
+  public.cancel_friend_request(uuid),
+  public.remove_friend(uuid),
+  public.invite_friend(uuid, uuid),
+  public.accept_invite(bigint, text),
+  public.decline_invite(bigint)
 to authenticated;
 
 -- ───────────────────────────── Tiempo real ─────────────────────────────
--- Solo se emiten la señal de versión de la sala y el chat. `hands` NUNCA se publica.
+-- Solo se emiten la señal de versión de la sala, la señal de cada jugador y el chat. `hands` NUNCA se publica.
 -- (Versiones anteriores publicaban `rooms`; se retira para no gastar mensajes.)
 
 do $$
@@ -2553,6 +2947,10 @@ begin
     if not exists (select 1 from pg_publication_tables
                    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'chat_messages') then
       alter publication supabase_realtime add table public.chat_messages;
+    end if;
+    if not exists (select 1 from pg_publication_tables
+                   where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'player_signals') then
+      alter publication supabase_realtime add table public.player_signals;
     end if;
   end if;
 end;

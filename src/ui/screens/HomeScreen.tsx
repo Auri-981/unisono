@@ -3,9 +3,10 @@ import { t } from '../../i18n';
 import { onlineAvailable } from '../../net/supabase';
 import { SaveNudge } from '../components/Account';
 import { Card } from '../components/Card';
-import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon, TrophyIcon } from '../components/Icons';
+import { CardsIcon, ComodinIcon, LifeIcon, LinkIcon, LogoMark, ShopIcon, TeamIcon, TrophyIcon } from '../components/Icons';
 import { TitleTag } from '../components/Progression';
 import { CoinBadge } from '../components/Resources';
+import { pendingCount, useFriends } from '../friends';
 import { usePrefs } from '../prefs';
 import { equippedCardDesign, equippedTitle, refreshProfile, useProfile } from '../profile';
 
@@ -21,6 +22,7 @@ interface Props {
   onCollection: () => void;
   onAchievements: () => void;
   onProfile: () => void;
+  onFriends: () => void;
 }
 
 export function HomeScreen(p: Props) {
@@ -29,6 +31,7 @@ export function HomeScreen(p: Props) {
   const title = equippedTitle(profile);
   const name = usePrefs().name.trim();
   const newAchievements = profile?.unseen?.length ?? 0;
+  const friendsPending = pendingCount(useFriends());
   useEffect(() => {
     void refreshProfile();
   }, []);
@@ -92,6 +95,15 @@ export function HomeScreen(p: Props) {
               {newAchievements > 0 && (
                 <span className="dot-count" aria-label={t('home.unseen', { n: newAchievements })}>
                   {newAchievements}
+                </span>
+              )}
+            </button>
+            <button type="button" className="btn btn-secondary home-shop-btn" onClick={p.onFriends} disabled={!onlineAvailable}>
+              <TeamIcon size={20} />
+              {t('home.friends')}
+              {friendsPending > 0 && (
+                <span className="dot-count" aria-label={t('home.friendsPending', { n: friendsPending })}>
+                  {friendsPending}
                 </span>
               )}
             </button>

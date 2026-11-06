@@ -100,11 +100,11 @@ describe('privacidad de las cartas', () => {
     expect(await errorOf(t.rpc(outsider, 'send_chat', { p_room: room, p_body: 'hola' }))).toBe('NOT_MEMBER');
   });
 
-  it('las cartas no se publican por tiempo real (solo la señal de versión y el chat)', async () => {
+  it('las cartas no se publican por tiempo real (solo las señales de versión y el chat)', async () => {
     const rows = await t.admin<{ tablename: string }>(
       `select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by 1`,
     );
-    expect(rows.map((r) => r.tablename)).toEqual(['chat_messages', 'room_signals']);
+    expect(rows.map((r) => r.tablename)).toEqual(['chat_messages', 'player_signals', 'room_signals']);
   });
 
   it('cada acción produce exactamente una señal, solo visible para los miembros', async () => {

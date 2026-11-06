@@ -17,6 +17,8 @@ Juego cooperativo de cartas para jugar con amigos desde el móvil, inspirado en 
 - 25 logros en 6 categorías que se cuentan solos al jugar online, con monedas de premio y cinco
   cartas exclusivas que solo se consiguen con logros (Obsidiana, Aurora, Crono, Fénix, Trascendencia).
   Colección (cartas y títulos) y perfil con estadísticas.
+- Amigos: cada jugador tiene un código; se añade con él, con un enlace o desde una sala, se ve quién
+  está conectado y se le invita a la sala sin pasarle el código.
 - Modo práctica contra bots, sin conexión.
 - Web móvil instalable (PWA). Interfaz en español, preparada para otros idiomas.
 

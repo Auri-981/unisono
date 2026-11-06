@@ -370,3 +370,21 @@ su id en `src/ui/cosmetics.ts` y su bloque `.design-<id>` en `global.css`.
 - **Botón de Google**: solo se enseña si `GET /auth/v1/settings` dice que Google está activado,
   así se puede publicar antes de configurarlo (pasos en `docs/DESPLIEGUE.md`, apartado 8).
 
+## 15. Amigos
+
+- **Sin buscador**: a una persona solo se llega con su código de amigo (8 caracteres, en
+  `player_public`; en pantalla `ABCD-2345`), con el enlace `?amigo=CODIGO` o habiendo coincidido en
+  una sala (`add_friend_from_room`, que comprueba que los dos están en ella). Los códigos erróneos
+  cuentan en `join_attempts`, igual que los de sala.
+- **Tablas** (ninguna se lee desde la app, todo pasa por funciones): `friend_requests`,
+  `friendships` (dos filas por amistad) y `room_invites` (caducan a los 2 minutos y no llevan el
+  código de la sala: `accept_invite` llama a `join_room` por dentro, con sus comprobaciones).
+- **Tiempo real**: `player_signals` es a cada jugador lo que `room_signals` a cada sala: una fila que
+  solo dice «algo ha cambiado», legible únicamente por su dueño. La app pide entonces `get_friends`.
+- **Conectado**: mientras la app está visible llama a `touch_presence` cada 45 s, con el alias actual
+  (el alias vive en el móvil, y así el servidor lo tiene para enseñarlo a los amigos). Conectado =
+  señal hace menos de 90 s; «en partida» = además está en una sala jugando.
+- **Invitaciones**: salen en un aviso arriba, salvo en una sala, la práctica o el tutorial, y siguen
+  en Amigos hasta caducar. Con la app cerrada no llega nada: no son notificaciones.
+- **Cuentas**: `merge_account` pasa amigos y solicitudes a la cuenta, que conserva su código (o toma
+  el del invitado si no tenía). `delete_my_account` borra todo y avisa a sus amigos.
